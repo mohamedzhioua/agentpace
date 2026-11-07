@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -46,6 +47,7 @@ class IngestReport:
     files: int = 0
     rows: int = 0
     zero_duration: int = 0
+    still_running: int = 0
     parse: ParseStats = field(default_factory=ParseStats)
 
     def lines(self) -> list[str]:
@@ -57,6 +59,7 @@ class IngestReport:
             f"unreadable files: {parse.unreadable_files}",
             f"unparsed lines:   {parse.unparsed_lines}",
             f"zero-duration:    {self.zero_duration}",
+            f"still running:    {self.still_running}",
         ]
 
 
@@ -127,14 +130,23 @@ def build_rows(
     idle_cap_s: int = DEFAULT_IDLE_CAP_S,
     kind_map: Mapping[str, str] | None = None,
     labels: Mapping[str, Mapping[str, str]] | None = None,
-) -> tuple[list[Row], int]:
-    """Return schema-valid rows, plus how many runs had zero duration and were dropped."""
+    now: float | None = None,
+) -> tuple[list[Row], int, int]:
+    """Return schema-valid rows, how many runs had zero duration and were dropped, and how many
+    were withheld because they may still be running.
+
+    A run that has not completed and was active within the idle cap may still be going. Storing
+    it would leave a partial row behind for good, because its duration is part of the key, so it
+    is withheld until a later ingest finds it settled. It still feeds the session clock and the
+    overlap count, so its siblings get the same offsets they will have once it finishes.
+    """
+    now = time.time() if now is None else now
     sessions: dict[tuple[str, str], list[RawRun]] = defaultdict(list)
     for run in runs:
         sessions[(run.project, run.session)].append(run)
     contributor = pseudonym.contributor(secret)
     rows: list[Row] = []
-    dropped = 0
+    dropped = withheld = 0
     for (project, session), members in sessions.items():
         clock = SessionClock(members, idle_cap_s)
         peaks = peak_overlaps(members)
@@ -153,6 +165,9 @@ def build_rows(
             while (offset, run.active_s) in taken:
                 offset += 1
             taken.add((offset, run.active_s))
+            if run.outcome != "completed" and now - run.end < idle_cap_s:
+                withheld += 1
+                continue
             kind = classify.classify_kind(run.agent_type, kind_map)
             row: Row = {
                 "harness": run.harness,
@@ -179,7 +194,7 @@ def build_rows(
             if problems:
                 raise ValueError(f"adapter produced an invalid row: {problems}")
             rows.append(row)
-    return rows, dropped
+    return rows, dropped, withheld
 
 
 def ingest(
@@ -189,6 +204,7 @@ def ingest(
     idle_cap_s: int = DEFAULT_IDLE_CAP_S,
     kind_map: Mapping[str, str] | None = None,
     labels: Mapping[str, Mapping[str, str]] | None = None,
+    now: float | None = None,
 ) -> tuple[list[Row], IngestReport]:
     report = IngestReport()
     runs: list[RawRun] = []
@@ -197,7 +213,9 @@ def ingest(
         run = adapter.parse(source, idle_cap_s, report.parse)
         if run is not None:
             runs.append(run)
-    rows, report.zero_duration = build_rows(runs, secret, idle_cap_s, kind_map, labels)
+    rows, report.zero_duration, report.still_running = build_rows(
+        runs, secret, idle_cap_s, kind_map, labels, now
+    )
     report.rows = len(rows)
     return rows, report
 

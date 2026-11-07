@@ -213,7 +213,7 @@ class ModelNames(unittest.TestCase):
 
 class Rows(unittest.TestCase):
     def test_rows_are_valid_and_pseudonymous(self):
-        rows, dropped = ingest.build_rows([raw(session="real-session-id")], SECRET)
+        rows, dropped, _ = ingest.build_rows([raw(session="real-session-id")], SECRET)
         self.assertEqual(dropped, 0)
         self.assertEqual(schema.check_row(rows[0]), [])
         self.assertEqual(rows[0]["batch"], pseudonym.batch(SECRET, "real-session-id"))
@@ -224,13 +224,13 @@ class Rows(unittest.TestCase):
         self.assertEqual(ingest.build_rows(runs, SECRET), ingest.build_rows(runs, SECRET))
 
     def test_different_secrets_give_unlinkable_rows(self):
-        first, _ = ingest.build_rows([raw()], SECRET)
-        second, _ = ingest.build_rows([raw()], b"\x02" * 32)
+        first, _, _ = ingest.build_rows([raw()], SECRET)
+        second, _, _ = ingest.build_rows([raw()], b"\x02" * 32)
         for field in ("contributor", "batch", "project"):
             self.assertNotEqual(first[0][field], second[0][field])
 
     def test_zero_duration_runs_are_dropped_and_counted(self):
-        rows, dropped = ingest.build_rows([raw(active_s=0)], SECRET)
+        rows, dropped, _ = ingest.build_rows([raw(active_s=0)], SECRET)
         self.assertEqual((rows, dropped), ([], 1))
 
     def test_peak_overlap_is_per_run(self):
@@ -251,27 +251,27 @@ class Rows(unittest.TestCase):
 class SessionClock(unittest.TestCase):
     def test_offsets_skip_idle_time(self):
         runs = [raw(0, 100), raw(5000, 5100)]
-        rows, _ = ingest.build_rows(runs, SECRET)
+        rows, _, _ = ingest.build_rows(runs, SECRET)
         self.assertEqual([r["offset_s"] for r in rows], [0, 100 + 900])
 
     def test_runs_tied_to_the_second_stay_distinct(self):
-        rows, _ = ingest.build_rows([raw(0, 100), raw(0, 100), raw(0, 100)], SECRET)
+        rows, _, _ = ingest.build_rows([raw(0, 100), raw(0, 100), raw(0, 100)], SECRET)
         self.assertEqual([r["offset_s"] for r in rows], [0, 1, 2])
         self.assertEqual(len({schema.dedupe_key(r) for r in rows}), 3)
 
     def test_offset_plus_duration_recovers_the_span_for_sequential_runs(self):
         runs = [raw(0, 100), raw(150, 300), raw(320, 330)]
-        rows, _ = ingest.build_rows(runs, SECRET)
+        rows, _, _ = ingest.build_rows(runs, SECRET)
         span = max(r["offset_s"] + r["duration_s"] for r in rows)
         self.assertEqual(span, 330)
 
     def test_overlapping_runs_share_the_clock(self):
-        rows, _ = ingest.build_rows([raw(0, 100), raw(40, 80)], SECRET)
+        rows, _, _ = ingest.build_rows([raw(0, 100), raw(40, 80)], SECRET)
         self.assertEqual([r["offset_s"] for r in rows], [0, 40])
 
     def test_a_long_gap_inside_a_run_is_clipped_on_the_session_clock(self):
         long_run = raw(0, 5000, spans=((0, 50), (4950, 5000)), active_s=1000)
-        rows, _ = ingest.build_rows([long_run, raw(5100, 5200)], SECRET)
+        rows, _, _ = ingest.build_rows([long_run, raw(5100, 5200)], SECRET)
         self.assertEqual(rows[1]["offset_s"], 50 + 900 + 50 + 100)
 
 
@@ -359,12 +359,61 @@ class Store(TempRoot):
         self.assertEqual(schema.read_rows(store)[0]["task_kind"], "bugfix")
 
 
+class StillRunning(TempRoot):
+    """An ingest made while an agent runs must not store its partial run (the ghost-row bug).
+
+    Sibling A starts first, goes idle past the cap, then is active again when B completes. So B's
+    offset depends on A being on the session clock, even while A's own row is withheld.
+    """
+
+    BASE = synthetic.BASE.timestamp()
+    RUNNING = (user(0), assistant(30, "a1", "Read"), user(1550))
+
+    def write(self, a_lines):
+        write_run(self.root, "p", "s", "a", a_lines)
+        write_run(self.root, "p", "s", "b", simple_run(1500, 40))
+
+    def rows_at(self, seconds):
+        rows, report = ingest.ingest(ADAPTER, self.root, SECRET, now=self.BASE + seconds)
+        return rows, report
+
+    def test_a_running_sibling_is_withheld_then_stored_once(self):
+        store = self.root / "runs.jsonl"
+        self.write(self.RUNNING)
+        first, report = self.rows_at(1600)
+        self.assertEqual(report.still_running, 1)
+        self.assertEqual([r["outcome"] for r in first], ["completed"])
+        ingest.merge_into(store, first)
+
+        self.write([*self.RUNNING, assistant(1700, "a2", "SubagentHandback")])
+        second, report = self.rows_at(1800)
+        self.assertEqual(report.still_running, 0)
+        ingest.merge_into(store, second)
+        stored = schema.read_rows(store)
+        self.assertEqual(len(stored), 2)
+        self.assertEqual(sorted(r["outcome"] for r in stored), ["completed", "completed"])
+
+    def test_siblings_keep_their_offsets_while_one_is_withheld(self):
+        self.write(self.RUNNING)
+        (b_before,) = self.rows_at(1600)[0]
+        self.write([*self.RUNNING, assistant(1700, "a2", "SubagentHandback")])
+        after = self.rows_at(1800)[0]
+        self.assertIn(schema.dedupe_key(b_before), {schema.dedupe_key(r) for r in after})
+        self.assertEqual(b_before["offset_s"], 930)  # 30 s busy, then a gap clipped to 900
+
+    def test_an_unfinished_run_idle_past_the_cap_is_stored_as_unknown(self):
+        self.write(self.RUNNING)
+        rows, report = self.rows_at(1550 + 901)
+        self.assertEqual(report.still_running, 0)
+        self.assertEqual(sorted(r["outcome"] for r in rows), ["completed", "unknown"])
+
+
 class Labels(unittest.TestCase):
     def test_labels_override_heuristics(self):
-        rows, _ = ingest.build_rows([raw()], SECRET)
+        rows, _, _ = ingest.build_rows([raw()], SECRET)
         ref = ingest.run_ref(rows[0])
         labels = {ref: {"kind": "bugfix", "risk": "high"}}
-        relabeled, _ = ingest.build_rows([raw()], SECRET, labels=labels)
+        relabeled, _, _ = ingest.build_rows([raw()], SECRET, labels=labels)
         self.assertEqual((relabeled[0]["task_kind"], relabeled[0]["risk"]), ("bugfix", "high"))
 
 
