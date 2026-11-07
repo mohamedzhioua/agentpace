@@ -239,6 +239,17 @@ for each draw:
 
 **Install.** `uv tool install git+https://github.com/mohamedzhioua/agentpace` or the `pipx` equivalent, with no PyPI publish needed. The wheel carries `schema/` and `data/runs/` through hatchling `force-include`, so an install can estimate before any local history exists, with no duplicate copy in git and no download at run time. `npx skills add` has no post-install hook and we will not add an implicit download, so a skill checks for `agentpace` and shows the install command if it is missing. Phase 7 proves this with a real `npx skills add` run, which needs Node 22.20 or later.
 
+**Trigger evals.** Each run used the same 9 prompts, one fresh session per prompt, with only `skills/` installed: 6 questions about how long software work takes, one of them re-answering a quoted "3 month project", and 3 near misses (baking bread, a git rebase's CPU time, and a request to write a date function). These are dated single passes, evidence rather than guarantees, and they are not README claims.
+
+| Date | Host and model | How a trigger was detected | Positives | Near misses |
+|---|---|---|---|---|
+| 2026-11-07 | Claude Code (CLI version not recorded), Sonnet 5.5 | a Skill call for `agentpace` in `claude -p` stream JSON | 6 of 6 | 0 of 3 |
+| 2026-11-07 | Claude Code 2.1.319, Opus 5.5 | the same | 6 of 6 | 0 of 3 |
+| 2026-11-07 | Claude Code 2.1.319, Haiku 5.5 | the same | 6 of 6 | 0 of 3 |
+| 2026-11-07 | Codex CLI 0.164.0, gpt-6-sol at high effort, skills in the project's `.agents/skills/` | a command in the `codex exec --ephemeral --json` events that reads `agentpace/SKILL.md` | 6 of 6 | 1 of 3 |
+
+The Codex near miss was the git rebase question. Codex read the skill, judged that it covers coding-agent task time rather than a command's CPU use, and answered without it. So the skill loaded but was not applied. The Sonnet row comes from the 0.2.1 pull request, and the other three ran on the 0.6.0 skills.
+
 ## 9. How this differs
 
 Audited at the commits cloned on 2026-11-07. Key citations were spot-checked against the source.
