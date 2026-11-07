@@ -145,6 +145,20 @@ Each run counts equally:
 
 **Could not run (1 contributor).**
 
+## By harness
+
+The estimator does not use the harness. Each harness is shown on its own, from the same selection-fold forecasts, before anyone pools them.
+
+| Harness | Runs | Completed | Sessions |
+|---|---:|---:|---:|
+| claude-code | 3,219 | 3,206 | 82 |
+
+| Harness | Test sessions | `shrunk` pinball | global-median pinball | P80 coverage, per session | P80 coverage, per run | P90/P50 |
+|---|---:|---:|---:|---:|---:|---:|
+| claude-code | 74 | 1047 | 1719 | 78.5% | 89.1% | 4.7x |
+
+Harness split: **could not run (1 harness).**
+
 ## Whole sessions (oracle-structure)
 
 Each of 56 held-out sessions with at least 5 completed runs is treated as a plan. This is the only direct test of plan totals. Real dependencies are not recorded, so the critical path falls back to the longest run, and the observed peak concurrency stands in for the agent cap, even though that peak is itself an outcome. It tests the throughput and session terms, not dependency planning.

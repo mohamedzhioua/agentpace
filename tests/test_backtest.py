@@ -146,8 +146,21 @@ class FullRun(unittest.TestCase):
     def test_project_split_runs_under_its_own_name(self):
         self.assertEqual(self.report["splits"]["project"]["status"], "ok")
 
+    def test_single_harness_says_it_could_not_run(self):
+        self.assertEqual(self.report["splits"]["harness"]["status"], "could not run (1 harness)")
+        self.assertEqual(list(self.report["harness"]["dataset"]), ["claude-code"])
+
+    def test_the_harness_row_repeats_the_pooled_numbers_for_one_harness(self):
+        winner = self.report["selection"]["winner"]
+        pooled = self.report["splits"]["time"]["tracks"]["pre-run"][winner]["session"]
+        alone = self.report["harness"]["selection_folds"]["claude-code"]
+        self.assertAlmostEqual(alone["pinball"], pooled["pinball"])
+        self.assertAlmostEqual(alone["coverage80_session"], pooled["coverage80"])
+
     def test_markdown_says_so_too(self):
         text = report.markdown(self.report)
+        self.assertIn("## By harness", text)
+        self.assertIn("could not run (1 harness)", text)
         self.assertIn("Could not run (1 contributor)", text)
         self.assertIn("oracle-structure", text)
         self.assertIn("Where agentpace loses", text)
@@ -195,6 +208,29 @@ def _small_run(rows, **kwargs):
         mock.patch.object(backtest, "BOOTSTRAPS", 100),
     ):
         return backtest.run(rows, **kwargs)
+
+
+class Harnesses(unittest.TestCase):
+    def test_each_harness_is_summarized_from_forecasts_already_drawn(self):
+        rows = [row(), row(offset_s=5), row(harness="codex", batch="cccccccccccc")]
+        forecasts = {
+            "shrunk": [
+                Forecast(10, 20, 30, 15, "aaaaaaaaaaaa"),
+                Forecast(10, 20, 30, 25, "cccccccccccc", "codex"),
+            ],
+            "global-median": [
+                Forecast(12, 12, 12, 15, "aaaaaaaaaaaa"),
+                Forecast(12, 12, 12, 25, "cccccccccccc", "codex"),
+            ],
+        }
+        summary = backtest.harness_summary(rows, forecasts, "shrunk")
+        self.assertEqual(summary["dataset"]["codex"], {"rows": 1, "completed": 1, "sessions": 1})
+        self.assertEqual(summary["dataset"]["claude-code"]["rows"], 2)
+        self.assertEqual(summary["selection_folds"]["codex"]["coverage80_session"], 0.0)
+        self.assertEqual(summary["selection_folds"]["claude-code"]["coverage80_session"], 100.0)
+
+    def test_a_forecast_defaults_to_claude_code(self):
+        self.assertEqual(Forecast(1, 2, 3, 2, "s").harness, "claude-code")
 
 
 class LockedHoldout(unittest.TestCase):
