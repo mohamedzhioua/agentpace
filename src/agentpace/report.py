@@ -72,7 +72,11 @@ def _interval_lines(
     ]
     for name, gap in found["rival_minus_ours"].items():
         lines.append(f"| {name} | {results[name][weighting]['pinball']:.0f} | {_gap(gap)} |")
-    lines += ["", "An interval wholly above zero means the baseline is really worse.", ""]
+    lines += [
+        "",
+        "An interval wholly above zero means the baseline is worse at the 95% level.",
+        "",
+    ]
     return lines
 
 

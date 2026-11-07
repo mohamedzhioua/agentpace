@@ -69,7 +69,8 @@ def values(
     completed = sorted(row["duration_s"] for row in rows if row["outcome"] == "completed")
     found = report["splits"]["time"]["intervals"]
     plan_found = report["plans"]["intervals"]
-    weeks = report["splits"]["time"]["by_week"]
+    # The README describes the pooled selection-period number, so locked weeks stay out of it.
+    weeks = [w for w in report["splits"]["time"]["by_week"] if w["period"] == "selection"]
     latest = weeks[-1]
 
     def spread(field: str) -> str:

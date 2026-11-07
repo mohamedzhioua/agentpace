@@ -114,7 +114,7 @@ P80 and P90 coverage land near target, but with this few sessions the intervals 
 | Global median | n/a | <!-- claim:median_pinball -->1719<!-- /claim --> | <!-- claim:median_pinball_gap -->+375 to +992<!-- /claim --> |
 | Naive human-time guess | n/a | <!-- claim:human_pinball -->7569<!-- /claim --> | <!-- claim:human_pinball_gap -->+5725 to +7440<!-- /claim --> |
 
-The human-time guess is a hand-written table, an assumption rather than a measurement. A difference interval wholly above zero means that baseline really is worse.
+The human-time guess is a hand-written table, an assumption rather than a measurement. A difference interval wholly above zero means that baseline is worse at the 95% level.
 
 **Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->72%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
 

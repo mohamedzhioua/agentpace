@@ -64,7 +64,7 @@ Each run counts equally:
 | rounds-oracle | 4501 | +2777 to +4133 |
 | global-median | 1719 | +375 to +992 |
 
-An interval wholly above zero means the baseline is really worse.
+An interval wholly above zero means the baseline is worse at the 95% level.
 
 ## Time split, week by week
 

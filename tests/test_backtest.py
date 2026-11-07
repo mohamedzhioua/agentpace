@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import backtest, charts, cli, estimate, report, schema
+from agentpace import backtest, charts, claims, cli, estimate, report, schema
 from agentpace.backtest import Forecast
 from tests.synthetic import dataset, row
 
@@ -220,6 +220,18 @@ class LockedHoldout(unittest.TestCase):
                 part,
             )
         self.assertEqual(report.to_json(a["plans"]), report.to_json(b["plans"]))
+        selection_weeks = len(b["splits"]["time"]["folds"])
+        self.assertEqual(
+            report.to_json(a["splits"]["time"]["by_week"][:selection_weeks]),
+            report.to_json(b["splits"]["time"]["by_week"]),
+        )
+
+    def test_readme_calibration_counts_only_selection_weeks(self):
+        known = claims.values(self.rows, json.loads(report.to_json(self.with_later)))
+        self.assertEqual(
+            known["weeks_tested"], str(len(self.with_later["splits"]["time"]["folds"]))
+        )
+        self.assertEqual(known["latest_week"], "2026-W04")
 
     def test_enough_later_sessions_unlock_the_holdout(self):
         locked = self.with_later["locked"]
@@ -275,6 +287,11 @@ class Intervals(unittest.TestCase):
     def test_a_constant_has_no_spread(self):
         values = {f"s{i}": 5.0 for i in range(10)}
         self.assertEqual(backtest.mean_interval(values, random.Random(1)), [5.0, 5.0])
+
+    def test_the_interval_spreads_around_the_mean(self):
+        values = {f"s{i}": float(i % 2) for i in range(20)}  # mean 0.5
+        low, high = backtest.mean_interval(values, random.Random(1))
+        self.assertTrue(0.0 <= low < 0.5 < high <= 1.0, (low, high))
 
     def test_a_number_renders_with_its_interval(self):
         self.assertEqual(report.ci(80.0, [70.2, 90.6], unit="%"), "80% (CI 70% to 91%)")
