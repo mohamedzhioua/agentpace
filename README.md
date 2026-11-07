@@ -184,9 +184,9 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 
 ## Privacy
 
-agentpace never reads or stores prompts, code, file paths, repo names or commit messages.
+agentpace never stores prompts, code or commit messages, and the rows you publish hold no content, file paths or repo names. Paths live in one local place, the ingest cache in `~/.agentpace/`, which is never shared. It holds two kinds: the path of each transcript, so the next ingest re-reads only what changed, and the project folder (for Codex, the working folder), which reaches a row only as a keyed hash.
 
-- **What gets read.** From each transcript: timestamps, model ids, token counts, tool names, error flags and two metadata keys. JSON is decoded one line at a time, so other text passes through memory, but only those values are copied out. A test plants marker strings in every sensitive field and proves none reach any output.
+- **What gets read.** From each transcript: timestamps, model ids, token counts, tool names, error flags and two metadata keys, plus the project folder as a hash input. JSON is decoded one line at a time, so other text passes through memory, but only those values are copied out. A test plants marker strings in every sensitive field and proves none reach any output.
 - **What a row holds.** Only the fields in [schema/run.schema.json](schema/run.schema.json). Every string is an enum or a strict pattern, so free text has nowhere to land.
 - **Who you are.** Keyed hashes under a random secret that never leaves your machine. No email, handle or hostname goes in, so nobody can reverse them by guessing names.
 - **Nothing is sent.** There is no network code in this package at all, and a test fails if any is added. Contributing is a git push you run yourself. The site loads nothing from anywhere else.
