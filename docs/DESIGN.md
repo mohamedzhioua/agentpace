@@ -32,7 +32,7 @@ None of the five audited repos handles F2, F3, F6 or F9. Those are where this pr
 
 | Field | Type | Definition |
 |-------|------|------------|
-| `harness` | enum | `claude-code` for now |
+| `harness` | enum | `claude-code`, or `codex` since 0.5.0 (a Codex turn is one run, and a rollout file is one batch, per section 11). Additive: no existing row changes |
 | `model` | pattern | Normalized public family such as `claude-opus-5-5`. Anything else, such as a Bedrock ARN or an internal proxy name, becomes `other` because those can leak account or customer names |
 | `effort` | enum, optional | `low`, `medium`, `high`, `xhigh` or `max`, as Claude Code records it in `.meta.json`. Omitted when unset, and any other value is dropped by the adapter. Not a predictor unless it wins a backtest (added in 0.2.0) |
 | `task_kind` | enum | `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other` |

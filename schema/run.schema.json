@@ -23,7 +23,7 @@
   "properties": {
     "harness": {
       "description": "The agent harness that produced the run.",
-      "enum": ["claude-code"]
+      "enum": ["claude-code", "codex"]
     },
     "model": {
       "description": "Normalized public model family, or 'other'.",
