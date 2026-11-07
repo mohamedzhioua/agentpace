@@ -45,6 +45,88 @@ def _metric_rows(results: dict[str, Any], names: Sequence[str], weighting: str) 
     return lines
 
 
+def ci(value: float, interval: Sequence[float], digits: int = 0, unit: str = "") -> str:
+    """A number with its 95% interval, such as "80% (CI 70% to 91%)"."""
+    low, high = interval
+    return f"{value:.{digits}f}{unit} (CI {low:.{digits}f}{unit} to {high:.{digits}f}{unit})"
+
+
+def _gap(interval: Sequence[float]) -> str:
+    low, high = interval
+    return f"{low:+.0f} to {high:+.0f}"
+
+
+def _interval_lines(
+    results: dict[str, Any], winner: str, found: dict[str, Any], weighting: str = "session"
+) -> list[str]:
+    m = results[winner][weighting]
+    lines = [
+        f"`{winner}` with 95% session-bootstrap intervals: P50 coverage "
+        f"{ci(m['coverage50'], found['coverage50'], 1, '%')}, P80 coverage "
+        f"{ci(m['coverage80'], found['coverage80'], 1, '%')}, P90 coverage "
+        f"{ci(m['coverage90'], found['coverage90'], 1, '%')}, pinball "
+        f"{ci(m['pinball'], found['pinball'])}.",
+        "",
+        f"| Baseline | Pinball | Baseline minus `{winner}` (95% interval) |",
+        "|---|---:|---|",
+    ]
+    for name, gap in found["rival_minus_ours"].items():
+        lines.append(f"| {name} | {results[name][weighting]['pinball']:.0f} | {_gap(gap)} |")
+    lines += ["", "An interval wholly above zero means the baseline is really worse.", ""]
+    return lines
+
+
+def _week_section(weeks: Sequence[dict[str, Any]], winner: str, last: str) -> list[str]:
+    lines = [
+        "## Time split, week by week",
+        "",
+        f"The pooled numbers above average over weeks that miss in both directions, so here is "
+        f"`{winner}` fold by fold. Weeks up to {last} chose the method. Later weeks are the "
+        "locked holdout. Pinball is session-weighted.",
+        "",
+        "| Week | Period | Sessions | Runs | P80 cov., per session | P80 cov., per run | "
+        "P90/P50 | Pinball | Global-median pinball |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for w in weeks:
+        lines.append(
+            f"| {w['week']} | {w['period']} | {w['sessions']} | {w['rows']:,} | "
+            f"{w['coverage80_session']:.0f}% | {w['coverage80_row']:.0f}% | {w['width']:.1f}x | "
+            f"{w['pinball']:.0f} | {w['median_pinball']:.0f} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _locked_section(locked: dict[str, Any], winner: str, last: str) -> list[str]:
+    lines = [
+        "## Locked holdout",
+        "",
+        f"Weeks after {last} never take part in selection. They score the shipped `{winner}` on "
+        f"data it was not chosen on. Results print once at least {locked['min_sessions']} "
+        f"held-out sessions have {est.MIN_SESSION_RUNS} or more completed runs.",
+        "",
+    ]
+    if locked["status"] != "ok":
+        status = locked["status"]
+        return [*lines, f"**{status[0].upper()}{status[1:]}.**", ""]
+    results = locked["tracks"]["pre-run"]
+    names = [winner, *backtest.BASELINES]
+    lines += [f"Weeks {', '.join(locked['folds'])}. Each session counts equally:", ""]
+    lines += _metric_rows(results, names, "session")
+    lines += ["", "Each run counts equally:", ""]
+    lines += _metric_rows(results, names, "row")
+    lines += [""]
+    lines += _interval_lines(results, winner, locked["intervals"])
+    lines += [
+        f"Whole sessions, {locked['qualifying_sessions']} of them:",
+        "",
+        *_plan_rows(locked["plans"]),
+        "",
+    ]
+    return lines
+
+
 def _method_names() -> list[str]:
     return [method.name for method in est.METHODS] + list(backtest.BASELINES)
 
@@ -68,7 +150,8 @@ def _selection_section(selection: dict[str, Any]) -> list[str]:
         "",
         f"The rule was fixed before any result existed: lowest {selection['primary_metric']}, on "
         "the time split, with ties inside the 95% session-bootstrap interval going to the "
-        "simpler candidate.",
+        f"simpler candidate. Selection uses weeks up to {selection['last_week']} and never re-runs "
+        "on later ones.",
         "",
         "| Candidate, simplest first | Loss | Difference from lowest (95% interval) |",
         "|---|---:|---|",
@@ -95,16 +178,34 @@ def _plan_section(plans: dict[str, Any]) -> list[str]:
         "concurrency stands in for the agent cap, even though that peak is itself an outcome. "
         "It tests the throughput and session terms, not dependency planning.",
         "",
-        "| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        *_plan_rows(plans["results"]),
+        "",
     ]
-    for name, m in plans["results"].items():
+    found = plans["intervals"]
+    ours = plans["results"]["agentpace"]
+    lines += [
+        "With 95% bootstrap intervals over sessions: P50 coverage "
+        f"{ci(ours['coverage50'], found['coverage50'], unit='%')}, P80 coverage "
+        f"{ci(ours['coverage80'], found['coverage80'], unit='%')}, P90 coverage "
+        f"{ci(ours['coverage90'], found['coverage90'], unit='%')}, pinball "
+        f"{ci(ours['pinball'], found['pinball'])}. Sum-of-medians pinball minus agentpace: "
+        f"{_gap(found['rival_minus_ours']['sum-of-medians'])}.",
+        "",
+    ]
+    return lines
+
+
+def _plan_rows(results: dict[str, Any]) -> list[str]:
+    lines = [
+        "| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for name, m in results.items():
         lines.append(
             f"| {name} | {m['mape']:.0f}% | {m['mdape']:.0f}% | {m['male']:.2f} | "
             f"{m['coverage50']:.0f}% | {m['coverage80']:.0f}% | {m['coverage90']:.0f}% | "
-            f"{m['width']:.1f}x |"
+            f"{m['width']:.1f}x | {m['pinball']:.0f} |"
         )
-    lines.append("")
     return lines
 
 
@@ -158,6 +259,11 @@ def markdown(report: dict[str, Any]) -> str:
     ]
     lines += _selection_section(report["selection"])
     splits = report["splits"]
+    winner = report["selection"]["winner"]
+    last = report["selection"]["last_week"]
+    # The README quotes the stored JSON, which is rounded. Sections added after 0.1.0 render
+    # from the same rounded values so the two documents never disagree in the last digit.
+    stored = _rounded(report)
     lines += _split_section(
         "Time split, pre-run",
         splits["time"],
@@ -165,6 +271,9 @@ def markdown(report: dict[str, Any]) -> str:
         f"Train on earlier weeks, test on {', '.join(splits['time']['folds'])}. This is the "
         "honest forecast and the headline.",
     )
+    time = stored["splits"]["time"]
+    lines += _interval_lines(time["tracks"]["pre-run"], winner, time["intervals"])
+    lines += _week_section(time["by_week"], winner, last)
     lines += _split_section(
         "Time split, oracle-size",
         splits["time"],
@@ -188,8 +297,9 @@ def markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines += _split_section("Contributor split", splits["contributor"], "pre-run", "")
-    lines += _plan_section(report["plans"])
-    lines += _loss_section(report["losses"], report["selection"]["winner"])
+    lines += _plan_section(stored["plans"])
+    lines += _locked_section(stored["locked"], winner, last)
+    lines += _loss_section(report["losses"], winner)
     baselines = (
         "## Baselines",
         "",

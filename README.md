@@ -93,33 +93,35 @@ There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of med
 
 Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The [full report](docs/backtest.md) has every split, every baseline and every loss.
 
-Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast. These headline numbers come from the same time folds that chose the method, so treat them as slightly optimistic.
+Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast. These headline numbers come from the same time folds that chose the method, so treat them as slightly optimistic. Weeks after <!-- claim:selection_last_week -->2026-W45<!-- /claim --> form a locked holdout that never takes part in selection. Its status: <!-- claim:locked_status -->not enough data (no weeks after 2026-W45 yet)<!-- /claim -->. Every interval below is a 95% bootstrap interval that resamples whole sessions.
 
 **Whole sessions.** Each of <!-- claim:plan_sessions -->56<!-- /claim --> later sessions with at least 5 completed runs was predicted from earlier weeks only. This is the only direct test of plan totals.
 
 | Forecast | Target | Got |
 |---|---:|---:|
-| Session finished within P50 | 50% | <!-- claim:plan_p50 -->59%<!-- /claim --> |
-| Session finished within P80 | 80% | <!-- claim:plan_p80 -->80%<!-- /claim --> |
-| Session finished within P90 | 90% | <!-- claim:plan_p90 -->91%<!-- /claim --> |
+| Session finished within P50 | 50% | <!-- claim:plan_p50 -->59% (CI 45% to 71%)<!-- /claim --> |
+| Session finished within P80 | 80% | <!-- claim:plan_p80 -->80% (CI 70% to 91%)<!-- /claim --> |
+| Session finished within P90 | 90% | <!-- claim:plan_p90 -->91% (CI 84% to 98%)<!-- /claim --> |
 
-Coverage lands on target at P80 and P90, but the ranges are wide: P90 is typically <!-- claim:plan_width -->2.7x<!-- /claim --> P50, and the median error of the P50 is <!-- claim:plan_mdape -->67%<!-- /claim -->. The test also uses information a real forecast would not have, namely the session's actual task list and peak concurrency, and real dependencies are not recorded. So it tests the throughput model, not dependency planning.
+P80 and P90 coverage land near target, but with this few sessions the intervals are wide, and so are the ranges: P90 is typically <!-- claim:plan_width -->2.7x<!-- /claim --> P50, and the median error of the P50 is <!-- claim:plan_mdape -->67%<!-- /claim -->. The test also uses information a real forecast would not have, namely the session's actual task list and peak concurrency, and real dependencies are not recorded. So it tests the throughput model, not dependency planning. Pinball loss on whole sessions is <!-- claim:plan_pinball -->19720 (CI 13260 to 28000)<!-- /claim --> seconds, against <!-- claim:naive_plan_pinball -->37990<!-- /claim --> for a sum of medians.
 
 **Single tasks.** On the time split, with each session counting equally:
 
-| Method | P80 coverage (target 80%) | Pinball loss (lower is better) |
-|---|---:|---:|
-| agentpace (`<!-- claim:winner -->shrunk<!-- /claim -->`) | <!-- claim:task_p80 -->78.5%<!-- /claim --> | <!-- claim:task_pinball -->1047<!-- /claim --> |
-| Fixed 3 minutes per round | n/a | <!-- claim:rounds_pinball -->1308<!-- /claim --> |
-| Global median | n/a | <!-- claim:median_pinball -->1719<!-- /claim --> |
-| Naive human-time guess | n/a | <!-- claim:human_pinball -->7569<!-- /claim --> |
+| Method | P80 coverage (target 80%) | Pinball loss (lower is better) | Its pinball minus agentpace's |
+|---|---:|---:|---:|
+| agentpace (`<!-- claim:winner -->shrunk<!-- /claim -->`) | <!-- claim:task_p80 -->78.5% (CI 72.7% to 84.2%)<!-- /claim --> | <!-- claim:task_pinball -->1047 (CI 830 to 1318)<!-- /claim --> | n/a |
+| Fixed 3 minutes per round | n/a | <!-- claim:rounds_pinball -->1308<!-- /claim --> | <!-- claim:rounds_pinball_gap -->+75 to +467<!-- /claim --> |
+| Global median | n/a | <!-- claim:median_pinball -->1719<!-- /claim --> | <!-- claim:median_pinball_gap -->+375 to +992<!-- /claim --> |
+| Naive human-time guess | n/a | <!-- claim:human_pinball -->7569<!-- /claim --> | <!-- claim:human_pinball_gap -->+5725 to +7440<!-- /claim --> |
 
-The human-time guess is a hand-written table, an assumption rather than a measurement.
+The human-time guess is a hand-written table, an assumption rather than a measurement. A difference interval wholly above zero means that baseline really is worse.
+
+**Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->72%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
 
 **Where it falls short.**
 
 - The median error on a single task is <!-- claim:task_mdape -->78%<!-- /claim -->. Use the range, not the middle.
-- P80 coverage is <!-- claim:task_p80_row -->89.1%<!-- /claim --> when each run counts equally rather than each session, so the ranges are too wide for the small, fast runs that dominate the row count.
+- Pooled, P80 coverage is <!-- claim:task_p80_row -->89.1%<!-- /claim --> when each run counts equally rather than each session, so the ranges are too wide for the small, fast runs that dominate the row count.
 - A global median beats agentpace on MAPE (<!-- claim:median_mape -->232%<!-- /claim --> against <!-- claim:task_mape -->511%<!-- /claim -->), and a sum of medians beats it on plan MAPE (<!-- claim:naive_plan_mape -->85%<!-- /claim --> against <!-- claim:plan_mape -->249%<!-- /claim -->), though that sum covers only <!-- claim:naive_plan_p80 -->5%<!-- /claim --> of sessions at P80. MAPE punishes the long tail of over-forecasts that honest ranges need.
 - The report lists <!-- claim:loss_count -->9<!-- /claim --> places where a baseline won. That list is generated, so it cannot be edited out.
 - On the project split, P80 coverage is <!-- claim:project_p80 -->77.8%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.

@@ -32,6 +32,11 @@ BOOTSTRAPS = 2000
 SEED = 20261107
 MINUTES_PER_ROUND = 3
 
+# Frozen. Selection uses time folds up to this week and never re-runs on later ones. Later weeks
+# form the locked holdout, which scores the shipped method on data it was never chosen on.
+SELECTION_LAST_WEEK = "2026-W45"
+LOCKED_MIN_SESSIONS = 20  # sessions with at least est.MIN_SESSION_RUNS completed runs
+
 # Assumptions, not measurements. They stand in for what a person might guess.
 HUMAN_HOURS = {
     "bugfix": 4.0,
@@ -217,12 +222,23 @@ def both_weightings(forecasts: Sequence[Forecast]) -> dict[str, dict[str, float]
     }
 
 
-def session_losses(forecasts: Sequence[Forecast]) -> dict[str, float]:
-    """The primary metric, one value per session."""
+def session_means(
+    forecasts: Sequence[Forecast], value: Callable[[Forecast], float]
+) -> dict[str, float]:
+    """One value per session, so a session-weighted metric is the plain mean of these."""
     groups: dict[str, list[float]] = defaultdict(list)
     for forecast in forecasts:
-        groups[forecast.session].append(pinball_sum(forecast))
+        groups[forecast.session].append(value(forecast))
     return {session: statistics.fmean(values) for session, values in groups.items()}
+
+
+def session_losses(forecasts: Sequence[Forecast]) -> dict[str, float]:
+    """The primary metric, one value per session."""
+    return session_means(forecasts, pinball_sum)
+
+
+def _covered(level: str) -> Callable[[Forecast], float]:
+    return lambda f: 100.0 * (f.actual <= getattr(f, level))
 
 
 def difference_interval(
@@ -233,6 +249,30 @@ def difference_interval(
     gaps = [a[session] - b[session] for session in sessions]
     means = sorted(statistics.fmean(rng.choices(gaps, k=len(gaps))) for _ in range(BOOTSTRAPS))
     return est.quantile(means, 0.025), est.quantile(means, 0.975)
+
+
+def mean_interval(values: dict[str, float], rng: random.Random) -> list[float]:
+    """95% cluster bootstrap interval for the mean of one value per session."""
+    return list(difference_interval(values, dict.fromkeys(values, 0.0), rng))
+
+
+def intervals(
+    forecasts: dict[str, list[Forecast]], winner: str, rivals: Sequence[str], rng: random.Random
+) -> dict[str, Any]:
+    """Session-bootstrap intervals for the shipped method's numbers, and for each rival's
+    pinball loss minus ours. A gap interval above zero means the rival really is worse."""
+    ours = forecasts[winner]
+    losses = session_losses(ours)
+    result: dict[str, Any] = {
+        level: mean_interval(session_means(ours, _covered(f"p{level[-2:]}")), rng)
+        for level in ("coverage50", "coverage80", "coverage90")
+    }
+    result["pinball"] = mean_interval(losses, rng)
+    result["rival_minus_ours"] = {
+        name: list(difference_interval(session_losses(forecasts[name]), losses, rng))
+        for name in rivals
+    }
+    return result
 
 
 def select(forecasts: dict[str, list[Forecast]], rng: random.Random) -> dict[str, Any]:
@@ -253,16 +293,54 @@ def select(forecasts: dict[str, list[Forecast]], rng: random.Random) -> dict[str
     }
 
 
+def _forecast_folds(
+    folds: Sequence[Fold], use_size: bool, seed: int
+) -> dict[str, list[list[Forecast]]]:
+    """Forecasts per method and per fold. Each method draws from one stream across the folds in
+    order, so appending later folds never changes the forecasts for earlier ones."""
+    predictors = {m.name: _candidate(m.name, use_size) for m in est.METHODS}
+    predictors.update(_baselines())
+    forecasts: dict[str, list[list[Forecast]]] = {}
+    for name, predict in predictors.items():
+        rng = random.Random(f"{seed}:{name}:{use_size}")
+        forecasts[name] = [predict(fold, rng) for fold in folds]
+    return forecasts
+
+
+def _pooled(per_fold: dict[str, list[list[Forecast]]], picked: range) -> dict[str, list[Forecast]]:
+    return {name: [item for i in picked for item in folds[i]] for name, folds in per_fold.items()}
+
+
 def _evaluate(
     folds: Sequence[Fold], use_size: bool, seed: int
 ) -> tuple[dict[str, list[Forecast]], dict[str, dict[str, dict[str, float]]]]:
-    predictors = {m.name: _candidate(m.name, use_size) for m in est.METHODS}
-    predictors.update(_baselines())
-    forecasts: dict[str, list[Forecast]] = {}
-    for name, predict in predictors.items():
-        rng = random.Random(f"{seed}:{name}:{use_size}")
-        forecasts[name] = [item for fold in folds for item in predict(fold, rng)]
+    forecasts = _pooled(_forecast_folds(folds, use_size, seed), range(len(folds)))
     return forecasts, {name: both_weightings(items) for name, items in forecasts.items()}
+
+
+def by_week(
+    folds: Sequence[Fold], per_fold: dict[str, list[list[Forecast]]], winner: str, last: str
+) -> list[dict[str, Any]]:
+    """The shipped method fold by fold, because a pooled coverage can hide weeks that miss in
+    both directions."""
+    weeks = []
+    for i, fold in enumerate(folds):
+        ours = both_weightings(per_fold[winner][i])
+        median = both_weightings(per_fold["global-median"][i])["session"]
+        weeks.append(
+            {
+                "week": fold.name,
+                "period": "selection" if fold.name <= last else "locked",
+                "sessions": len({f.session for f in per_fold[winner][i]}),
+                "rows": len(per_fold[winner][i]),
+                "coverage80_session": ours["session"]["coverage80"],
+                "coverage80_row": ours["row"]["coverage80"],
+                "width": ours["session"]["width"],
+                "pinball": ours["session"]["pinball"],
+                "median_pinball": median["pinball"],
+            }
+        )
+    return weeks
 
 
 def plan_forecasts(folds: Sequence[Fold], method: str, seed: int) -> dict[str, list[Forecast]]:
@@ -353,16 +431,75 @@ def dataset_summary(rows: Sequence[Row]) -> dict[str, Any]:
     }
 
 
-def run(rows: Sequence[Row], seed: int = SEED) -> dict[str, Any]:
+def _locked_holdout(
+    locked: Sequence[Fold],
+    forecasts: dict[str, list[Forecast]],
+    winner: str,
+    seed: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Score the shipped method on weeks after selection. Nothing here feeds back into it."""
+    plans = plan_forecasts(locked, winner, seed)
+    qualifying = len(plans["agentpace"])
+    base: dict[str, Any] = {
+        "folds": [fold.name for fold in locked],
+        "min_sessions": LOCKED_MIN_SESSIONS,
+        "qualifying_sessions": qualifying,
+    }
+    if qualifying < LOCKED_MIN_SESSIONS:
+        status = (
+            f"not enough data ({qualifying} of {LOCKED_MIN_SESSIONS} sessions with "
+            f"{est.MIN_SESSION_RUNS}+ runs)"
+        )
+        return {**base, "status": status}, []
+    names = [winner, *BASELINES]
+    results = {name: both_weightings(forecasts[name]) for name in names}
+    rng = random.Random(f"{seed}:locked-intervals")
+    locked_result = {
+        **base,
+        "status": "ok",
+        "rows": len(forecasts[winner]),
+        "tracks": {"pre-run": results},
+        "intervals": intervals(forecasts, winner, BASELINES, rng),
+        "plans": {name: both_weightings(items)["row"] for name, items in plans.items()},
+    }
+    return locked_result, _losses("locked", "pre-run", results, winner)
+
+
+def _plan_losses(split: str, results: dict[str, dict[str, float]]) -> list[dict[str, Any]]:
+    ours = results["agentpace"]
+    theirs = results["sum-of-medians"]
+    return [
+        {
+            "split": split,
+            "track": "whole sessions",
+            "weighting": "session",
+            "metric": metric,
+            "baseline": "sum-of-medians",
+            "baseline_value": theirs[metric],
+            "agentpace_value": ours[metric],
+        }
+        for metric in ("mape", "mdape", "male", "pinball")
+        if theirs[metric] < ours[metric]
+    ]
+
+
+def run(
+    rows: Sequence[Row], seed: int = SEED, selection_last_week: str = SELECTION_LAST_WEEK
+) -> dict[str, Any]:
     """Everything `docs/backtest.md` reports."""
     usable = [dict(row) for row in rows]
     for row in usable:
         row.setdefault("project", "")
-    time = time_folds(usable)
+    every_week = time_folds(usable)
+    time = [fold for fold in every_week if fold.name <= selection_last_week]
+    locked = [fold for fold in every_week if fold.name > selection_last_week]
     if not time:
         raise ValueError("not enough weeks of data for a time split")
-    forecasts, pre_run = _evaluate(time, use_size=False, seed=seed)
+    per_fold = _forecast_folds([*time, *locked], use_size=False, seed=seed)
+    forecasts = _pooled(per_fold, range(len(time)))
+    pre_run = {name: both_weightings(items) for name, items in forecasts.items()}
     selection = select(forecasts, random.Random(seed))
+    selection["last_week"] = selection_last_week
     winner = selection["winner"]
     _, oracle = _evaluate(time, use_size=True, seed=seed)
     report: dict[str, Any] = {
@@ -375,11 +512,26 @@ def run(rows: Sequence[Row], seed: int = SEED) -> dict[str, Any]:
                 "folds": [fold.name for fold in time],
                 "rows": len(forecasts[winner]),
                 "tracks": {"pre-run": pre_run, "oracle-size": oracle},
+                "intervals": intervals(
+                    forecasts, winner, BASELINES, random.Random(f"{seed}:intervals")
+                ),
+                "by_week": by_week([*time, *locked], per_fold, winner, selection_last_week),
             }
         },
     }
     report_losses = _losses("time", "pre-run", pre_run, winner)
     report_losses += _losses("time", "oracle-size", oracle, winner)
+    if locked:
+        locked_forecasts = _pooled(per_fold, range(len(time), len(time) + len(locked)))
+        report["locked"], locked_losses = _locked_holdout(locked, locked_forecasts, winner, seed)
+    else:
+        report["locked"] = {
+            "status": f"not enough data (no weeks after {selection_last_week} yet)",
+            "folds": [],
+            "min_sessions": LOCKED_MIN_SESSIONS,
+            "qualifying_sessions": 0,
+        }
+        locked_losses = []
 
     projects = group_folds(usable, "project", MIN_PROJECT_ROWS)
     projects = [fold for fold in projects if fold.name]
@@ -414,21 +566,12 @@ def run(rows: Sequence[Row], seed: int = SEED) -> dict[str, Any]:
         "label": "oracle-structure",
         "sessions": len(plans["agentpace"]),
         "results": {name: both_weightings(items)["row"] for name, items in plans.items()},
+        "intervals": intervals(
+            plans, "agentpace", ["sum-of-medians"], random.Random(f"{seed}:plan-intervals")
+        ),
     }
-    ours = report["plans"]["results"]["agentpace"]
-    theirs = report["plans"]["results"]["sum-of-medians"]
-    for metric in ("mape", "mdape", "male"):
-        if theirs[metric] < ours[metric]:
-            report_losses.append(
-                {
-                    "split": "time",
-                    "track": "whole sessions",
-                    "weighting": "session",
-                    "metric": metric,
-                    "baseline": "sum-of-medians",
-                    "baseline_value": theirs[metric],
-                    "agentpace_value": ours[metric],
-                }
-            )
-    report["losses"] = report_losses
+    report_losses += _plan_losses("time", report["plans"]["results"])
+    if report["locked"]["status"] == "ok":
+        locked_losses += _plan_losses("locked", report["locked"]["plans"])
+    report["losses"] = report_losses + locked_losses
     return report

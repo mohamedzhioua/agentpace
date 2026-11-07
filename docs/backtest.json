@@ -49,7 +49,8 @@
       ]
     },
     "lowest_loss": "shrunk",
-    "winner": "shrunk"
+    "winner": "shrunk",
+    "last_week": "2026-W45"
   },
   "splits": {
     "time": {
@@ -462,7 +463,89 @@
             }
           }
         }
-      }
+      },
+      "intervals": {
+        "coverage50": [
+          44.22,
+          61.62
+        ],
+        "coverage80": [
+          72.67,
+          84.25
+        ],
+        "coverage90": [
+          83.1,
+          92.05
+        ],
+        "pinball": [
+          830.5,
+          1318.0
+        ],
+        "rival_minus_ours": {
+          "human-guess": [
+            5725.0,
+            7440.0
+          ],
+          "fixed-rounds": [
+            74.78,
+            467.4
+          ],
+          "rounds-oracle": [
+            2777.0,
+            4133.0
+          ],
+          "global-median": [
+            374.6,
+            991.7
+          ]
+        }
+      },
+      "by_week": [
+        {
+          "week": "2026-W42",
+          "period": "selection",
+          "sessions": 23,
+          "rows": 379,
+          "coverage80_session": 86.15,
+          "coverage80_row": 87.86,
+          "width": 4.003,
+          "pinball": 949.2,
+          "median_pinball": 1895.0
+        },
+        {
+          "week": "2026-W43",
+          "period": "selection",
+          "sessions": 30,
+          "rows": 475,
+          "coverage80_session": 79.43,
+          "coverage80_row": 77.68,
+          "width": 4.652,
+          "pinball": 788.8,
+          "median_pinball": 1053.0
+        },
+        {
+          "week": "2026-W44",
+          "period": "selection",
+          "sessions": 13,
+          "rows": 1645,
+          "coverage80_session": 66.9,
+          "coverage80_row": 94.41,
+          "width": 5.247,
+          "pinball": 1226.0,
+          "median_pinball": 2193.0
+        },
+        {
+          "week": "2026-W45",
+          "period": "selection",
+          "sessions": 8,
+          "rows": 96,
+          "coverage80_session": 71.95,
+          "coverage80_row": 60.42,
+          "width": 6.664,
+          "pinball": 2002.0,
+          "median_pinball": 2941.0
+        }
+      ]
     },
     "project": {
       "status": "ok",
@@ -675,6 +758,12 @@
       "status": "could not run (1 contributor)"
     }
   },
+  "locked": {
+    "status": "not enough data (no weeks after 2026-W45 yet)",
+    "folds": [],
+    "min_sessions": 20,
+    "qualifying_sessions": 0
+  },
   "plans": {
     "label": "oracle-structure",
     "sessions": 56,
@@ -698,6 +787,30 @@
         "coverage90": 5.357,
         "pinball": 37990.0,
         "width": 1.0
+      }
+    },
+    "intervals": {
+      "coverage50": [
+        44.64,
+        71.43
+      ],
+      "coverage80": [
+        69.64,
+        91.07
+      ],
+      "coverage90": [
+        83.93,
+        98.21
+      ],
+      "pinball": [
+        13260.0,
+        28000.0
+      ],
+      "rival_minus_ours": {
+        "sum-of-medians": [
+          7272.0,
+          31180.0
+        ]
       }
     }
   },

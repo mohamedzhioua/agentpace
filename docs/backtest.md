@@ -11,7 +11,7 @@ Reading the columns: MAPE is the mean percentage error of the P50, which heavy t
 
 ## Which method ships
 
-The rule was fixed before any result existed: lowest session-weighted pinball loss, summed over 0.5, 0.8 and 0.9, on the time split, with ties inside the 95% session-bootstrap interval going to the simpler candidate.
+The rule was fixed before any result existed: lowest session-weighted pinball loss, summed over 0.5, 0.8 and 0.9, on the time split, with ties inside the 95% session-bootstrap interval going to the simpler candidate. Selection uses weeks up to 2026-W45 and never re-runs on later ones.
 
 | Candidate, simplest first | Loss | Difference from lowest (95% interval) |
 |---|---:|---|
@@ -54,6 +54,28 @@ Each run counts equally:
 | fixed-rounds | 1521% | 393% | 1.96 | 82.2% | 82.2% | 82.2% | 1.0x | 1005 |
 | rounds-oracle | 1458% | 1156% | 2.53 | 99.7% | 99.7% | 99.7% | 1.0x | 2315 |
 | global-median | 215% | 94% | 1.22 | 64.7% | 64.7% | 64.7% | 1.0x | 836 |
+
+`shrunk` with 95% session-bootstrap intervals: P50 coverage 52.9% (CI 44.2% to 61.6%), P80 coverage 78.5% (CI 72.7% to 84.2%), P90 coverage 87.7% (CI 83.1% to 92.0%), pinball 1047 (CI 830 to 1318).
+
+| Baseline | Pinball | Baseline minus `shrunk` (95% interval) |
+|---|---:|---|
+| human-guess | 7569 | +5725 to +7440 |
+| fixed-rounds | 1308 | +75 to +467 |
+| rounds-oracle | 4501 | +2777 to +4133 |
+| global-median | 1719 | +375 to +992 |
+
+An interval wholly above zero means the baseline is really worse.
+
+## Time split, week by week
+
+The pooled numbers above average over weeks that miss in both directions, so here is `shrunk` fold by fold. Weeks up to 2026-W45 chose the method. Later weeks are the locked holdout. Pinball is session-weighted.
+
+| Week | Period | Sessions | Runs | P80 cov., per session | P80 cov., per run | P90/P50 | Pinball | Global-median pinball |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 2026-W42 | selection | 23 | 379 | 86% | 88% | 4.0x | 949 | 1895 |
+| 2026-W43 | selection | 30 | 475 | 79% | 78% | 4.7x | 789 | 1053 |
+| 2026-W44 | selection | 13 | 1,645 | 67% | 94% | 5.2x | 1226 | 2193 |
+| 2026-W45 | selection | 8 | 96 | 72% | 60% | 6.7x | 2002 | 2941 |
 
 ## Time split, oracle-size
 
@@ -127,10 +149,18 @@ Each run counts equally:
 
 Each of 56 held-out sessions with at least 5 completed runs is treated as a plan. This is the only direct test of plan totals. Real dependencies are not recorded, so the critical path falls back to the longest run, and the observed peak concurrency stands in for the agent cap, even though that peak is itself an outcome. It tests the throughput and session terms, not dependency planning.
 
-| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| agentpace | 249% | 67% | 1.02 | 59% | 80% | 91% | 2.7x |
-| sum-of-medians | 85% | 90% | 2.25 | 5% | 5% | 5% | 1.0x |
+| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| agentpace | 249% | 67% | 1.02 | 59% | 80% | 91% | 2.7x | 19720 |
+| sum-of-medians | 85% | 90% | 2.25 | 5% | 5% | 5% | 1.0x | 37990 |
+
+With 95% bootstrap intervals over sessions: P50 coverage 59% (CI 45% to 71%), P80 coverage 80% (CI 70% to 91%), P90 coverage 91% (CI 84% to 98%), pinball 19720 (CI 13260 to 28000). Sum-of-medians pinball minus agentpace: +7272 to +31180.
+
+## Locked holdout
+
+Weeks after 2026-W45 never take part in selection. They score the shipped `shrunk` on data it was not chosen on. Results print once at least 20 held-out sessions have 5 or more completed runs.
+
+**Not enough data (no weeks after 2026-W45 yet).**
 
 ## Where agentpace loses
 

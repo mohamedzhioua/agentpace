@@ -54,6 +54,17 @@ class Published(unittest.TestCase):
     def test_contributor_split_is_reported_honestly(self):
         self.assertIn("could not run", self.known["contributor_split"])
 
+    def test_headline_numbers_carry_intervals(self):
+        for name in ("task_p80", "plan_p50", "plan_p80", "plan_p90"):
+            self.assertRegex(self.known[name], r"^[\d.]+% \(CI [\d.]+% to [\d.]+%\)$", name)
+        for name in ("task_pinball", "plan_pinball"):
+            self.assertRegex(self.known[name], r"^[\d.]+ \(CI [\d.]+ to [\d.]+\)$", name)
+
+    def test_the_readme_shows_the_weekly_spread(self):
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        for name in ("weekly_p80", "weekly_p80_row", "latest_week_p80", "locked_status"):
+            self.assertIn(f"<!-- claim:{name} -->", text)
+
     def test_the_readme_cites_its_claims(self):
         text = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertGreater(text.count("<!-- claim:"), 15)
