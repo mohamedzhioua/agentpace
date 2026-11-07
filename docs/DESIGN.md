@@ -72,7 +72,7 @@ The Claude Code adapter reads `subagents/**/agent-*.jsonl` and the sibling `.met
 - **Allowlist by projection.** JSON has to be decoded a line at a time, so content does pass through memory. A projection function copies only `timestamp`, `type`, `message.model`, `message.id`, `message.usage` counters, `message.stop_reason`, tool-use names and `is_error` flags, and everything else is dropped immediately. From `.meta.json` only `agentType` and `finished` are copied. `description`, `cwd`, `gitBranch`, `rendered`, `wireToolInputs` and `toolUseResult` are never copied out of the parsed line.
 - **`agentType` is user text.** Custom agent names and plugin prefixes are user-chosen strings. They are used only as a lookup key in section 4 and never reach a row, warning or log.
 - **Canary test.** Fixtures plant marker strings in every sensitive field, including `agentType` and error paths, and a test asserts no marker reaches any output, log or exception message.
-- **Duration.** `duration_s` is the sum over consecutive `assistant` and `user` timestamps of `min(gap, 900)`. The 900 s cap sits above the observed 99.9th percentile of 613 s. Phase 4 reports sensitivity at 600 s and 1,800 s.
+- **Duration.** `duration_s` is the sum over consecutive `assistant` and `user` timestamps of `min(gap, 900)`. The 900 s cap sits above the observed 99.9th percentile of 613 s. Sensitivity at 600 s and 1,800 s was run and is recorded in section 11. It does not change the winner.
 - **Model.** The most frequent `message.model`, ignoring `<synthetic>`.
 - **Outcome.** `failed` on a `refusal` stop reason. Otherwise `completed` if `finished` is true, the last tool is a terminal hand-back, or the last stop reason is `end_turn` or `stop_sequence`. Otherwise `failed` on an errored final tool result, else `unknown`. Only `completed` runs train the estimator. The excluded share is printed, because dropping failures biases P90 low.
 - **Scope.** Subagents only. Main-session transcripts contain human waiting and are out of scope for v1.
@@ -112,7 +112,7 @@ All math lives in `src/agentpace/estimate.py`. Fields used as predictors: `model
 
 **Single-task distribution, on the log scale**
 
-Every run gets a session weight of `1 / sqrt(runs in that session)` (F2), and `n_eff` is the Kish effective size under those weights.
+*Superseded:* this section first gave every run a session weight of `1 / sqrt(runs in that session)` (F2), with `n_eff` the Kish effective size under those weights. The pre-registered selection chose the unweighted `shrunk` (section 11), so the default is unweighted and `n_eff` equals `n`. Session weighting survives only as the `weighted` candidate.
 
 1. Back off through `model×kind×risk`, `kind×risk`, `kind`, then global. With `--use-size`, `size` joins each level.
 2. Shrink each cell's session-weighted mean toward its parent: `mu = w * mean_log + (1 - w) * mu_parent`, with `w = n_eff / (n_eff + k)`. `k` is estimated per back-off level as within-cell variance over between-cell variance, not hand-set, with the between-cell variance clamped at zero.
@@ -153,6 +153,8 @@ for each draw:
 - **Time:** rolling origin. Train on weeks up to W, test on later weeks. A whole session belongs to the week of its first run, because sessions can cross week boundaries and would otherwise land on both sides.
 - **Contributor:** leave one contributor out. With fewer than two contributors it prints "could not run (1 contributor)" and never substitutes another split under this name.
 - **Project:** leave one project out, reported under its own name. It tests generalization across codebases, not across people.
+- **Locked holdout:** `SELECTION_LAST_WEEK` in `backtest.py` is frozen at `2026-W45`. Selection and the headline time-split numbers use only folds up to that week, and selection never re-runs on later ones. Later weeks are forecast with the same per-method random streams, after the selection folds, so they cannot move a published number. They score the shipped method against the baselines in their own section, which prints "not enough data" until at least 20 later sessions have 5 or more completed runs. Selection ran on the 0.1.0 seed rows on 2026-11-07, while 2026-W45 was still in progress. Rows from W45 sessions shared later join the W45 selection fold and may move the pooled selection-period figures. They cannot change the shipped method unnoticed, because a test pins the default to the published winner, so a flip fails CI and needs re-registration in `CHANGELOG.md`.
+- **Week by week:** the report also lists the shipped method fold by fold, because a pooled coverage can hide weeks that miss in both directions.
 - Random row splits are not used, because F2 would leak sessions across the split.
 
 **Tracks.** This is the main guard against self-deception (F6).
@@ -160,13 +162,13 @@ for each draw:
 - **Pre-run:** `model`, `task_kind`, `risk`. This is the honest forecast and the headline.
 - **Oracle-size:** adds post-hoc `size`. It is labeled as an upper bound and never used as a headline.
 
-**Metrics.** MAPE, P80 coverage and pinball loss at 0.5, 0.8 and 0.9, as specified, for task and for plan totals. Test rows are `completed` runs only, with the excluded share printed beside the results. Added because MAPE alone misleads on heavy tails: median absolute percentage error, mean absolute log error, P50 and P90 coverage, and interval width. A method can score perfect coverage with absurd width, so width is always shown beside coverage. Every metric appears both row-weighted and session-weighted. Comparisons carry a session-cluster bootstrap interval.
+**Metrics.** MAPE, P80 coverage and pinball loss at 0.5, 0.8 and 0.9, as specified, for task and for plan totals. Test rows are `completed` runs only, with the excluded share printed beside the results. Added because MAPE alone misleads on heavy tails: median absolute percentage error, mean absolute log error, P50 and P90 coverage, and interval width. A method can score perfect coverage with absurd width, so width is always shown beside coverage. Every metric appears both row-weighted and session-weighted. Headline numbers carry a 95% session-cluster bootstrap interval: the shipped method's session-weighted P50, P80 and P90 coverage and pinball loss, each baseline's pinball loss minus ours, and the same for the whole-session test, which reports pinball loss too. Each interval uses its own random stream, so adding one never moves another number.
 
 **Pre-registered selection (E2).** There are at most five candidates: session-weighted shrinkage, unweighted shrinkage, a back-off table, a per-kind table, and global quantiles. The primary metric is session-weighted pinball loss summed over 0.5, 0.8 and 0.9 on the time split. Ties inside the session-bootstrap interval go to the simpler model. The winner ships as the task-level default, and all losses print regardless. The session effect and `P_eff` stay in every case, because baselines cannot produce totals.
 
 **Plan-level test.** Each held-out session is treated as a plan and predicted from earlier data only. The actual value is the span of its runs on the session clock: `max(offset_s + duration_s) - min(offset_s)`. This is the only direct test of the total, the number users actually care about, and it needs D2. It is labeled "oracle-structure" for two reasons: real dependencies are not recorded, so `CP` falls back to the longest single run, and the session's observed peak concurrency stands in for its cap even though that is itself an outcome. So it tests the throughput and session-effect terms, not dependency planning, and the report must say so.
 
-**Idle-cap sensitivity.** The 900 s cap is `ingest --idle-cap`. Published rows cannot be re-clipped without the raw transcripts, so this check runs locally and is not a README claim.
+**Idle-cap sensitivity.** The 900 s cap is `ingest --idle-cap`. Published rows cannot be re-clipped without the raw transcripts, so this check runs locally with `ingest --idle-cap` and `backtest --data`, and is not a README claim. The results are in section 11.
 
 **Baselines**
 
@@ -179,7 +181,7 @@ for each draw:
 
 **Reporting.** The report ends with a generated "Where agentpace loses" section listing every split and metric where a baseline won. It cannot be edited out by hand. Expect some losses: the probe's global P80 was already off by 12 points, and per-agent quantiles only recovered 2 of them.
 
-Split conformal scaling is evaluated in Phase 4 and adopted only if it wins on holdout, since time splits break the exchangeability it relies on.
+**Conformal scaling: dropped.** An earlier draft promised to evaluate split conformal scaling. Fable 5.1 rejected it on 2026-11-07. Calibration drifts in both directions between adjacent weeks (row-weighted P80 coverage went from 94% in 2026-W44 to 60% in 2026-W45), so scaling by the prior week's miss would chase noise, and time splits break the exchangeability conformal methods rely on anyway. The week-by-week table and the locked holdout report the drift instead of correcting for it.
 
 ## 7. Dataset, privacy and validation
 
@@ -295,6 +297,17 @@ The owner then made Fable 5.1 the acting maintainer. Its rulings on 2026-11-07:
 - Within-session noise is scaled by `sqrt(m / (m - 1))` to undo centering, and session effects are scaled down by the share of their variance that is real.
 - Two runs can tie on start and duration to the second, so ingest nudges `offset_s` by a second to keep them distinct under the duplicate key.
 - The Claude Code adapter's discovery claim is proven by a real `npx skills add`. All four skills install.
+- **Calibration by week (0.2.0).** The pooled session-weighted P80 coverage of 78.5% hides weekly drift in both directions. Per fold, 2026-W42 to W45, `shrunk` covered 86%, 79%, 67% and 72% with each session counting equally, and 88%, 78%, 94% and 60% with each run counting equally. W45 holds only 8 sessions. The README states this beside the pooled number, and `docs/backtest.md` has the table.
+
+**Idle-cap sensitivity**, run locally on 2026-11-07 with `ingest --idle-cap` and `backtest --data`:
+
+| Cap | Winner | Task P80 | Pinball | MdAPE | Plan P50 / P80 / P90 |
+|---|---|---:|---:|---:|---:|
+| 900 s (published) | shrunk | 78.5% | 1047 | 78% | 59% / 80% / 91% |
+| 600 s | shrunk | 78.4% | 1013 | 78% | 61% / 79% / 91% |
+| 1,800 s | shrunk | 78.3% | 1107 | 78% | 59% / 79% / 88% |
+
+The winner and the headline coverage hold across the three caps. Pinball moves with the cap because a longer cap leaves longer durations to forecast.
 
 ## 12. Sources
 

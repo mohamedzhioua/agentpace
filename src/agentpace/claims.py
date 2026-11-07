@@ -15,6 +15,7 @@ from typing import Any
 
 from agentpace import estimate as est
 from agentpace import render
+from agentpace.report import ci
 from agentpace.schema import Row
 
 _MARKER = re.compile(r"<!-- claim:([a-z0-9_]+) -->(.*?)<!-- /claim -->", re.DOTALL)
@@ -66,6 +67,20 @@ def values(
         else "not available"
     )
     completed = sorted(row["duration_s"] for row in rows if row["outcome"] == "completed")
+    found = report["splits"]["time"]["intervals"]
+    plan_found = report["plans"]["intervals"]
+    # The README describes the pooled selection-period number, so locked weeks stay out of it.
+    weeks = [w for w in report["splits"]["time"]["by_week"] if w["period"] == "selection"]
+    latest = weeks[-1]
+
+    def spread(field: str) -> str:
+        values = [week[field] for week in weeks]
+        return f"{min(values):.0f}% to {max(values):.0f}%"
+
+    def gap(name: str) -> str:
+        low, high = found["rival_minus_ours"][name]
+        return f"{low:+.0f} to {high:+.0f}"
+
     return {
         "runs": f"{data['rows']:,}",
         "completed": f"{data['completed']:,}",
@@ -80,26 +95,40 @@ def values(
         "overall_p90": render.duration(est.quantile(completed, 0.9)),
         "winner": winner,
         "plan_sessions": str(report["plans"]["sessions"]),
-        "plan_p50": f"{plan['coverage50']:.0f}%",
-        "plan_p80": f"{plan['coverage80']:.0f}%",
-        "plan_p90": f"{plan['coverage90']:.0f}%",
+        "plan_p50": ci(plan["coverage50"], plan_found["coverage50"], unit="%"),
+        "plan_p80": ci(plan["coverage80"], plan_found["coverage80"], unit="%"),
+        "plan_p90": ci(plan["coverage90"], plan_found["coverage90"], unit="%"),
+        "plan_pinball": ci(plan["pinball"], plan_found["pinball"]),
+        "naive_plan_pinball": f"{naive_plan['pinball']:.0f}",
         "plan_mape": f"{plan['mape']:.0f}%",
         "plan_mdape": f"{plan['mdape']:.0f}%",
         "plan_width": f"{plan['width']:.1f}x",
         "naive_plan_p80": f"{naive_plan['coverage80']:.0f}%",
         "naive_plan_mape": f"{naive_plan['mape']:.0f}%",
         "task_p50": f"{ours['coverage50']:.1f}%",
-        "task_p80": f"{ours['coverage80']:.1f}%",
+        "task_p80": ci(ours["coverage80"], found["coverage80"], 1, "%"),
         "task_p90": f"{ours['coverage90']:.1f}%",
         "task_p80_row": f"{ours_row['coverage80']:.1f}%",
         "task_mape": f"{ours['mape']:.0f}%",
         "task_mdape": f"{ours['mdape']:.0f}%",
         "task_width": f"{ours['width']:.1f}x",
-        "task_pinball": f"{ours['pinball']:.0f}",
+        "task_pinball": ci(ours["pinball"], found["pinball"]),
         "median_pinball": f"{median['pinball']:.0f}",
         "median_mape": f"{median['mape']:.0f}%",
         "human_pinball": f"{results['human-guess']['session']['pinball']:.0f}",
         "rounds_pinball": f"{results['fixed-rounds']['session']['pinball']:.0f}",
+        "median_pinball_gap": gap("global-median"),
+        "human_pinball_gap": gap("human-guess"),
+        "rounds_pinball_gap": gap("fixed-rounds"),
+        "weeks_tested": str(len(weeks)),
+        "weekly_p80": spread("coverage80_session"),
+        "weekly_p80_row": spread("coverage80_row"),
+        "latest_week": latest["week"],
+        "latest_week_p80": f"{latest['coverage80_session']:.0f}%",
+        "latest_week_p80_row": f"{latest['coverage80_row']:.0f}%",
+        "latest_week_sessions": str(latest["sessions"]),
+        "selection_last_week": report["selection"]["last_week"],
+        "locked_status": report["locked"]["status"],
         "project_p80": project_p80,
         "contributor_split": contributor,
         "loss_count": str(len(report["losses"])),

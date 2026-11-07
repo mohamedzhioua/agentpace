@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import backtest, charts, cli, estimate, report, schema
+from agentpace import backtest, charts, claims, cli, estimate, report, schema
 from agentpace.backtest import Forecast
 from tests.synthetic import dataset, row
 
@@ -185,6 +185,117 @@ class FullRun(unittest.TestCase):
             self.assertTrue(report.is_current(self.report, out))
             for name in ("backtest.md", "assets/run-ranges.svg", "assets/backtest-coverage.svg"):
                 self.assertTrue((out / name).exists())
+
+
+def _small_run(rows, **kwargs):
+    with (
+        mock.patch.object(backtest, "CELL_DRAWS", 300),
+        mock.patch.object(backtest, "PLAN_DRAWS", 200),
+        mock.patch.object(backtest, "BOOTSTRAPS", 100),
+    ):
+        return backtest.run(rows, **kwargs)
+
+
+class LockedHoldout(unittest.TestCase):
+    """Weeks after the selection cutoff are scored but never feed back into selection.
+
+    Ten sessions of eight runs land in each of six weeks, so with the cutoff at W04 the locked
+    weeks W05 and W06 hold exactly the 20 qualifying sessions the holdout needs.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows = dataset(sessions=60, runs_per_session=8, weeks=6)
+        cls.early = [r for r in cls.rows if r["week"] <= "2026-W04"]
+        cls.with_later = _small_run(cls.rows, selection_last_week="2026-W04")
+        cls.without_later = _small_run(cls.early, selection_last_week="2026-W04")
+
+    def test_later_weeks_never_change_selection_or_the_headline(self):
+        a, b = self.with_later, self.without_later
+        self.assertEqual(report.to_json(a["selection"]), report.to_json(b["selection"]))
+        for part in ("tracks", "intervals", "folds"):
+            self.assertEqual(
+                report.to_json(a["splits"]["time"][part]),
+                report.to_json(b["splits"]["time"][part]),
+                part,
+            )
+        self.assertEqual(report.to_json(a["plans"]), report.to_json(b["plans"]))
+        selection_weeks = len(b["splits"]["time"]["folds"])
+        self.assertEqual(
+            report.to_json(a["splits"]["time"]["by_week"][:selection_weeks]),
+            report.to_json(b["splits"]["time"]["by_week"]),
+        )
+
+    def test_readme_calibration_counts_only_selection_weeks(self):
+        known = claims.values(self.rows, json.loads(report.to_json(self.with_later)))
+        self.assertEqual(
+            known["weeks_tested"], str(len(self.with_later["splits"]["time"]["folds"]))
+        )
+        self.assertEqual(known["latest_week"], "2026-W04")
+
+    def test_enough_later_sessions_unlock_the_holdout(self):
+        locked = self.with_later["locked"]
+        self.assertEqual(locked["status"], "ok")
+        self.assertEqual(locked["folds"], ["2026-W05", "2026-W06"])
+        self.assertEqual(locked["qualifying_sessions"], 20)
+        winner = self.with_later["selection"]["winner"]
+        self.assertEqual(set(locked["tracks"]["pre-run"]), {winner, *backtest.BASELINES})
+        text = report.markdown(self.with_later)
+        self.assertIn("## Locked holdout", text)
+        self.assertIn("Weeks 2026-W05, 2026-W06", text)
+
+    def test_too_few_later_sessions_say_not_enough_data(self):
+        locked = [f for f in backtest.time_folds(self.rows) if f.name > "2026-W04"]
+        with (
+            mock.patch.object(backtest, "LOCKED_MIN_SESSIONS", 21),
+            mock.patch.object(backtest, "PLAN_DRAWS", 100),
+        ):
+            result, losses = backtest._locked_holdout(locked, {}, "shrunk", backtest.SEED)
+        self.assertEqual(result["status"], "not enough data (20 of 21 sessions with 5+ runs)")
+        self.assertEqual(losses, [])
+        lines = report._locked_section(result, "shrunk", "2026-W04")
+        self.assertIn("**Not enough data (20 of 21 sessions with 5+ runs).**", lines)
+
+    def test_no_later_weeks_say_so(self):
+        self.assertIn("no weeks after", self.without_later["locked"]["status"])
+
+    def test_every_week_gets_a_row(self):
+        weeks = self.with_later["splits"]["time"]["by_week"]
+        self.assertEqual(
+            [(w["week"], w["period"]) for w in weeks],
+            [("2026-W04", "selection"), ("2026-W05", "locked"), ("2026-W06", "locked")],
+        )
+        self.assertTrue(all(w["sessions"] == 10 and w["rows"] == 80 for w in weeks))
+
+    def test_intervals_bracket_the_reported_numbers(self):
+        result = self.with_later
+        winner = result["selection"]["winner"]
+        point = result["splits"]["time"]["tracks"]["pre-run"][winner]["session"]
+        found = result["splits"]["time"]["intervals"]
+        for metric in ("coverage50", "coverage80", "coverage90", "pinball"):
+            low, high = found[metric]
+            self.assertLessEqual(low, point[metric], metric)
+            self.assertLessEqual(point[metric], high, metric)
+        self.assertEqual(set(found["rival_minus_ours"]), set(backtest.BASELINES))
+        plan = result["plans"]
+        low, high = plan["intervals"]["pinball"]
+        self.assertTrue(low <= plan["results"]["agentpace"]["pinball"] <= high)
+        self.assertIn("Pinball |", report.markdown(result).split("## Whole sessions")[1])
+
+
+class Intervals(unittest.TestCase):
+    def test_a_constant_has_no_spread(self):
+        values = {f"s{i}": 5.0 for i in range(10)}
+        self.assertEqual(backtest.mean_interval(values, random.Random(1)), [5.0, 5.0])
+
+    def test_the_interval_spreads_around_the_mean(self):
+        values = {f"s{i}": float(i % 2) for i in range(20)}  # mean 0.5
+        low, high = backtest.mean_interval(values, random.Random(1))
+        self.assertTrue(0.0 <= low < 0.5 < high <= 1.0, (low, high))
+
+    def test_a_number_renders_with_its_interval(self):
+        self.assertEqual(report.ci(80.0, [70.2, 90.6], unit="%"), "80% (CI 70% to 91%)")
+        self.assertEqual(report.ci(78.53, [72.7, 84.2], 1, "%"), "78.5% (CI 72.7% to 84.2%)")
 
 
 class Losses(unittest.TestCase):
