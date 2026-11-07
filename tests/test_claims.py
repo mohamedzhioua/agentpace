@@ -69,6 +69,18 @@ class Published(unittest.TestCase):
         text = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertGreater(text.count("<!-- claim:"), 15)
 
+    def test_data_values_appear_only_inside_markers(self):
+        # `project_top_harness` is a harness name such as "codex", which the README also uses
+        # as an ordinary word, for example `--source codex`. It is not a number from the data.
+        words = {"project_top_harness"}
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        unmarked = claims._MARKER.sub("", text)
+        for name, value in self.known.items():
+            if name in words or len(value) < 3:
+                continue
+            with self.subTest(claim=name):
+                self.assertNotIn(value, unmarked)
+
 
 class Command(unittest.TestCase):
     def test_check_fails_on_a_stale_number(self):

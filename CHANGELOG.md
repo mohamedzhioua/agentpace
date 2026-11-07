@@ -4,6 +4,21 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.7.2 - 2026-11-08
+
+### Fixed
+
+- README Privacy: the opening sentence said agentpace never reads or stores file paths or repo names. The rows you publish hold none, but the local cache on your machine keeps transcript paths and the project folder, the Codex working folder included, as DESIGN section 3 says. The sentence now states that boundary.
+- Site: the dataset's structured data pointed its download at a folder page. It now points at the repository's zip archive, with `application/zip` as its format, and a test checks that the link ends in `.zip`.
+
+### Added
+
+- `CODE_OF_CONDUCT.md`, the Contributor Covenant 2.1, with reports going through GitHub private vulnerability reporting as in `SECURITY.md`. CONTRIBUTING links it.
+- A test checks that every value `agentpace claims` writes, when it appears in the README, appears only between claim markers. A harness name is exempt, because the README also uses it as a word.
+- CONTRIBUTING links issue #2 as the standing call for a second contributor, and says that every number that comes from the data sits between claim markers.
+
+No published number moved.
+
 ## 0.7.1 - 2026-11-07
 
 ### Fixed

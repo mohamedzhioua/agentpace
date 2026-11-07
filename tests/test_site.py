@@ -176,6 +176,14 @@ class Page(unittest.TestCase):
         self.assertNotIn("softwareVersion", blocks[0])
         self.assertNotIn("version", blocks[0])
 
+    def test_the_dataset_download_is_an_archive(self):
+        block = re.search(
+            r'<script type="application/ld\+json">(.*?)</script>', self.html, re.DOTALL
+        )
+        graph = json.loads(block.group(1))["@graph"]
+        dataset = next(node for node in graph if node["@type"] == "Dataset")
+        self.assertTrue(dataset["distribution"]["contentUrl"].endswith(".zip"))
+
     def test_crawlers_find_the_one_page(self):
         robots = (PAGE.parent / "robots.txt").read_text(encoding="utf-8")
         self.assertIn(f"Sitemap: {SITE}sitemap.xml", robots)

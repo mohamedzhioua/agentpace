@@ -2,7 +2,7 @@
 
 ## Contribute your runs
 
-This is the most useful contribution, because the contributor split cannot run until a second person joins.
+This is the most useful contribution, because the contributor split cannot run until a second person joins. [Issue #2](https://github.com/mohamedzhioua/agentpace/issues/2) is the standing call for that second contributor.
 
 1. Fork and clone the repo, and install it with `uv tool install .`
 2. Run `agentpace ingest`. It reads your local history and keeps rows on your machine.
@@ -36,8 +36,12 @@ The rules that matter:
 - **Standard library only** at run time.
 - **No network code.** A test enforces this.
 - **No fabricated data.** Test fixtures live in `tests/synthetic.py` and are labeled synthetic. Seed rows come only from real runs.
-- **Every number in the README sits between claim markers.** `agentpace claims` writes them, and CI fails if they drift.
+- **Every number that comes from the data sits between claim markers in the README.** `agentpace claims` writes them, and CI fails if they drift.
 - **Report losses.** After changing the method, run `agentpace backtest`, `agentpace site` and `agentpace claims`, and commit what they produce. If a new method wins the selection rule, update `DEFAULT_METHOD`. A test keeps them in step.
 - **Forecasts use only pre-run fields.** `tool_calls`, `tokens`, `retries` and `outcome` are measured during a run, so they can never predict one.
 
 Commit generated files together with the change that caused them.
+
+## Conduct
+
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
