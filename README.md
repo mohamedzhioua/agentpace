@@ -59,7 +59,7 @@ On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the sa
 
 Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
 
-To add your own history to the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine.
+To add your own history to the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine. A second run reads only what changed. To log every run as it finishes, add the opt-in hook that [`/pace-log`](skills/pace-log/SKILL.md) shows.
 
 In a plan, `depends_on`, `risk` and `model` are optional. The same plan is in [examples/plan.json](examples/plan.json), so `agentpace estimate examples/plan.json` works from a clone.
 

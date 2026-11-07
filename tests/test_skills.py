@@ -80,6 +80,11 @@ class Skills(unittest.TestCase):
             if "uv tool install" in text:
                 self.assertRegex(text, r"(user's call|without being asked)")
 
+    def test_the_logging_hook_is_opt_in(self):
+        text = (SKILLS / "pace-log" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn('"command": "agentpace ingest --hook"', text)
+        self.assertIn("add it themselves. Do not edit their settings for them", text)
+
     def test_share_stops_for_consent(self):
         text = (SKILLS / "pace-share" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("--dry-run", text)

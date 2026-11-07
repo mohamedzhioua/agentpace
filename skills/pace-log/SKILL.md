@@ -14,4 +14,14 @@ Input, if any: $ARGUMENTS
 3. Run `agentpace runs --last 10` and show the list.
 4. If the user gave a kind or risk, apply it. `agentpace label last --kind bugfix` labels the latest run, and a reference from the list labels any other. Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`.
 
+## Optional: log every run automatically
+
+If the user wants runs logged without asking each time, show them this Claude Code hook and let them add it themselves. Do not edit their settings for them. It goes under `hooks` in `~/.claude/settings.json`:
+
+```json
+{"hooks": {"SubagentStop": [{"hooks": [{"type": "command", "command": "agentpace ingest --hook", "timeout": 10}]}]}}
+```
+
+After each subagent stops, it ingests that session in about a second. It reads only the transcript path from the hook's input, never the agent's last message, and it always exits quietly, so it cannot block or interrupt an agent. Runs still going are held back until a later pass finds them finished.
+
 Labels are the only way to separate features, bug fixes and refactors, because agentpace does not read prompts. Do not guess a label from the conversation unless the user asks you to.
