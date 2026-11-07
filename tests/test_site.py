@@ -9,6 +9,7 @@ from tests.synthetic import row
 
 REPO = Path(__file__).resolve().parent.parent
 PAGE = REPO / "docs" / "index.html"
+SITE = "https://mohamedzhioua.github.io/agentpace/"
 
 
 def report_stub():
@@ -112,7 +113,9 @@ class Page(unittest.TestCase):
         for source in re.findall(r"<img[^>]+src=\"([^\"]*)\"", self.html):
             self.assertRegex(source, r"^assets/[\w.-]+$")
             self.assertTrue((PAGE.parent / source).is_file(), source)
-        self.assertIsNone(re.search(r"<link[^>]+href=", self.html))
+        # The one link is the page naming its own address for search engines. Nothing is loaded.
+        links = re.findall(r"<link[^>]*>", self.html)
+        self.assertEqual(links, [f'<link rel="canonical" href="{SITE}">'])
         self.assertNotIn("@import", self.html)
         self.assertNotIn("url(", self.html)
 
@@ -153,6 +156,30 @@ class Page(unittest.TestCase):
         match = re.search(r"&lt;&lt;'EOF'\n(.*?)\nEOF", self.html, re.DOTALL)
         example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
         self.assertEqual(html.unescape(match.group(1)), example.strip())
+
+    def test_search_engines_get_a_short_title_and_description(self):
+        title = re.search(r"<title>([^<]+)</title>", self.html)
+        description = re.search(r'<meta name="description" content="([^"]+)">', self.html)
+        self.assertLessEqual(len(title.group(1)), 60)
+        self.assertLessEqual(len(description.group(1)), 160)
+
+    def test_structured_data_parses_and_carries_no_version(self):
+        blocks = re.findall(
+            r'<script type="application/ld\+json">(.*?)</script>', self.html, re.DOTALL
+        )
+        self.assertEqual(len(blocks), 1)
+        data = json.loads(blocks[0])
+        types = {node["@type"] for node in data["@graph"]}
+        self.assertEqual(types, {"SoftwareApplication", "Dataset"})
+        # A version or a figure here would drift from the data unchecked.
+        self.assertNotIn("softwareVersion", blocks[0])
+        self.assertNotIn("version", blocks[0])
+
+    def test_crawlers_find_the_one_page(self):
+        robots = (PAGE.parent / "robots.txt").read_text(encoding="utf-8")
+        self.assertIn(f"Sitemap: {SITE}sitemap.xml", robots)
+        sitemap = (PAGE.parent / "sitemap.xml").read_text(encoding="utf-8")
+        self.assertEqual(re.findall(r"<loc>([^<]+)</loc>", sitemap), [SITE])
 
     def test_jekyll_is_disabled(self):
         self.assertTrue((REPO / "docs" / ".nojekyll").exists())
