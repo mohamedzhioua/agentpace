@@ -848,6 +848,114 @@
             }
           }
         }
+      },
+      "by_project": [
+        {
+          "harness": "codex",
+          "sessions": 137,
+          "rows": 137,
+          "pinball": 904.7,
+          "median_pinball": 1494.0,
+          "coverage80_session": 94.89,
+          "coverage80_row": 94.89,
+          "width": 7.211
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 21,
+          "rows": 146,
+          "pinball": 1815.0,
+          "median_pinball": 4347.0,
+          "coverage80_session": 63.72,
+          "coverage80_row": 64.38,
+          "width": 6.458
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 15,
+          "rows": 2287,
+          "pinball": 713.7,
+          "median_pinball": 948.6,
+          "coverage80_session": 82.13,
+          "coverage80_row": 93.66,
+          "width": 5.418
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 13,
+          "rows": 229,
+          "pinball": 666.3,
+          "median_pinball": 399.1,
+          "coverage80_session": 95.04,
+          "coverage80_row": 94.76,
+          "width": 4.194
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 9,
+          "rows": 82,
+          "pinball": 769.4,
+          "median_pinball": 1411.0,
+          "coverage80_session": 65.91,
+          "coverage80_row": 54.88,
+          "width": 5.197
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 6,
+          "rows": 205,
+          "pinball": 2160.0,
+          "median_pinball": 3706.0,
+          "coverage80_session": 69.83,
+          "coverage80_row": 65.85,
+          "width": 4.835
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 5,
+          "rows": 124,
+          "pinball": 735.5,
+          "median_pinball": 247.1,
+          "coverage80_session": 100.0,
+          "coverage80_row": 100.0,
+          "width": 4.527
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 3,
+          "rows": 58,
+          "pinball": 631.3,
+          "median_pinball": 1291.0,
+          "coverage80_session": 78.56,
+          "coverage80_row": 86.21,
+          "width": 5.078
+        },
+        {
+          "harness": "claude-code",
+          "sessions": 3,
+          "rows": 30,
+          "pinball": 960.5,
+          "median_pinball": 60.9,
+          "coverage80_session": 100.0,
+          "coverage80_row": 100.0,
+          "width": 4.464
+        }
+      ],
+      "without_largest": {
+        "project": 1,
+        "harness": "codex",
+        "sessions": 137,
+        "of_sessions": 212,
+        "loss": {
+          "global": 1583.0,
+          "kind": 1602.0,
+          "backoff": 1146.0,
+          "shrunk": 1144.0,
+          "weighted": 1165.0,
+          "global-median": 2012.0
+        },
+        "lowest": "shrunk",
+        "lowest_with_it": "weighted"
       }
     },
     "contributor": {

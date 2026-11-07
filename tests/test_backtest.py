@@ -146,6 +146,29 @@ class FullRun(unittest.TestCase):
     def test_project_split_runs_under_its_own_name(self):
         self.assertEqual(self.report["splits"]["project"]["status"], "ok")
 
+    def test_each_project_is_shown_alone_and_adds_up(self):
+        split = self.report["splits"]["project"]
+        self.assertEqual(len(split["by_project"]), split["folds"])
+        self.assertEqual(sum(p["rows"] for p in split["by_project"]), split["rows"])
+        self.assertEqual(
+            sum(p["sessions"] for p in split["by_project"]),
+            split["without_largest"]["of_sessions"],
+        )
+        sessions = [p["sessions"] for p in split["by_project"]]
+        self.assertEqual(sessions, sorted(sessions, reverse=True))
+        self.assertEqual(split["without_largest"]["sessions"], sessions[0])
+
+    def test_one_project_has_no_project_rows_and_no_claim(self):
+        rows = [{**r, "project": "aaaaaaaaaaaa"} for r in self.rows]
+        result = _small_run(rows)
+        split = result["splits"]["project"]
+        self.assertNotEqual(split["status"], "ok")
+        self.assertNotIn("by_project", split)
+        self.assertNotIn("without_largest", split)
+        known = claims.values(rows, json.loads(report.to_json(result)), REPO / "examples/plan.json")
+        self.assertEqual(known["project_top_harness"], "not available")
+        self.assertEqual(known["project_top_sessions"], "not available")
+
     def test_single_harness_says_it_could_not_run(self):
         self.assertEqual(self.report["splits"]["harness"]["status"], "could not run (1 harness)")
         self.assertEqual(list(self.report["harness"]["dataset"]), ["claude-code"])
@@ -419,6 +442,127 @@ class Intervals(unittest.TestCase):
     def test_a_number_renders_with_its_interval(self):
         self.assertEqual(report.ci(80.0, [70.2, 90.6], unit="%"), "80% (CI 70% to 91%)")
         self.assertEqual(report.ci(78.53, [72.7, 84.2], 1, "%"), "78.5% (CI 72.7% to 84.2%)")
+
+
+def _project_folds():
+    """Four held-out projects and fixed forecasts for every candidate and the global median.
+
+    Project "dd" is a one-run-per-session Codex project with the most sessions. "aa" and "cc"
+    tie on sessions, and "cc" has more rows, so it ranks first of the two."""
+    folds = [
+        backtest.Fold("aa", [], [row(project="aa")]),
+        backtest.Fold("bb", [], [row(project="bb")]),
+        backtest.Fold("cc", [], [row(project="cc")]),
+        backtest.Fold("dd", [], [row(project="dd", harness="codex")]),
+    ]
+    sessions = {
+        "aa": ["a1", "a2"],
+        "bb": ["b1"],
+        "cc": ["c1", "c1", "c2"],
+        "dd": ["d1", "d2", "d3"],
+    }
+    # Per fold, a forecast error for each candidate. "weighted" wins with "dd" and loses without.
+    errors = {
+        "global": [3.0, 3.0, 3.0, 3.0],
+        "kind": [4.0, 4.0, 4.0, 4.0],
+        "backoff": [2.5, 2.5, 2.5, 2.5],
+        "shrunk": [2.0, 2.0, 2.0, 2.0],
+        "weighted": [2.6, 2.6, 2.6, 0.0],
+        "global-median": [5.0, 5.0, 5.0, 5.0],
+    }
+    per_fold = {
+        name: [
+            [
+                Forecast(10 + error, 10 + error, 10 + error, 10, session, fold.test[0]["harness"])
+                for session in sessions[fold.name]
+            ]
+            for fold, error in zip(folds, by_fold, strict=True)
+        ]
+        for name, by_fold in errors.items()
+    }
+    return folds, per_fold
+
+
+class ProjectRows(unittest.TestCase):
+    """Each held-out project on its own, from forecasts already drawn, ranked and never named."""
+
+    def setUp(self):
+        self.folds, self.per_fold = _project_folds()
+        self.rows = backtest.by_project(self.folds, self.per_fold, "shrunk")
+        self.largest = backtest.without_largest(self.folds, self.per_fold, "shrunk")
+
+    def test_ranked_by_sessions_then_rows_then_pseudonym(self):
+        self.assertEqual(
+            [(r["harness"], r["sessions"], r["rows"]) for r in self.rows],
+            [("codex", 3, 3), ("claude-code", 2, 3), ("claude-code", 2, 2), ("claude-code", 1, 1)],
+        )
+
+    def test_no_pseudonym_is_reported(self):
+        text = json.dumps([self.rows, self.largest])
+        for name in ("aa", "bb", "cc", "dd"):
+            self.assertNotIn(f'"{name}"', text)
+
+    def test_counts_sum_to_the_pooled_forecasts(self):
+        pooled = [f for fold in self.per_fold["shrunk"] for f in fold]
+        self.assertEqual(sum(r["rows"] for r in self.rows), len(pooled))
+        self.assertEqual(sum(r["sessions"] for r in self.rows), len({f.session for f in pooled}))
+        self.assertEqual(self.largest["of_sessions"], len({f.session for f in pooled}))
+
+    def test_without_largest_drops_exactly_that_project(self):
+        self.assertEqual(
+            (self.largest["project"], self.largest["harness"], self.largest["sessions"]),
+            (1, "codex", 3),
+        )
+        for name, value in self.largest["loss"].items():
+            kept = [f for fold in self.per_fold[name][:3] for f in fold]
+            expected = backtest.both_weightings(kept)["session"]["pinball"]
+            self.assertAlmostEqual(value, expected, msg=name)
+        self.assertIn("global-median", self.largest["loss"])
+
+    def test_the_lowest_candidate_is_computed_with_and_without(self):
+        self.assertEqual(self.largest["lowest_with_it"], "weighted")
+        self.assertEqual(self.largest["lowest"], "shrunk")
+        candidates = [m.name for m in estimate.METHODS]
+        self.assertEqual(
+            self.largest["lowest"], min(candidates, key=lambda n: self.largest["loss"][n])
+        )
+
+    def test_markdown_prints_one_row_per_project_and_the_computed_verdict(self):
+        split = {"by_project": self.rows, "without_largest": self.largest}
+        lines = report._project_lines(split, "shrunk")
+        self.assertEqual(sum(line.startswith("| ") and line[2].isdigit() for line in lines), 4)
+        text = "\n".join(lines)
+        self.assertIn("changes from `weighted` to `shrunk`", text)
+        self.assertIn("This split does not choose the method.", text)
+        same = {**self.largest, "lowest_with_it": "shrunk"}
+        text = "\n".join(report._project_lines({**split, "without_largest": same}, "shrunk"))
+        self.assertIn("The lowest candidate is still `shrunk`.", text)
+
+    def test_a_project_with_no_completed_run_is_left_out(self):
+        empty = {name: [*folds[:3], []] for name, folds in self.per_fold.items()}
+        self.assertEqual(len(backtest.by_project(self.folds, empty, "shrunk")), 3)
+
+
+class OneTable(unittest.TestCase):
+    """When every held-out session is one run, the two weightings give one table."""
+
+    def split(self, same):
+        session = {m: 1.0 for m in ("mape", "mdape", "male", "pinball", "width")}
+        session.update(coverage50=50.0, coverage80=80.0, coverage90=90.0)
+        row = session if same else {**session, "pinball": 2.0}
+        results = {name: {"session": session, "row": row} for name in report._method_names()}
+        return {"status": "ok", "tracks": {"pre-run": results}}
+
+    def test_equal_weightings_print_once(self):
+        text = "\n".join(report._split_section("Harness split", self.split(True), "pre-run", ""))
+        self.assertIn("every held-out session here has the same number of runs", text)
+        self.assertNotIn("Each run counts equally:", text)
+        self.assertEqual(text.count("| Method |"), 1)
+
+    def test_different_weightings_print_both(self):
+        text = "\n".join(report._split_section("Harness split", self.split(False), "pre-run", ""))
+        self.assertIn("Each run counts equally:", text)
+        self.assertEqual(text.count("| Method |"), 2)
 
 
 class Losses(unittest.TestCase):

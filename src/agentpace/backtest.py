@@ -512,6 +512,71 @@ def harness_methods(forecasts: dict[str, list[Forecast]]) -> dict[str, Any]:
     return result
 
 
+def _project_order(
+    folds: Sequence[Fold], per_fold: dict[str, list[list[Forecast]]], winner: str
+) -> list[int]:
+    """Fold indexes, most held-out sessions first, then most rows, then pseudonym, so the
+    order never depends on how folds were listed. Folds with no completed run are left out."""
+    sizes = {
+        i: (len({f.session for f in per_fold[winner][i]}), len(per_fold[winner][i]), fold.name)
+        for i, fold in enumerate(folds)
+        if per_fold[winner][i]
+    }
+    return sorted(sizes, key=lambda i: (-sizes[i][0], -sizes[i][1], sizes[i][2]))
+
+
+def by_project(
+    folds: Sequence[Fold], per_fold: dict[str, list[list[Forecast]]], winner: str
+) -> list[dict[str, Any]]:
+    """Each held-out project on its own, from forecasts already drawn, so no random number is
+    used. Listed in rank order and never by pseudonym: the rank is the label."""
+    result = []
+    for i in _project_order(folds, per_fold, winner):
+        ours, median = per_fold[winner][i], per_fold["global-median"][i]
+        mine, theirs = both_weightings(ours), both_weightings(median)
+        result.append(
+            {
+                "harness": ", ".join(sorted({row["harness"] for row in folds[i].test})),
+                "sessions": len({f.session for f in ours}),
+                "rows": len(ours),
+                "pinball": mine["session"]["pinball"],
+                "median_pinball": theirs["session"]["pinball"],
+                "coverage80_session": mine["session"]["coverage80"],
+                "coverage80_row": mine["row"]["coverage80"],
+                "width": mine["session"]["width"],
+            }
+        )
+    return result
+
+
+def without_largest(
+    folds: Sequence[Fold], per_fold: dict[str, list[list[Forecast]]], winner: str
+) -> dict[str, Any]:
+    """The project split's session-weighted pinball with and without the project holding the
+    most held-out sessions, so one project's vote is visible. From forecasts already drawn."""
+    order = _project_order(folds, per_fold, winner)
+    largest = order[0]
+    candidates = [method.name for method in est.METHODS]
+    names = [*candidates, "global-median"]
+
+    def loss(name: str, kept: Sequence[int]) -> float:
+        items = [f for i in kept for f in per_fold[name][i]]
+        return both_weightings(items)["session"]["pinball"]
+
+    rest = [i for i in order if i != largest]
+    without = {name: loss(name, rest) for name in names}
+    with_it = {name: loss(name, order) for name in candidates}
+    return {
+        "project": 1,
+        "harness": ", ".join(sorted({row["harness"] for row in folds[largest].test})),
+        "sessions": len({f.session for f in per_fold[winner][largest]}),
+        "of_sessions": len({f.session for i in order for f in per_fold[winner][i]}),
+        "loss": without,
+        "lowest": min(candidates, key=lambda name: without[name]),
+        "lowest_with_it": min(candidates, key=lambda name: with_it[name]),
+    }
+
+
 def _locked_holdout(
     locked: Sequence[Fold],
     forecasts: dict[str, list[Forecast]],
@@ -665,12 +730,17 @@ def run(
     projects = group_folds(usable, "project", MIN_PROJECT_ROWS)
     projects = [fold for fold in projects if fold.name]
     if len(projects) >= 2:
-        held_out, project_results = _evaluate(projects, use_size=False, seed=seed)
+        # The same draws `_evaluate` makes, kept per fold so each project can be shown alone.
+        per_project = _forecast_folds(projects, use_size=False, seed=seed)
+        held_out = _pooled(per_project, range(len(projects)))
+        project_results = {name: both_weightings(items) for name, items in held_out.items()}
         report["splits"]["project"] = {
             "status": "ok",
             "folds": len(projects),
             "rows": len(held_out[winner]),
             "tracks": {"pre-run": project_results},
+            "by_project": by_project(projects, per_project, winner),
+            "without_largest": without_largest(projects, per_project, winner),
         }
         report_losses += _losses("project", "pre-run", project_results, winner)
     else:

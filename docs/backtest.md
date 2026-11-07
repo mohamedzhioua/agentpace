@@ -164,6 +164,22 @@ Each run counts equally:
 | rounds-oracle | 1481% | 1169% | 2.52 | 99.6% | 99.6% | 99.6% | 1.0x | 2416 |
 | global-median | 419% | 170% | 1.58 | 68.7% | 68.7% | 68.7% | 1.0x | 908 |
 
+Each project on its own, most held-out sessions first. Projects are numbered by rank, not named, so the numbers change as data is added.
+
+| Project | Harness | Test sessions | Runs | `shrunk` pinball | global-median pinball | P80 coverage, per session | P80 coverage, per run | P90/P50 |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | codex | 137 | 137 | 905 | 1494 | 94.9% | 94.9% | 7.2x |
+| 2 | claude-code | 21 | 146 | 1815 | 4347 | 63.7% | 64.4% | 6.5x |
+| 3 | claude-code | 15 | 2,287 | 714 | 949 | 82.1% | 93.7% | 5.4x |
+| 4 | claude-code | 13 | 229 | 666 | 399 | 95.0% | 94.8% | 4.2x |
+| 5 | claude-code | 9 | 82 | 769 | 1411 | 65.9% | 54.9% | 5.2x |
+| 6 | claude-code | 6 | 205 | 2160 | 3706 | 69.8% | 65.8% | 4.8x |
+| 7 | claude-code | 5 | 124 | 736 | 247 | 100.0% | 100.0% | 4.5x |
+| 8 | claude-code | 3 | 58 | 631 | 1291 | 78.6% | 86.2% | 5.1x |
+| 9 | claude-code | 3 | 30 | 960 | 61 | 100.0% | 100.0% | 4.5x |
+
+Without project 1 (137 of 212 test sessions), session-weighted pinball: global 1583, kind 1602, backoff 1146, shrunk 1144, weighted 1165, global-median 2012. The lowest candidate changes from `weighted` to `shrunk`. This split does not choose the method.
+
 ## Contributor split
 
 **Could not run (1 contributor).**
@@ -172,21 +188,7 @@ Each run counts equally:
 
 Leave one harness out.
 
-Each session counts equally:
-
-| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| global | 77% | 54% | 0.81 | 25.4% | 87.0% | 96.6% | 8.3x | 682 |
-| kind | 178% | 68% | 0.80 | 74.0% | 100.0% | 100.0% | 11.3x | 1708 |
-| backoff | 137% | 55% | 0.73 | 61.0% | 95.5% | 100.0% | 7.5x | 989 |
-| shrunk | 131% | 55% | 0.72 | 59.3% | 99.4% | 100.0% | 15.1x | 1638 |
-| weighted | 149% | 57% | 0.74 | 63.8% | 98.3% | 100.0% | 12.1x | 1494 |
-| human-guess | 2290% | 1326% | 2.71 | 100.0% | 100.0% | 100.0% | 1.0x | 5198 |
-| fixed-rounds | 116% | 49% | 0.70 | 56.5% | 56.5% | 56.5% | 1.0x | 745 |
-| rounds-oracle | 660% | 591% | 1.97 | 100.0% | 100.0% | 100.0% | 1.0x | 3071 |
-| global-median | 76% | 80% | 1.60 | 7.3% | 7.3% | 7.3% | 1.0x | 1326 |
-
-Each run counts equally:
+Each session counts equally, and each run counts equally: every held-out session here has the same number of runs, so both weightings give the same table.
 
 | Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|

@@ -4,6 +4,22 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.6.3 - 2026-11-07
+
+### Added
+
+- The backtest's project split shows each held-out project on its own: harness, held-out sessions and runs, pinball against the global median, P80 coverage and width. Projects are numbered by rank, most held-out sessions first, and never named. A generated sentence gives each candidate's session-weighted pinball without the largest project. Today that project is a Codex one holding 137 of 212 held-out sessions, and without it the lowest candidate changes from `weighted` to `shrunk`. The split does not choose the method, so nothing ships differently.
+- The README states the largest project's harness and share of held-out sessions, both claim-marked.
+
+### Changed
+
+- When every held-out session is one run, as in the harness split, the report prints one table instead of two identical ones. "Where agentpace loses" still lists both weightings, so its count stays 20.
+
+### Notes
+
+- No published number moved. `docs/backtest.json` only gained `splits.project.by_project` and `splits.project.without_largest`.
+- CHANGELOG 0.6.0 counted the Codex project as 165 one-turn sessions, which is every row of it. The new table shows 137, its completed held-out sessions, because failed runs are not test rows.
+
 ## 0.6.2 - 2026-11-07
 
 ### Changed
