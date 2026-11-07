@@ -145,7 +145,9 @@ def build_rows(
     A run that has not completed and was active within the idle cap may still be going. Storing
     it would leave a partial row behind for good, because its duration is part of the key, so it
     is withheld until a later ingest finds it settled. It still feeds the session clock and the
-    overlap count, so its siblings get the same offsets they will have once it finishes.
+    overlap count, so its siblings get the same offsets they will have once it finishes. A
+    completed sibling that starts in the same second is held back too, because tie-breaking
+    between the two can only be settled once both are final.
     """
     now = time.time() if now is None else now
     sessions: dict[tuple[str, str], list[RawRun]] = defaultdict(list)
@@ -161,20 +163,29 @@ def build_rows(
         project_hash = pseudonym.project(secret, project)
         taken: set[tuple[int, int]] = set()
         order = sorted(range(len(members)), key=lambda i: (members[i].start, members[i].end))
+        base = {i: clock.at(members[i].start) for i in order}
+        running = {
+            i
+            for i in order
+            if members[i].outcome != "completed" and now - members[i].end < idle_cap_s
+        }
+        # A sibling that starts in the same second as a running run is held back with it, since
+        # the tie nudge below would give it a different key once the running one finishes.
+        blocked = {base[i] for i in running}
         for index in order:
             run = members[index]
             if run.active_s < 1:
                 dropped += 1
                 continue
+            if index in running or base[index] in blocked:
+                withheld += 1
+                continue
             # Agents launched together can tie on (start, duration) to the second. A one-second
             # nudge keeps both runs apart under the duplicate key, deterministically.
-            offset = clock.at(run.start)
+            offset = base[index]
             while (offset, run.active_s) in taken:
                 offset += 1
             taken.add((offset, run.active_s))
-            if run.outcome != "completed" and now - run.end < idle_cap_s:
-                withheld += 1
-                continue
             kind = classify.classify_kind(run.agent_type, kind_map)
             row: Row = {
                 "harness": run.harness,
@@ -298,15 +309,12 @@ def store_lock(store: Path, wait_s: float = 5.0, stale_s: float = 900.0) -> Iter
         try:
             os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
             break
-        except FileExistsError:
-            try:
-                age = time.time() - lock.stat().st_mtime
-            except FileNotFoundError:
-                continue
-            if age > stale_s:
-                with suppress(FileNotFoundError):
+        except (FileExistsError, PermissionError):
+            # Windows reports PermissionError while another holder's lock is being deleted.
+            with suppress(OSError):
+                if time.time() - lock.stat().st_mtime > stale_s:
                     lock.unlink()
-                continue
+                    continue
             if time.monotonic() > deadline:
                 raise StoreBusy(str(lock)) from None
             time.sleep(0.05)

@@ -425,6 +425,14 @@ class Cache(TempRoot):
         self.assertEqual(calls, 1)
         self.assertNotIn("unknown", [row["outcome"] for row in rows])
 
+    def test_deleted_runs_come_back_only_for_sessions_in_the_pass(self):
+        lone = write_run(self.history, "p", "t", "x", simple_run(0, 10))
+        self.ingest()
+        lone.unlink()
+        cache = self.cache()
+        rows, _ = ingest.ingest(ADAPTER, self.history / "p" / "s", SECRET, cache=cache)
+        self.assertEqual(len(rows), 3)  # session t's deleted run stays out of a session-s pass
+
     def test_a_new_adapter_version_discards_the_cache(self):
         self.ingest()
         _, calls, report = self.ingest(version=2)
@@ -527,6 +535,21 @@ class StillRunning(TempRoot):
         rows, report = self.rows_at(1550 + 901)
         self.assertEqual(report.still_running, 0)
         self.assertEqual(sorted(r["outcome"] for r in rows), ["completed", "unknown"])
+
+    def test_a_sibling_started_in_the_same_second_waits_for_the_running_one(self):
+        """B ties A on start and duration while A runs. Stored early, B would take the nudged
+        offset, then move back once A's duration changed: two keys for one run."""
+        for final in (90, 30):  # A ends longer than B, or ends tied with it again
+            with self.subTest(final=final):
+                b = raw(0, 30, session="tie")
+                first, _, held = ingest.build_rows(
+                    [raw(0, 30, session="tie", outcome="unknown"), b], SECRET, now=100
+                )
+                self.assertEqual((first, held), ([], 2))
+                second, _, held = ingest.build_rows(
+                    [raw(0, final, session="tie"), b], SECRET, now=5000
+                )
+                self.assertEqual((len(second), held), (2, 0))
 
 
 class Labels(unittest.TestCase):
@@ -666,14 +689,19 @@ class Hook(TempRoot):
         self.assertFalse(self.store.exists())
 
     def test_a_busy_store_is_left_alone(self):
-        self.store.parent.mkdir(parents=True)
-        self.store.with_name("runs.jsonl.lock").touch()
-        with (
-            mock.patch.object(ingest.time, "sleep"),
-            mock.patch.object(ingest.time, "monotonic", side_effect=[0.0, 10.0]),
-        ):
+        busy = mock.patch.object(ingest, "store_lock", side_effect=ingest.StoreBusy("lock"))
+        with busy as lock:
             self.assertEqual(self.hook(self.payload(self.paths[0])), (0, ""))
+        self.assertEqual(lock.call_args.kwargs, {"wait_s": 5.0})
         self.assertFalse(self.store.exists())
+
+    def test_a_full_ingest_after_the_hook_reuses_its_cache(self):
+        self.hook(self.payload(self.paths[1]))
+        home = self.root / "home"
+        cache = RunCache(home / "cache-claude-code.json", "claude-code", ADAPTER.version, 900)
+        with mock.patch.object(ADAPTER, "parse", wraps=ADAPTER.parse) as parse:
+            ingest.ingest(ADAPTER, self.history, pseudonym.load_secret(home), cache=cache)
+        self.assertEqual(parse.call_count, 1)  # only the other session's one transcript
 
 
 class StoreLock(TempRoot):

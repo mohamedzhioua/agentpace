@@ -19,9 +19,9 @@ Input, if any: $ARGUMENTS
 If the user wants runs logged without asking each time, show them this Claude Code hook and let them add it themselves. Do not edit their settings for them. It goes under `hooks` in `~/.claude/settings.json`:
 
 ```json
-{"hooks": {"SubagentStop": [{"hooks": [{"type": "command", "command": "agentpace ingest --hook", "timeout": 10}]}]}}
+{"hooks": {"SubagentStop": [{"hooks": [{"type": "command", "command": "agentpace ingest --hook", "timeout": 30}]}]}}
 ```
 
-After each subagent stops, it ingests that session in about a second. It reads only the transcript path from the hook's input, never the agent's last message, and it always exits quietly, so it cannot block or interrupt an agent. Runs still going are held back until a later pass finds them finished.
+Run `agentpace ingest` once first, so the hook starts from a warm cache. After each subagent stops, the hook ingests that session, usually in about a second. It reads only the transcript path from the hook's input, never the agent's last message, and it always exits quietly, so it cannot block or interrupt an agent. Runs still going are held back until a later pass finds them finished. Because the hook cannot report problems, run `agentpace ingest` by hand if runs stop appearing: it prints what went wrong.
 
 Labels are the only way to separate features, bug fixes and refactors, because agentpace does not read prompts. Do not guess a label from the conversation unless the user asks you to.

@@ -25,10 +25,16 @@ from typing import Any
 
 from agentpace.adapters.base import RawRun
 
-FORMAT = 1
+FORMAT = 2  # 2: keys are os.path.normcase paths
 
 # [size, mtime_ns] for the transcript and each companion file, or None for a missing companion.
 Stamps = list[list[int] | None]
+
+
+def _key(path: str) -> str:
+    """One key per file. Windows paths are case-insensitive, so `c:\\` and `C:\\` must match, or a
+    deleted transcript would come back twice."""
+    return os.path.normcase(path)
 
 
 def _to_json(run: RawRun | None) -> dict[str, Any] | None:
@@ -74,17 +80,18 @@ class RunCache:
 
     def lookup(self, path: str, stamps: Stamps) -> tuple[bool, RawRun | None]:
         """Return (hit, run). A hit needs the transcript and every companion file unchanged."""
-        entry = self.entries.get(path)
+        entry = self.entries.get(_key(path))
         if entry is None or entry["stamps"] != stamps:
             return False, None
         return True, _from_json(entry["run"])
 
     def store(self, path: str, stamps: Stamps, run: RawRun | None) -> None:
-        self.entries[path] = {"stamps": stamps, "run": _to_json(run)}
+        self.entries[_key(path)] = {"stamps": stamps, "run": _to_json(run)}
 
     def vanished(self, sessions: set[tuple[str, str]], seen: set[str]) -> list[RawRun]:
         """Cached runs of these sessions whose transcript no longer exists."""
         runs = []
+        seen = {_key(path) for path in seen}
         for path, entry in self.entries.items():
             run = _from_json(entry["run"])
             if run is None or path in seen or (run.project, run.session) not in sessions:
