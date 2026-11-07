@@ -6,6 +6,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
+- A new hero illustration, "the guess and the stopwatch": a dashed, fading speech bubble holds a calendar shedding blank pages, and beside it two small cursor robots measure a solid stopwatch with a tape measure. The old one, a Gantt chart running out of an office, read as an office scene at README width. It has no words and no numbers. It was generated with Codex image generation, then resized and encoded as WebP. The social preview reuses it under the line "Stop estimating agent work in human weeks.", and the site gains `og:image:alt`.
+
 - The README opens with what agentpace is for: "Stop estimating agent work in human weeks." Try it now comes straight after the badges. The problem statement moved under its own heading, below the example output.
 
 ### Added

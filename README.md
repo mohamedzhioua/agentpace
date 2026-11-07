@@ -2,7 +2,7 @@
 
 **Stop estimating agent work in human weeks. agentpace measures how long coding agents actually take: a P50/P80/P90 range from real runs, with the human part stated apart, never derived.**
 
-![An office worker pins up a Gantt chart so long it runs out the door, while a tiny crew of terminal cursors has already stacked finished boxes; a separate review desk with an outlined empty chair waits for the human part.](docs/assets/hero.webp)
+![A speech bubble, dashed and fading, holds a wall calendar shedding blank pages. Beside it a solid stopwatch, its hand a terminal cursor, is measured by two small cursor robots with a tape measure.](docs/assets/hero.webp)
 
 [![CI](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
