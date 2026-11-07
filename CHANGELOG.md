@@ -6,6 +6,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
+- Backtest: selection, the time-split tables, the week-by-week table, the whole-session test and the locked holdout's headline now score Claude Code sessions only, the population the selection rule was frozen on. Rows from every harness still train the estimator. On the published rows, which are all Claude Code, every number is unchanged and `docs/backtest.json` only gains keys.
+  - **This was registered after seeing results, not before.** A local run with the maintainer's Codex rows pooled in had picked `global` over the shipped `shrunk`: 785 against 915 with every Codex turn, when the fixed-rounds baseline (774) would also have beaten the winner, and 856 against 1078 with approval checks skipped. On Claude Code sessions alone `shrunk` held, at 1047 to 1050. Codex supplied most of the pooled vote because each Codex exec session is one turn, and `global` won on Codex only in the week no Codex row was in training.
+  - The pooled result is printed in `docs/backtest.md` under "Pooled, for the record", from its own random stream, and is never shipped.
+  - The locked holdout gains a per-harness table of every candidate at task level. Whether Codex is better served by another method is decided there, on weeks after 2026-W45, and nowhere else.
 - Codex: turns run by `codex-auto-review`, Codex's automatic approval check on a command, are skipped and counted under `skipped runs`, instead of being stored as reviews. They take seconds, call no tool and are not work anyone plans. The adapter version moves to 2, so the next `ingest --source codex` reads Codex history again once. Claude Code rows and the published dataset are unchanged.
 
 ## 0.5.0 - 2026-11-07

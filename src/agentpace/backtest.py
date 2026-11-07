@@ -35,6 +35,10 @@ MINUTES_PER_ROUND = 3
 # Frozen. Selection uses time folds up to this week and never re-runs on later ones. Later weeks
 # form the locked holdout, which scores the shipped method on data it was never chosen on.
 SELECTION_LAST_WEEK = "2026-W45"
+# Registered on 2026-11-07, after a local run with Codex rows pooled in had been seen (DESIGN
+# section 11). Selection and the headline numbers score only this harness, the population the
+# rule was frozen on. Every harness still trains the estimator and is reported on its own.
+SELECTION_HARNESS = "claude-code"
 LOCKED_MIN_SESSIONS = 20  # sessions with at least est.MIN_SESSION_RUNS completed runs
 
 # Assumptions, not measurements. They stand in for what a person might guess.
@@ -334,6 +338,8 @@ def by_week(
     both directions."""
     weeks = []
     for i, fold in enumerate(folds):
+        if not per_fold[winner][i]:
+            continue  # a later week may hold no session of the selection harness
         ours = both_weightings(per_fold[winner][i])
         median = both_weightings(per_fold["global-median"][i])["session"]
         weeks.append(
@@ -352,12 +358,16 @@ def by_week(
     return weeks
 
 
-def plan_forecasts(folds: Sequence[Fold], method: str, seed: int) -> dict[str, list[Forecast]]:
+def plan_forecasts(
+    folds: Sequence[Fold], method: str, seed: int, harness: str | None = None
+) -> dict[str, list[Forecast]]:
     """Treat each held-out session as a plan and predict how long it took, end to end.
 
     Real dependencies are not recorded, so the critical path falls back to the longest run, and
     the observed peak concurrency stands in for the cap. That peak is itself an outcome, so this
     tests the throughput and session terms, not dependency planning.
+
+    With `harness`, only that harness's sessions are scored. Training keeps every row.
     """
     ours: list[Forecast] = []
     naive: list[Forecast] = []
@@ -366,6 +376,8 @@ def plan_forecasts(folds: Sequence[Fold], method: str, seed: int) -> dict[str, l
         median = est.quantile(sorted(r["duration_s"] for r in _completed(fold.train)), 0.5)
         for batch, members in sorted(_sessions(_completed(fold.test)).items()):
             if len(members) < est.MIN_SESSION_RUNS:
+                continue
+            if harness is not None and members[0]["harness"] != harness:
                 continue
             tasks = [
                 est.Task(str(i), row["task_kind"], row["risk"], model=row["model"])
@@ -475,20 +487,52 @@ def harness_summary(
     return {"dataset": dataset, "selection_folds": selection}
 
 
+def harness_methods(forecasts: dict[str, list[Forecast]]) -> dict[str, Any]:
+    """Every candidate and the global median, per harness, at task level. The forward test
+    for a harness the selection does not score: from forecasts already drawn, so no random
+    number is used."""
+    names = [method.name for method in est.METHODS] + ["global-median"]
+    result: dict[str, Any] = {}
+    for harness in sorted({f.harness for f in forecasts[names[0]]}):
+        scores = {}
+        for name in names:
+            items = [f for f in forecasts[name] if f.harness == harness]
+            found = both_weightings(items)["session"]
+            scores[name] = {
+                "pinball": found["pinball"],
+                "coverage80": found["coverage80"],
+                "width": found["width"],
+            }
+        items = [f for f in forecasts[names[0]] if f.harness == harness]
+        result[harness] = {
+            "sessions": len({f.session for f in items}),
+            "rows": len(items),
+            "methods": scores,
+        }
+    return result
+
+
 def _locked_holdout(
     locked: Sequence[Fold],
     forecasts: dict[str, list[Forecast]],
     winner: str,
     seed: int,
+    harness: str | None = None,
+    everyone: dict[str, list[Forecast]] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Score the shipped method on weeks after selection. Nothing here feeds back into it."""
-    plans = plan_forecasts(locked, winner, seed)
+    """Score the shipped method on weeks after selection. Nothing here feeds back into it.
+
+    The headline scores `harness`, as selection does. `everyone` adds each harness at task
+    level, whatever the headline status, so a harness selection never scored is tested here."""
+    plans = plan_forecasts(locked, winner, seed, harness)
     qualifying = len(plans["agentpace"])
     base: dict[str, Any] = {
         "folds": [fold.name for fold in locked],
         "min_sessions": LOCKED_MIN_SESSIONS,
         "qualifying_sessions": qualifying,
     }
+    if everyone is not None and everyone[winner]:
+        base["by_harness"] = harness_methods(everyone)
     if qualifying < LOCKED_MIN_SESSIONS:
         status = (
             f"not enough data ({qualifying} of {LOCKED_MIN_SESSIONS} sessions with "
@@ -507,6 +551,25 @@ def _locked_holdout(
         "plans": {name: both_weightings(items)["row"] for name, items in plans.items()},
     }
     return locked_result, _losses("locked", "pre-run", results, winner)
+
+
+def _of_harness(forecasts: list[Forecast], harness: str | None) -> list[Forecast]:
+    return forecasts if harness is None else [f for f in forecasts if f.harness == harness]
+
+
+def _pooled_selection(
+    everyone: dict[str, list[Forecast]], harnesses: Sequence[str], seed: int
+) -> dict[str, Any]:
+    """The same rule over every harness at once, printed for the record and never shipped.
+    Its own random stream, so it moves no other number."""
+    if len(harnesses) < 2:
+        return {"status": f"same as above ({len(harnesses)} harness)"}
+    result = select(everyone, random.Random(f"{seed}:pooled-selection"))
+    result["status"] = "ok"
+    result["baselines"] = {
+        name: both_weightings(everyone[name])["session"]["pinball"] for name in BASELINES
+    }
+    return result
 
 
 def _plan_losses(split: str, results: dict[str, dict[str, float]]) -> list[dict[str, Any]]:
@@ -539,17 +602,32 @@ def run(
     locked = [fold for fold in every_week if fold.name > selection_last_week]
     if not time:
         raise ValueError("not enough weeks of data for a time split")
-    per_fold = _forecast_folds([*time, *locked], use_size=False, seed=seed)
+    harnesses = sorted({row["harness"] for row in rows})
+    # The population the rule was frozen on. A dataset without it, such as one person's Codex
+    # rows, has a single harness, and selection scores all of it.
+    population = SELECTION_HARNESS if SELECTION_HARNESS in harnesses else None
+    every_fold = _forecast_folds([*time, *locked], use_size=False, seed=seed)
+    per_fold = {
+        name: [_of_harness(fold, population) for fold in folds]
+        for name, folds in every_fold.items()
+    }
     forecasts = _pooled(per_fold, range(len(time)))
+    everyone = _pooled(every_fold, range(len(time)))
     pre_run = {name: both_weightings(items) for name, items in forecasts.items()}
     selection = select(forecasts, random.Random(seed))
     selection["last_week"] = selection_last_week
+    selection["harness"] = population or "all"
     winner = selection["winner"]
-    _, oracle = _evaluate(time, use_size=True, seed=seed)
+    oracle_forecasts, _ = _evaluate(time, use_size=True, seed=seed)
+    oracle = {
+        name: both_weightings(_of_harness(items, population))
+        for name, items in oracle_forecasts.items()
+    }
     report: dict[str, Any] = {
         "seed": seed,
         "dataset": dataset_summary(rows),
         "selection": selection,
+        "pooled_selection": _pooled_selection(everyone, harnesses, seed),
         "splits": {
             "time": {
                 "status": "ok",
@@ -566,8 +644,15 @@ def run(
     report_losses = _losses("time", "pre-run", pre_run, winner)
     report_losses += _losses("time", "oracle-size", oracle, winner)
     if locked:
-        locked_forecasts = _pooled(per_fold, range(len(time), len(time) + len(locked)))
-        report["locked"], locked_losses = _locked_holdout(locked, locked_forecasts, winner, seed)
+        later = range(len(time), len(time) + len(locked))
+        report["locked"], locked_losses = _locked_holdout(
+            locked,
+            _pooled(per_fold, later),
+            winner,
+            seed,
+            population,
+            _pooled(every_fold, later),
+        )
     else:
         report["locked"] = {
             "status": f"not enough data (no weeks after {selection_last_week} yet)",
@@ -605,7 +690,6 @@ def run(
     else:
         report["splits"]["contributor"] = {"status": f"could not run ({contributors} contributor)"}
 
-    harnesses = sorted({row["harness"] for row in rows})
     if len(harnesses) >= 2:
         groups = group_folds(usable, "harness", 1)
         held_out, harness_results = _evaluate(groups, use_size=False, seed=seed)
@@ -618,9 +702,9 @@ def run(
         report_losses += _losses("harness", "pre-run", harness_results, winner)
     else:
         report["splits"]["harness"] = {"status": f"could not run ({len(harnesses)} harness)"}
-    report["harness"] = harness_summary(rows, forecasts, winner)
+    report["harness"] = harness_summary(rows, everyone, winner)
 
-    plans = plan_forecasts(time, winner, seed)
+    plans = plan_forecasts(time, winner, seed, population)
     report["plans"] = {
         "label": "oracle-structure",
         "sessions": len(plans["agentpace"]),

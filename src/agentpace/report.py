@@ -113,7 +113,7 @@ def _locked_section(locked: dict[str, Any], winner: str, last: str) -> list[str]
     ]
     if locked["status"] != "ok":
         status = locked["status"]
-        return [*lines, f"**{status[0].upper()}{status[1:]}.**", ""]
+        return [*lines, f"**{status[0].upper()}{status[1:]}.**", "", *_locked_harness_lines(locked)]
     results = locked["tracks"]["pre-run"]
     names = [winner, *backtest.BASELINES]
     lines += [f"Weeks {', '.join(locked['folds'])}. Each session counts equally:", ""]
@@ -127,6 +127,7 @@ def _locked_section(locked: dict[str, Any], winner: str, last: str) -> list[str]
         "",
         *_plan_rows(locked["plans"]),
         "",
+        *_locked_harness_lines(locked),
     ]
     return lines
 
@@ -157,6 +158,7 @@ def _selection_section(selection: dict[str, Any]) -> list[str]:
         f"simpler candidate. Selection uses weeks up to {selection['last_week']} and never re-runs "
         "on later ones.",
         "",
+        *_population_lines(selection),
         "| Candidate, simplest first | Loss | Difference from lowest (95% interval) |",
         "|---|---:|---|",
     ]
@@ -170,6 +172,64 @@ def _selection_section(selection: dict[str, Any]) -> list[str]:
         "",
     ]
     return lines
+
+
+def _population_lines(selection: dict[str, Any]) -> list[str]:
+    harness = selection.get("harness", "all")
+    if harness == "all":
+        return []
+    return [
+        f"Selection, the time-split tables and the whole-session test score `{harness}` sessions "
+        "only, the population the rule was frozen on. Rows from every harness train the "
+        "estimator. This scope was registered on 2026-11-07, after a local run with Codex rows "
+        "pooled in had been seen.",
+        "",
+    ]
+
+
+def _pooled_section(pooled: dict[str, Any]) -> list[str]:
+    if pooled["status"] != "ok":
+        return []
+    lines = [
+        "## Pooled, for the record",
+        "",
+        "The same rule over every harness at once. It is never shipped. It is printed so you can "
+        "judge the choice above. Pinball is session-weighted, so a harness with many short "
+        "sessions carries most of this vote.",
+        "",
+        "| Candidate, simplest first | Loss | Difference from lowest (95% interval) |",
+        "|---|---:|---|",
+    ]
+    for name, loss in pooled["loss"].items():
+        low, high = pooled["difference_from_best"][name]
+        gap = "lowest" if name == pooled["lowest_loss"] else f"{low:+.0f} to {high:+.0f}"
+        lines.append(f"| {name} | {loss:.0f} | {gap} |")
+    lines += ["", f"Pooled winner: `{pooled['winner']}`. Baselines on the same sessions:", ""]
+    lines += ["| Baseline | Pinball |", "|---|---:|"]
+    for name, loss in pooled["baselines"].items():
+        lines.append(f"| {name} | {loss:.0f} |")
+    return [*lines, ""]
+
+
+def _locked_harness_lines(locked: dict[str, Any]) -> list[str]:
+    found = locked.get("by_harness")
+    if not found:
+        return []
+    lines = [
+        "Each harness at task level, every candidate, each session counting equally. This is "
+        "where a harness that selection does not score is tested, on weeks no method was "
+        "chosen on.",
+        "",
+        "| Harness | Method | Sessions | Runs | Pinball | P80 cov. | P90/P50 |",
+        "|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for harness, entry in found.items():
+        for name, m in entry["methods"].items():
+            lines.append(
+                f"| {harness} | {name} | {entry['sessions']} | {entry['rows']:,} | "
+                f"{m['pinball']:.0f} | {m['coverage80']:.1f}% | {m['width']:.1f}x |"
+            )
+    return [*lines, ""]
 
 
 def _plan_section(plans: dict[str, Any]) -> list[str]:
@@ -292,12 +352,13 @@ def markdown(report: dict[str, Any]) -> str:
         "",
     ]
     lines += _selection_section(report["selection"])
+    stored = _rounded(report)
+    lines += _pooled_section(stored.get("pooled_selection", {"status": "absent"}))
     splits = report["splits"]
     winner = report["selection"]["winner"]
     last = report["selection"]["last_week"]
     # The README quotes the stored JSON, which is rounded. Sections added after 0.1.0 render
     # from the same rounded values so the two documents never disagree in the last digit.
-    stored = _rounded(report)
     lines += _split_section(
         "Time split, pre-run",
         splits["time"],
