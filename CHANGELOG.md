@@ -4,6 +4,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.2.1 - 2026-11-07
+
 ### Added
 
 - `estimate` prints the human part on its own line in every result: review, testing, decisions and waiting between agent turns are not measured, are not in the total, and must not be derived from agent time. JSON output gains `human` (`status`, `included_in_total`).
@@ -13,6 +15,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 - The `agentpace` skill triggers on any question about how long software work will take, even when agents are not mentioned, and assumes agents do the implementation unless told otherwise. It gains a step for re-answering a timeline someone already quoted in days, weeks or months: the quote is shown beside the measured range as unverified and never converted by a constant.
 - `/pace-estimate` passes the human-part line through verbatim, and says it is the explicit command while `agentpace` handles natural-language questions.
+- README: a "Try it" command on the first screen, a support table, Install before the commands, a skills table that says what to say and what you get, commands split into Use and Maintain, a claim-marked backtest bottom line with the detail tables collapsed, an install step in the contribute block, and a manual install line for agents without Node.
+- Each skill opens with when to use it and what it produces. `/pace-log` also triggers on recording or tracking runs.
+- Site: the lede and reading notes are written into the page by `agentpace site`, so they show without JavaScript. The page gains a promise, a no-install Try-it block, link-preview tags and Try it and Install links.
 
 ### Fixed
 
