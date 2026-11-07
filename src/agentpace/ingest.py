@@ -26,7 +26,7 @@ _FAMILIES = (
     re.compile(r"claude-(?:opus|sonnet|haiku|fable)-\d+(?:-\d{1,2})?(?!\d)"),
     re.compile(r"claude-\d(?:-\d)?-(?:opus|sonnet|haiku)"),
     re.compile(r"gpt-\d+(?:\.\d+)?(?:-[a-z]+)?"),
-    re.compile(r"gemini-\d(?:\.\d)?-[a-z]+"),
+    re.compile(r"gemini-\d(?:\.\d)?-[a-z]+(?:-lite)?"),
     re.compile(r"(?<![a-z0-9])o\d(?:-[a-z]+)?(?![a-z0-9])"),
 )
 

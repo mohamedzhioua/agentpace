@@ -32,7 +32,7 @@ None of the five audited repos handles F2, F3, F6 or F9. Those are where this pr
 
 | Field | Type | Definition |
 |-------|------|------------|
-| `harness` | enum | `claude-code`, or `codex` since 0.5.0 (a Codex turn is one run, and a rollout file is one batch; the run definition lands in section 3 with the adapter). Additive: no existing row changes |
+| `harness` | enum | `claude-code`, or `codex` since 0.5.0 (a Codex turn is one run, and a rollout file is one batch; the run definition lands in section 3 with the adapter), or `gemini-cli` (a Gemini CLI turn is one run, and a session file is one batch; a draft adapter built from upstream source, not yet verified on real sessions, section 3). Additive: no existing row changes |
 | `model` | pattern | Normalized public family such as `claude-opus-5-5`. Anything else, such as a Bedrock ARN or an internal proxy name, becomes `other` because those can leak account or customer names |
 | `effort` | enum, optional | `low`, `medium`, `high`, `xhigh` or `max`, as Claude Code records it in `.meta.json`. Omitted when unset, and any other value is dropped by the adapter. Not a predictor unless it wins a backtest (added in 0.2.0) |
 | `task_kind` | enum | `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other` |
@@ -95,6 +95,14 @@ The Claude Code adapter reads `subagents/**/agent-*.jsonl` and the sibling `.met
   - **Skipped runs (adapter version 2, 0.6.0).** A turn whose model is `codex-auto-review` is Codex's automatic approval check on a command. In the maintainer's history these took 3 s at the median and called no tool. They are not tasks anyone plans, so they are skipped and counted in `skipped runs`, never rows. Version 1 emitted them as reviews. `skipped files` and `skipped runs` are counted on a cold ingest only, because the cache stores runs and not counters, so on a warm cache a file whose turns were all skipped counts as one empty run.
   - **Subagent threads** are their own batch, so `parallel_agents` is 1 for Codex rows.
   - **What is copied.** A projection copies only record and event types, timestamps, turn ids, epoch times, the model, an effort from the enum, an error flag, an abort reason from a fixed set, item types and a completed/failed status, two token counters, the session id, a fork flag and the session source reduced to a fixed word. The working folder is a hash input for `project`, kept in memory and the local cache as Claude Code folder names are, and never in a row. Project pseudonyms do not join across harnesses, and rollouts without a working folder share one project pseudonym. Only the exact event names `task_started` and `task_complete` are read, so a turn can never open twice under two names.
+- **Gemini CLI (draft).** `adapters/gemini_cli.py` reads `~/.gemini/tmp/<project>/chats/session-*.jsonl` and subagent files one folder below (`GEMINI_CLI_HOME` moves the home folder). It was built from the upstream source at `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7`, because the tool could not be installed here, and it is not yet verified on real history. Its PR stays a draft labeled "needs real history" until real sessions are reconciled with it by hand. Every format fact in the module cites `file:line` at that commit.
+  - **The format.** One JSON record per line: a metadata record (`sessionId`, `projectHash`), message records (`id`, `timestamp`, `type` of `user`, `gemini`, `info`, `warning` or `error`) and `$set`, `$patch` and `$rewindTo` updates. A message is appended again, whole, whenever its tokens or tool calls change, so each id is merged and counted once. Legacy `.json` files are not read, because resuming one copies its history into a `.jsonl`.
+  - **A run is one agent turn, inferred.** There is no turn event. Tool results are recorded as `user` messages too, and so is context the CLI injects (environment, IDE context, a compression summary). So a `user` message opens a run only when it is not a tool response and a model response comes before the next `user` message. A model response is a `gemini` message with a model, a token count or tool calls. The run lasts until the next opening prompt. A session file is one batch, and a subagent file is its own batch, as Codex threads are.
+  - **Duration.** `_active` over the prompt, each response and each tool call's finish time, with the 900 s cap. Info, warning and error messages, injected context and placeholder replies add no time, since the CLI can write them after the human has been away.
+  - **Counts.** `tool_calls` counts distinct tool-call ids. `edit_calls` counts `replace` and `write_file`, so edits made through a shell command are invisible. `retries` counts calls whose status is `error`. `tokens` sums each response's input minus cached input, plus output; thought and tool-prompt tokens are left out.
+  - **Outcome.** `completed` when the turn's last response asked for no tool. Otherwise `failed` if the turn holds an `error` message, else `unknown`. An interrupted or failed stream is rolled back in the file; the rollback is not replayed, so the work before it still counts.
+  - **Model and effort.** The most frequent model among the turn's responses, else the file's last seen one. Gemini CLI records no effort.
+  - **What is copied.** Record shape, message id, timestamp, message type, whether a user message holds a `functionResponse` part (only its presence is tested), the model, three token counters, and per tool call its id, an edit flag, an error flag and its time. The session id and `projectHash` are hash inputs only. `projectHash` is the CLI's own SHA-256 of the project folder, so the folder itself is never read. Metadata naming two sessions skips the file, and unknown or malformed lines are counted in `unparsed lines`.
 - **Retention.** Claude Code cleans old transcripts (`cleanupPeriodDays`, documented default 30), so `ingest` is incremental and the docs tell users to run it regularly. The transcript format has no official schema, so unknown record types are counted and skipped, never fatal.
 
 Future OpenTelemetry mapping: `claude_code.tool_result.duration_ms`, `claude_code.api_request` (tokens, model) and the `subagent_completed` event, using metadata attributes only. OTel GenAI semantic conventions are still marked Development, so this stays a documented mapping until they settle.
@@ -412,6 +420,14 @@ Fable 5.1 ruled on 2026-11-07.
   - A Codex data change for 2026-W46 once that week has ended. It excludes the maintainer's tooling sessions of 2026-11-07 by a filter it names.
   - Then a presentation pass on the README.
   - Per-user calibration stays deferred.
+
+### Ruling for the Gemini CLI adapter (draft)
+
+Fable 5.1 ruled on 2026-11-08.
+
+- **Built from pinned upstream source.** Gemini CLI could not be installed on the maintainer's machine, so the adapter reads the format from `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7`, and every format fact cites `file:line` there. Fixtures are synthetic and follow that format.
+- **Merges only after real history.** The PR opens as a draft labeled "needs real history". It merges, registered, only when real sessions (completed, interrupted, multi-turn, one with a tool error) are reconciled with its rows by hand. Those scratch rows never enter the seed. Building from source alone is how the Codex adapter first missed the approval-check turns (rulings for 0.6.0).
+- **Run definition.** One agent turn, inferred from the first prompt a model answers up to the next one, because the file has no turn events (section 3).
 
 ## 12. Sources
 
