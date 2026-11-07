@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>agentpace</title>
+<title>agentpace: how long coding agents really take</title>
 <meta name="description" content="How long coding agents really take, from real runs. Median, P75 and P90 by model, task kind and risk.">
 <style>
   :root {
@@ -152,6 +152,7 @@
   <main>
     <h1>How long coding agents really take</h1>
     <p class="lede" id="lede"></p>
+    <p class="lede">The <a href="https://github.com/mohamedzhioua/agentpace#quickstart">agentpace CLI</a> turns these runs into P50/P80/P90 ranges for your own plan of tasks. Logging your runs works with Claude Code subagents today.</p>
 
     <figure style="margin:0">
       <svg class="trace" id="trace" role="img" aria-labelledby="trace-title">
@@ -198,7 +199,7 @@
       <h2 id="reproduce-title">Check it yourself</h2>
       <pre><code>uv tool install git+https://github.com/mohamedzhioua/agentpace
 agentpace ingest                    # your own runs, stored locally
-agentpace estimate plan.json        # P50, P80 and P90 for a plan
+agentpace estimate plan.json        # P50, P80 and P90 for a plan; the README has one to paste
 agentpace share --dry-run           # the exact rows you would contribute</code></pre>
     </section>
   </main>

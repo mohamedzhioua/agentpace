@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentpace"
-description = "Real run times for coding agents: an open dataset, CLI and agent skill that turn run history into P50/P80/P90 ranges."
+description = "How long will your coding-agent work take? P50/P80/P90 ranges from real Claude Code run history: open dataset, stdlib CLI, agent skill."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
