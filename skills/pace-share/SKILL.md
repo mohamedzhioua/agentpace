@@ -7,6 +7,10 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 # Share runs
 
+**Use when** the user explicitly runs `/pace-share` or asks to contribute their runs. Never on your own.
+
+**Produces** a dry-run preview of the exact rows and what they reveal. A file in `data/runs` only after the user says yes. Nothing is ever sent.
+
 Sharing is opt-in. Do nothing here unless the user asked for it.
 
 1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`

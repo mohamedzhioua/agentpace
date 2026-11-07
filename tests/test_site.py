@@ -1,3 +1,4 @@
+import html
 import json
 import re
 import unittest
@@ -69,6 +70,32 @@ class Embedding(unittest.TestCase):
         self.assertNotIn("</script><b>", result)
 
 
+class Prerender(unittest.TestCase):
+    def page(self):
+        return (
+            '<p id="lede"></p><figcaption id="trace-note"></figcaption>'
+            '<p id="reading-scope"></p><p id="reading-backtest"></p>'
+            f"{site.START}{{}}{site.END}"
+        )
+
+    def data(self):
+        return site.payload(Payload().rows(), report_stub())
+
+    def test_sentences_are_written_into_the_page(self):
+        html = site.build(self.page(), self.data())
+        self.assertIn('<p id="lede">Measured from 21 completed subagent runs', html)
+        self.assertIn("from 1 contributor, with heavy", html)
+        self.assertIn("held-out sessions, the P80 for the whole session covered 80%", html)
+
+    def test_is_idempotent(self):
+        once = site.build(self.page(), self.data())
+        self.assertEqual(site.build(once, self.data()), once)
+
+    def test_a_missing_element_is_an_error(self):
+        with self.assertRaises(ValueError):
+            site.build(f"{site.START}{{}}{site.END}", self.data())
+
+
 class Page(unittest.TestCase):
     """The page must stay a single self-contained file."""
 
@@ -104,6 +131,21 @@ class Page(unittest.TestCase):
         start = self.html.index(site.START) + len(site.START)
         data = json.loads(self.html[start : self.html.index(site.END, start)])
         self.assertGreater(len(data["cells"]), 0)
+
+    def test_text_shows_without_javascript(self):
+        for element_id in ("lede", "trace-note", "reading-scope", "reading-backtest"):
+            with self.subTest(element=element_id):
+                match = re.search(rf'id="{element_id}"[^>]*>([^<]+)<', self.html)
+                self.assertIsNotNone(match)
+
+    def test_link_previews_carry_the_promise(self):
+        for tag in ('property="og:title"', 'property="og:description"', 'property="og:image"'):
+            self.assertIn(tag, self.html)
+
+    def test_the_try_it_plan_is_the_example_plan(self):
+        match = re.search(r"&lt;&lt;'EOF'\n(.*?)\nEOF", self.html, re.DOTALL)
+        example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
+        self.assertEqual(html.unescape(match.group(1)), example.strip())
 
     def test_jekyll_is_disabled(self):
         self.assertTrue((REPO / "docs" / ".nojekyll").exists())

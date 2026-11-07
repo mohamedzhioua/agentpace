@@ -7,6 +7,10 @@ compatibility: Requires Python 3.10+ and the agentpace CLI. No network access is
 
 # agentpace
 
+**Use when** someone asks how long software work will take, or quotes a timeline in days, weeks or months for work agents will do.
+
+**Produces** a measured P50/P80/P90 range with its critical path, the human part on its own line, and any quoted timeline shown beside it as unverified.
+
 Answer "how long will this take?" with measured ranges from real agent runs, and state the human part on its own. Do not quote human-team timelines, and never give a single number.
 
 This skill triggers on natural-language questions. `/pace-estimate` is the explicit command for a given plan.
