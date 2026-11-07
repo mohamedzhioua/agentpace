@@ -4,6 +4,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.6.2 - 2026-11-07
+
+### Changed
+
+- Waits measured by `agentpace turns` are never shared, in any form: not as records, not binned, not as weekly aggregates. A session's gaps are a timeline of one person's day, public commit times can pin it to the clock, and coarsening leaves sessions unique. The wait is shown only to the person it describes. New tests prove `share` cannot reach the turns file and `validate` rejects one placed among run rows. No behaviour changed.
+
 ## 0.6.1 - 2026-11-07
 
 ### Added

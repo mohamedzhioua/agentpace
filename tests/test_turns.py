@@ -1,5 +1,6 @@
 """`agentpace turns`: waits on the human from main-session timestamps, kept local."""
 
+import ast
 import contextlib
 import io
 import json
@@ -244,6 +245,41 @@ class Isolation(Temp):
         self.assertTrue(paths.turns_file().exists())
         _, with_turns, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.assertEqual(without, with_turns)
+
+    def test_share_cannot_read_turns(self):
+        """Turns are never shared in any form (DESIGN 7), so `share` has no path to the file."""
+        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        self.write_session("s", SESSION)
+        self.run_cli("turns", str(self.projects))
+        self.assertTrue(paths.turns_file().exists())
+        trap = mock.Mock(side_effect=AssertionError("share touched the turns file"))
+        out_dir = str(self.root / "runs")
+        with (
+            mock.patch.object(turns, "read_turns", trap),
+            mock.patch.object(paths, "turns_file", trap),
+        ):
+            for flag in ("--dry-run", "--write"):
+                code, _, err = self.run_cli("share", "--out-dir", out_dir, flag)
+                self.assertEqual(code, 0, err)
+        trap.assert_not_called()
+        source = (Path(cli.__file__).parent / "share.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        imported = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            for alias in node.names
+        } | {node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+        self.assertFalse({name for name in imported if "turns" in name}, imported)
+
+    def test_a_turns_file_under_data_runs_fails_validate(self):
+        self.write_session("s", SESSION)
+        self.run_cli("turns", str(self.projects))
+        runs = self.root / "data" / "runs"
+        runs.mkdir(parents=True)
+        (runs / "turns.jsonl").write_bytes(paths.turns_file().read_bytes())
+        code, _, _ = self.run_cli("validate", str(runs))
+        self.assertNotEqual(code, 0)
 
     def test_a_turn_session_never_equals_a_run_batch(self):
         secret = b"k" * 32

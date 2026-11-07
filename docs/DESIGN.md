@@ -220,6 +220,8 @@ for each draw:
 - `share` is a local file writer, so the DONE WHEN line is met as a ceiling: zero network calls anywhere.
 - Submitting a data pull request is a CC0-1.0 dedication, stated in `CONTRIBUTING.md`.
 
+**Turns stay local, permanently.** `~/.agentpace/turns.jsonl` is never shared in any form: not as records, not binned, not as weekly aggregates. The gap sequence of a session is a relative timeline of one person's working day, and a contributor's public commit timestamps can anchor it to the clock. Coarsening does not help: on the maintainer's history, 78 of 82 sessions stayed unique as an unordered weekly bag of log2-minute bins. An aggregate of one contributor is that contributor, and a published population wait would be read as a constant for the human part, which section 11 forbids. `share` has no code path to the file, and tests prove it.
+
 **CI validation (`validate-data.yml`).**
 
 - Trigger is `pull_request`, never `pull_request_target`, with `contents: read` and actions pinned to commit SHAs. Contributed files are parsed, never executed.
@@ -389,6 +391,10 @@ Fable 5.1 ruled on 2026-11-07, after a local backtest with the maintainer's Code
   - This scope was registered after those results were seen. It is not a pre-registration, and CHANGELOG says so.
   - The forward test is registered now, before any Codex row after 2026-W45 exists: the locked holdout scores every candidate per harness, and the Codex method question is answered there only. No per-harness selection, and no exclusion of cold-start folds.
 - **Codex rows ship (0.6.0).** The maintainer's 211 Codex turns, from adapter version 2, joined the seed. Every moved number is listed in CHANGELOG 0.6.0. `shrunk` stays shipped, by the tie rule, now that `weighted` has the lowest Claude Code loss (1044 against 1047).
+
+### Ruling for 0.6.2
+
+- **Turn data is never shared.** The 0.3.0 ruling kept turn records out of `share` and the seed; this extends it to every derived form, binned or aggregated, and makes it permanent. The grounds are linkage to public commit times, uniqueness under coarsening, and the rule that the human part is never derived, which a population wait would breach as soon as it was multiplied. Deferral is rejected, because no number of contributors removes the first two. The measured wait is shown only to the person it describes, from their own file. Tests pin it: `share` succeeds with every route to the turns file trapped, `share.py` imports nothing named `turns`, and `validate` rejects a turns file placed among the run rows.
 
 ## 12. Sources
 
