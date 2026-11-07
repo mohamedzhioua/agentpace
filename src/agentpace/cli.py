@@ -175,8 +175,18 @@ def _dataset(sources: Sequence[str]) -> list[schema.Row]:
     return rows
 
 
+def _plan_text(args: argparse.Namespace) -> str:
+    if args.example and args.plan is not None:
+        raise ValueError("give a plan or --example, not both")
+    if args.example:
+        return paths.example_plan().read_text(encoding="utf-8")
+    if args.plan is None:
+        raise ValueError("give a plan file, - for stdin, or --example")
+    return sys.stdin.read() if args.plan == "-" else Path(args.plan).read_text(encoding="utf-8")
+
+
 def cmd_estimate(args: argparse.Namespace) -> int:
-    text = sys.stdin.read() if args.plan == "-" else Path(args.plan).read_text(encoding="utf-8")
+    text = _plan_text(args)
     try:
         document = json.loads(text)
     except json.JSONDecodeError:
@@ -491,7 +501,12 @@ def build_parser() -> argparse.ArgumentParser:
     label_cmd.set_defaults(handler=cmd_label)
 
     estimate_cmd = commands.add_parser("estimate", help="P50/P80/P90 for a plan of tasks")
-    estimate_cmd.add_argument("plan", help="tasks JSON file, or - for stdin")
+    estimate_cmd.add_argument("plan", nargs="?", help="tasks JSON file, or - for stdin")
+    estimate_cmd.add_argument(
+        "--example",
+        action="store_true",
+        help="estimate the example plan that ships with agentpace (examples/plan.json)",
+    )
     estimate_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")
     estimate_cmd.add_argument(
         "--method", default=estimate.DEFAULT_METHOD, choices=[m.name for m in estimate.METHODS]

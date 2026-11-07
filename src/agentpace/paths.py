@@ -34,6 +34,12 @@ def seed_dir() -> Path:
     return bundled if bundled.exists() else _REPO_ROOT / "data" / "runs"
 
 
+def example_plan() -> Path:
+    """The plan the README's Try it runs, shipped so it needs no clone."""
+    bundled = _PACKAGE / "_bundled" / "example-plan.json"
+    return bundled if bundled.exists() else _REPO_ROOT / "examples" / "plan.json"
+
+
 def local_runs() -> Path:
     return home() / "runs.jsonl"
 

@@ -51,6 +51,24 @@ class EstimateCommand(unittest.TestCase):
         for marker in ("P50", "P80", "P90", "Critical path", "Effective parallelism"):
             self.assertIn(marker, out)
 
+    def test_example_runs_the_shipped_plan(self):
+        example = Path(__file__).resolve().parent.parent / "examples" / "plan.json"
+        common = ("--data", str(self.data), "--draws", "500")
+        code, by_flag, _ = self.run_cli("estimate", "--example", *common)
+        self.assertEqual(code, 0)
+        _, by_file, _ = self.run_cli("estimate", str(example), *common)
+        self.assertEqual(by_flag, by_file)
+
+    def test_example_and_a_plan_together_is_an_error(self):
+        code, _, err = self.run_cli("estimate", str(self.plan), "--example")
+        self.assertEqual(code, 2)
+        self.assertIn("not both", err)
+
+    def test_no_plan_says_what_to_give(self):
+        code, _, err = self.run_cli("estimate")
+        self.assertEqual(code, 2)
+        self.assertIn("--example", err)
+
     def test_json_output_parses(self):
         _, out, _ = self.run_cli(
             "estimate", str(self.plan), "--data", str(self.data), "--draws", "500", "--json"

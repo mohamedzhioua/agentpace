@@ -11,22 +11,10 @@
 
 ## Try it
 
-With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own. Each task is one agent run:
+With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own:
 
 ```bash
-uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate - <<'EOF'
-{
-  "agent_cap": 3,
-  "model": "claude-opus-5-5",
-  "tasks": [
-    { "id": "schema", "kind": "feature", "risk": "normal" },
-    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
-    { "id": "ui", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
-    { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
-    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
-  ]
-}
-EOF
+uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --example
 ```
 
 ```text
@@ -50,7 +38,23 @@ Warnings:
 <!-- /claim -->
 ```
 
-On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. The same plan is in [examples/plan.json](examples/plan.json). In a plan, `depends_on`, `risk` and `model` are optional. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
+The plan it estimated is [examples/plan.json](examples/plan.json), where each task is one agent run:
+
+```json
+{
+  "agent_cap": 3,
+  "model": "claude-opus-5-5",
+  "tasks": [
+    { "id": "schema", "kind": "feature", "risk": "normal" },
+    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "ui", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
+    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
+  ]
+}
+```
+
+To estimate your own, write a plan like it and run `agentpace estimate plan.json`, or pass `-` to read it from stdin. In a plan, `depends_on`, `risk` and `model` are optional. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
 
 Why a range and not one number? Agent run times have a long tail, so any single number misses most of the time. P50 is a coin flip, and P80 is the one to plan on.
 
@@ -85,7 +89,7 @@ These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Cla
 uv tool install git+https://github.com/mohamedzhioua/agentpace
 ```
 
-`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. After installing, drop the `uvx --from ...` prefix from the command above.
+`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. agentpace is not on PyPI yet, which is why both commands install from git. After installing, drop the `uvx --from ...` prefix from the command above.
 
 Then add the agent skills:
 

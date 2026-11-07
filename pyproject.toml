@@ -4,13 +4,22 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentpace"
-description = "How long will your coding-agent work take? P50/P80/P90 ranges from real Claude Code run history: open dataset, stdlib CLI, agent skill."
+description = "Stop estimating agent work in human weeks. agentpace measures how long coding agents actually take: P50/P80/P90 ranges from real Claude Code and Codex runs, the human part stated apart, never derived. Open CC0 dataset, zero-dependency Python CLI, agent skill."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Zhioua Mohamed" }]
-keywords = ["ai-agents", "estimation", "forecasting", "claude-code", "dataset"]
+keywords = [
+  "ai-agents",
+  "estimation",
+  "forecasting",
+  "claude-code",
+  "dataset",
+  "codex",
+  "coding-agents",
+  "agent-skills",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -47,6 +56,7 @@ packages = ["src/agentpace"]
 "schema/turn.schema.json" = "agentpace/_bundled/turn.schema.json"
 "data/runs" = "agentpace/_bundled/runs"
 "data/LICENSE" = "agentpace/_bundled/DATA-LICENSE"
+"examples/plan.json" = "agentpace/_bundled/example-plan.json"
 
 [tool.ruff]
 line-length = 100
