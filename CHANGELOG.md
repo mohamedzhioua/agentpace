@@ -4,8 +4,27 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.6.0 - 2026-11-07
+
+### Added
+
+- Data: 211 Codex turns from the maintainer, 2026-W44 to W45, in `data/runs/4546788e7930eccd-2026-W44-2026-W45.jsonl`. They use the same contributor as the Claude Code rows, so the dataset is still one person's. 177 completed, 33 failed and 1 unknown. Every Codex exec session is one turn, all are classed `other` x `normal`, and the file holds no approval-check turns. The Claude Code rows are unchanged.
+  - **Numbers that moved.** The shipped method stays `shrunk`. Every README claim that changed, from 0.5.0 to 0.6.0:
+    - completed runs 3,206 to 3,383; sessions 82 to 293; projects 13 to 21; the largest project 71% to 67%; the three largest sessions 48% to 45%; one run in ten took more than 19 min to 20 min.
+    - task P80 coverage, per session, 78.5% (CI 72.7% to 84.2%) to 77.7% (CI 71.4% to 83.8%); per run 89.1% to 88.8%. Pinball 1047 (CI 830 to 1318) to 1047 (CI 831 to 1316). MAPE 511% to 494%, against the global median's 232% to 234%.
+    - weekly P80 per session 67% to 86%, now 66% to 86%; in 2026-W45, 72% to 66%.
+    - pinball gaps: global median +375 to +992, now +373 to +991; human guess +5725 to +7440, now +5725 to +7439.
+    - the project split's P80 coverage 77.8% to 88.9%. That split runs over both harnesses, and the 8 new projects are Codex ones.
+    - places where a baseline won, 9 to 20. The new entries come from the project split and from the leave-one-harness-out split, which now runs.
+    - the example estimate: total P80 6.0 h to 5.9 h, P90 9.1 h to 9.0 h, and the docs task's P90 14 to 13 min.
+    - the portable prompt's `other` row: n 268 to 445, P50 9 to 8 min, P80 33 to 24 min, P90 53 to 43 min.
+  - The whole-session test is unchanged (56 sessions, P80 80%), because no Codex session has 5 runs.
+  - **Why Claude Code numbers moved at all.** Codex rows train every candidate. At the `kind` and `kind` x `risk` levels they join the `other` x `normal` cell, so the parent that sparse Claude `other` cells shrink toward shifted. On the selection folds, the losses moved from global 1272, kind 1480, backoff 1370, shrunk 1047, weighted 1050 to 1276, 1496, 1364, 1047 and 1044. `weighted` is now lowest, and `shrunk` stays shipped by the tie rule, inside the interval (-17 to +24).
+  - On Codex alone, on the selection folds, `shrunk` scored 1092 against the global median's 1240, with P80 coverage of 96%. Pooled, the rule would pick `global` (856, against 1078 for `shrunk`). That is printed in the report and not shipped.
+
 ### Changed
 
+- The run chart, the site and the README say "agent runs" rather than "subagent runs", and the Limitations section says two harnesses, one person.
 - Backtest: selection, the time-split tables, the week-by-week table, the whole-session test and the locked holdout's headline now score Claude Code sessions only, the population the selection rule was frozen on. Rows from every harness still train the estimator. On the published rows, which are all Claude Code, every number is unchanged and `docs/backtest.json` only gains keys.
   - **This was registered after seeing results, not before.** A local run with the maintainer's Codex rows pooled in had picked `global` over the shipped `shrunk`: 785 against 915 with every Codex turn, when the fixed-rounds baseline (774) would also have beaten the winner, and 856 against 1078 with approval checks skipped, where fixed-rounds (911) did not beat the winner. On Claude Code sessions alone `shrunk` held, at 1047 to 1050. Codex supplied most of the pooled vote because each Codex exec session is one turn, and `global` won on Codex only in the week no Codex row was in training.
   - The pooled result is printed in `docs/backtest.md` under "Pooled, for the record", from its own random stream, and is never shipped.

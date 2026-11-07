@@ -425,7 +425,7 @@ def run_range_chart(rows: Sequence[Row]) -> str:
             p50, p80, p90 = (est.quantile(values, q) for q in est.QUANTILES)
             bars.append(charts.RangeBar(kind, len(values), p50, p80, p90))
     bars.sort(key=lambda bar: bar.p50)
-    return charts.range_chart("How long subagent runs took, by task kind", bars)
+    return charts.range_chart("How long agent runs took, by task kind", bars)
 
 
 def coverage_chart(report: dict[str, Any]) -> str:

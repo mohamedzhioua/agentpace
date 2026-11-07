@@ -1,11 +1,11 @@
 {
   "seed": 20261107,
   "dataset": {
-    "rows": 3219,
-    "completed": 3206,
+    "rows": 3430,
+    "completed": 3383,
     "contributors": 1,
-    "projects": 13,
-    "sessions": 82,
+    "projects": 21,
+    "sessions": 293,
     "weeks": [
       "2026-W40",
       "2026-W41",
@@ -14,47 +14,85 @@
       "2026-W44",
       "2026-W45"
     ],
-    "top_project_share": 71.3,
-    "top_three_session_share": 48.46
+    "top_project_share": 66.91,
+    "top_three_session_share": 45.48
   },
   "selection": {
     "primary_metric": "session-weighted pinball loss, summed over 0.5, 0.8 and 0.9",
     "loss": {
-      "global": 1272.0,
-      "kind": 1480.0,
-      "backoff": 1370.0,
+      "global": 1276.0,
+      "kind": 1496.0,
+      "backoff": 1364.0,
       "shrunk": 1047.0,
-      "weighted": 1050.0
+      "weighted": 1044.0
     },
     "difference_from_best": {
       "global": [
-        111.4,
-        352.9
+        118.1,
+        355.2
       ],
       "kind": [
-        298.8,
-        577.2
+        320.0,
+        596.1
       ],
       "backoff": [
-        159.0,
-        514.1
+        157.2,
+        522.5
       ],
       "shrunk": [
-        0.0,
-        0.0
+        -17.18,
+        24.39
       ],
       "weighted": [
-        -16.18,
-        25.36
+        0.0,
+        0.0
       ]
     },
-    "lowest_loss": "shrunk",
+    "lowest_loss": "weighted",
     "winner": "shrunk",
     "last_week": "2026-W45",
     "harness": "claude-code"
   },
   "pooled_selection": {
-    "status": "same as above (1 harness)"
+    "primary_metric": "session-weighted pinball loss, summed over 0.5, 0.8 and 0.9",
+    "loss": {
+      "global": 855.8,
+      "kind": 1361.0,
+      "backoff": 1019.0,
+      "shrunk": 1078.0,
+      "weighted": 1103.0
+    },
+    "difference_from_best": {
+      "global": [
+        0.0,
+        0.0
+      ],
+      "kind": [
+        434.1,
+        577.5
+      ],
+      "backoff": [
+        87.74,
+        237.7
+      ],
+      "shrunk": [
+        136.8,
+        306.9
+      ],
+      "weighted": [
+        154.1,
+        335.3
+      ]
+    },
+    "lowest_loss": "global",
+    "winner": "global",
+    "status": "ok",
+    "baselines": {
+      "human-guess": 5897.0,
+      "fixed-rounds": 910.8,
+      "rounds-oracle": 3492.0,
+      "global-median": 1381.0
+    }
   },
   "splits": {
     "time": {
@@ -70,121 +108,121 @@
         "pre-run": {
           "global": {
             "row": {
-              "mape": 428.4,
-              "mdape": 196.4,
-              "male": 1.399,
-              "coverage50": 77.65,
+              "mape": 428.3,
+              "mdape": 187.6,
+              "male": 1.39,
+              "coverage50": 76.99,
               "coverage80": 93.14,
-              "coverage90": 97.42,
-              "pinball": 914.8,
-              "width": 9.319,
-              "width80": 4.355
+              "coverage90": 97.46,
+              "pinball": 928.7,
+              "width": 9.745,
+              "width80": 4.719
             },
             "session": {
-              "mape": 596.3,
-              "mdape": 84.52,
-              "male": 1.446,
-              "coverage50": 52.97,
-              "coverage80": 84.06,
-              "coverage90": 95.22,
-              "pinball": 1272.0,
-              "width": 9.465,
-              "width80": 4.485
+              "mape": 609.5,
+              "mdape": 84.75,
+              "male": 1.451,
+              "coverage50": 53.03,
+              "coverage80": 84.04,
+              "coverage90": 95.41,
+              "pinball": 1276.0,
+              "width": 9.628,
+              "width80": 4.617
             }
           },
           "kind": {
             "row": {
-              "mape": 465.9,
-              "mdape": 184.5,
-              "male": 1.395,
-              "coverage50": 76.84,
-              "coverage80": 92.02,
-              "coverage90": 96.69,
-              "pinball": 945.8,
+              "mape": 458.0,
+              "mdape": 175.0,
+              "male": 1.378,
+              "coverage50": 76.53,
+              "coverage80": 91.95,
+              "coverage90": 96.61,
+              "pinball": 942.9,
               "width": 8.825,
               "width80": 4.307
             },
             "session": {
-              "mape": 970.9,
-              "mdape": 89.66,
-              "male": 1.57,
-              "coverage50": 54.04,
-              "coverage80": 81.71,
-              "coverage90": 92.87,
-              "pinball": 1480.0,
-              "width": 8.415,
+              "mape": 1031.0,
+              "mdape": 89.57,
+              "male": 1.572,
+              "coverage50": 54.01,
+              "coverage80": 81.54,
+              "coverage90": 92.94,
+              "pinball": 1496.0,
+              "width": 8.747,
               "width80": 4.307
             }
           },
           "backoff": {
             "row": {
-              "mape": 262.0,
-              "mdape": 78.43,
-              "male": 0.9725,
-              "coverage50": 67.86,
-              "coverage80": 89.75,
+              "mape": 258.4,
+              "mdape": 77.55,
+              "male": 0.9661,
+              "coverage50": 67.21,
+              "coverage80": 89.71,
               "coverage90": 94.14,
-              "pinball": 705.1,
-              "width": 5.257,
-              "width80": 2.849
+              "pinball": 703.6,
+              "width": 5.121,
+              "width80": 2.958
             },
             "session": {
-              "mape": 528.0,
-              "mdape": 85.95,
-              "male": 1.37,
-              "coverage50": 56.11,
-              "coverage80": 78.91,
+              "mape": 521.9,
+              "mdape": 85.79,
+              "male": 1.367,
+              "coverage50": 56.05,
+              "coverage80": 78.89,
               "coverage90": 86.45,
-              "pinball": 1370.0,
-              "width": 5.354,
-              "width80": 3.021
+              "pinball": 1364.0,
+              "width": 5.353,
+              "width80": 3.035
             }
           },
           "shrunk": {
             "row": {
-              "mape": 253.9,
-              "mdape": 76.21,
-              "male": 0.9429,
-              "coverage50": 67.01,
-              "coverage80": 89.13,
+              "mape": 249.3,
+              "mdape": 73.97,
+              "male": 0.9388,
+              "coverage50": 66.36,
+              "coverage80": 88.75,
               "coverage90": 94.26,
-              "pinball": 580.5,
-              "width": 4.865,
-              "width80": 2.86
+              "pinball": 577.3,
+              "width": 4.807,
+              "width80": 2.781
             },
             "session": {
-              "mape": 510.6,
+              "mape": 493.5,
               "mdape": 78.46,
-              "male": 1.281,
-              "coverage50": 52.94,
-              "coverage80": 78.51,
+              "male": 1.279,
+              "coverage50": 52.92,
+              "coverage80": 77.67,
               "coverage90": 87.73,
               "pinball": 1047.0,
               "width": 4.652,
-              "width80": 2.542
+              "width80": 2.54
             }
           },
           "weighted": {
             "row": {
-              "mape": 281.0,
-              "mdape": 83.14,
-              "male": 1.014,
-              "coverage50": 67.48,
-              "coverage80": 88.63,
-              "coverage90": 94.07,
-              "pinball": 591.3,
+              "mape": 280.6,
+              "mdape": 82.6,
+              "male": 1.003,
+              "coverage50": 67.71,
+              "coverage80": 88.59,
+              "coverage90": 94.14,
+              "pinball": 589.1,
               "width": 4.795,
-              "width80": 2.807
+              "width80": 2.771
             },
             "session": {
-              "mape": 597.0,
-              "mdape": 80.26,
-              "male": 1.297,
-              "coverage50": 52.32,
-              "coverage80": 76.19,
-              "coverage90": 86.93,
-              "pinball": 1050.0,
-              "width": 4.688,
+              "mape": 584.1,
+              "mdape": 79.77,
+              "male": 1.293,
+              "coverage50": 52.33,
+              "coverage80": 76.08,
+              "coverage90": 87.76,
+              "pinball": 1044.0,
+              "width": 4.656,
               "width80": 2.603
             }
           },
@@ -263,19 +301,19 @@
           "global-median": {
             "row": {
               "mape": 214.9,
-              "mdape": 94.07,
-              "male": 1.223,
+              "mdape": 94.06,
+              "male": 1.222,
               "coverage50": 64.7,
               "coverage80": 64.7,
               "coverage90": 64.7,
-              "pinball": 836.0,
+              "pinball": 835.7,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 231.5,
+              "mape": 234.3,
               "mdape": 85.98,
-              "male": 1.558,
+              "male": 1.556,
               "coverage50": 33.7,
               "coverage80": 33.7,
               "coverage90": 33.7,
@@ -288,120 +326,120 @@
         "oracle-size": {
           "global": {
             "row": {
-              "mape": 427.8,
-              "mdape": 194.9,
-              "male": 1.398,
-              "coverage50": 77.46,
+              "mape": 423.2,
+              "mdape": 191.0,
+              "male": 1.39,
+              "coverage50": 77.38,
               "coverage80": 93.14,
-              "coverage90": 97.34,
-              "pinball": 930.6,
-              "width": 9.821,
-              "width80": 4.722
+              "coverage90": 97.38,
+              "pinball": 918.0,
+              "width": 9.622,
+              "width80": 4.577
             },
             "session": {
-              "mape": 602.5,
-              "mdape": 83.74,
-              "male": 1.451,
-              "coverage50": 53.76,
-              "coverage80": 84.05,
-              "coverage90": 95.09,
-              "pinball": 1267.0,
-              "width": 9.624,
-              "width80": 4.612
+              "mape": 596.0,
+              "mdape": 84.13,
+              "male": 1.446,
+              "coverage50": 53.88,
+              "coverage80": 84.03,
+              "coverage90": 95.19,
+              "pinball": 1264.0,
+              "width": 9.538,
+              "width80": 4.538
             }
           },
           "kind": {
             "row": {
-              "mape": 318.6,
-              "mdape": 98.49,
-              "male": 1.129,
+              "mape": 317.8,
+              "mdape": 96.34,
+              "male": 1.116,
               "coverage50": 73.1,
-              "coverage80": 90.52,
-              "coverage90": 95.11,
-              "pinball": 773.1,
+              "coverage80": 90.87,
+              "coverage90": 95.3,
+              "pinball": 756.1,
               "width": 5.764,
-              "width80": 3.241
+              "width80": 3.263
             },
             "session": {
-              "mape": 599.4,
-              "mdape": 89.37,
-              "male": 1.504,
-              "coverage50": 54.25,
-              "coverage80": 79.48,
-              "coverage90": 89.08,
-              "pinball": 1412.0,
-              "width": 6.501,
-              "width80": 3.517
+              "mape": 650.4,
+              "mdape": 90.3,
+              "male": 1.516,
+              "coverage50": 55.8,
+              "coverage80": 79.47,
+              "coverage90": 89.03,
+              "pinball": 1423.0,
+              "width": 6.452,
+              "width80": 3.494
             }
           },
           "backoff": {
             "row": {
-              "mape": 272.8,
-              "mdape": 78.62,
-              "male": 1.001,
-              "coverage50": 66.9,
-              "coverage80": 89.25,
-              "coverage90": 94.76,
-              "pinball": 725.8,
-              "width": 4.87,
-              "width80": 2.821
+              "mape": 277.9,
+              "mdape": 80.19,
+              "male": 1.004,
+              "coverage50": 67.71,
+              "coverage80": 89.67,
+              "coverage90": 95.18,
+              "pinball": 709.9,
+              "width": 4.953,
+              "width80": 2.843
             },
             "session": {
-              "mape": 524.8,
-              "mdape": 88.58,
-              "male": 1.461,
-              "coverage50": 54.42,
-              "coverage80": 79.03,
-              "coverage90": 88.41,
-              "pinball": 1375.0,
+              "mape": 590.3,
+              "mdape": 89.45,
+              "male": 1.478,
+              "coverage50": 55.8,
+              "coverage80": 79.22,
+              "coverage90": 88.53,
+              "pinball": 1382.0,
               "width": 6.272,
-              "width80": 3.407
+              "width80": 3.394
             }
           },
           "shrunk": {
             "row": {
-              "mape": 157.1,
-              "mdape": 63.9,
-              "male": 0.8313,
-              "coverage50": 61.5,
-              "coverage80": 86.71,
-              "coverage90": 93.68,
-              "pinball": 485.1,
+              "mape": 156.7,
+              "mdape": 62.92,
+              "male": 0.8311,
+              "coverage50": 61.35,
+              "coverage80": 86.47,
+              "coverage90": 93.72,
+              "pinball": 486.9,
               "width": 4.18,
               "width80": 2.477
             },
             "session": {
-              "mape": 276.8,
-              "mdape": 78.35,
-              "male": 1.194,
-              "coverage50": 50.29,
-              "coverage80": 74.44,
-              "coverage90": 86.69,
-              "pinball": 968.4,
+              "mape": 278.7,
+              "mdape": 78.19,
+              "male": 1.196,
+              "coverage50": 50.35,
+              "coverage80": 74.54,
+              "coverage90": 86.8,
+              "pinball": 964.0,
               "width": 4.18,
               "width80": 2.477
             }
           },
           "weighted": {
             "row": {
-              "mape": 170.8,
-              "mdape": 67.57,
-              "male": 0.8677,
-              "coverage50": 62.43,
-              "coverage80": 87.28,
-              "coverage90": 93.83,
-              "pinball": 500.0,
+              "mape": 171.6,
+              "mdape": 68.34,
+              "male": 0.8694,
+              "coverage50": 62.58,
+              "coverage80": 87.13,
+              "coverage90": 93.95,
+              "pinball": 500.1,
               "width": 4.228,
-              "width80": 2.478
+              "width80": 2.523
             },
             "session": {
-              "mape": 352.9,
-              "mdape": 79.76,
-              "male": 1.225,
-              "coverage50": 52.34,
+              "mape": 355.9,
+              "mdape": 79.29,
+              "male": 1.223,
+              "coverage50": 52.27,
               "coverage80": 75.27,
-              "coverage90": 86.07,
-              "pinball": 997.4,
+              "coverage90": 86.41,
+              "pinball": 990.5,
               "width": 4.116,
               "width80": 2.478
             }
@@ -481,19 +519,19 @@
           "global-median": {
             "row": {
               "mape": 214.9,
-              "mdape": 94.07,
-              "male": 1.223,
+              "mdape": 94.06,
+              "male": 1.222,
               "coverage50": 64.7,
               "coverage80": 64.7,
               "coverage90": 64.7,
-              "pinball": 836.0,
+              "pinball": 835.7,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 231.5,
+              "mape": 234.3,
               "mdape": 85.98,
-              "male": 1.558,
+              "male": 1.556,
               "coverage50": 33.7,
               "coverage80": 33.7,
               "coverage90": 33.7,
@@ -506,37 +544,37 @@
       },
       "intervals": {
         "coverage50": [
-          44.22,
-          61.62
+          44.19,
+          61.64
         ],
         "coverage80": [
-          72.67,
-          84.25
+          71.42,
+          83.83
         ],
         "coverage90": [
           83.1,
           92.05
         ],
         "pinball": [
-          830.5,
-          1318.0
+          830.9,
+          1316.0
         ],
         "rival_minus_ours": {
           "human-guess": [
             5725.0,
-            7440.0
+            7439.0
           ],
           "fixed-rounds": [
-            74.78,
-            467.4
+            74.59,
+            466.9
           ],
           "rounds-oracle": [
             2777.0,
-            4133.0
+            4132.0
           ],
           "global-median": [
-            374.6,
-            991.7
+            373.1,
+            991.2
           ]
         }
       },
@@ -568,10 +606,10 @@
           "period": "selection",
           "sessions": 13,
           "rows": 1645,
-          "coverage80_session": 66.9,
-          "coverage80_row": 94.41,
-          "width": 5.247,
-          "pinball": 1226.0,
+          "coverage80_session": 65.83,
+          "coverage80_row": 93.8,
+          "width": 5.206,
+          "pinball": 1237.0,
           "median_pinball": 2193.0
         },
         {
@@ -579,232 +617,232 @@
           "period": "selection",
           "sessions": 8,
           "rows": 96,
-          "coverage80_session": 71.95,
+          "coverage80_session": 65.89,
           "coverage80_row": 60.42,
-          "width": 6.664,
-          "pinball": 2002.0,
-          "median_pinball": 2941.0
+          "width": 6.648,
+          "pinball": 1986.0,
+          "median_pinball": 2935.0
         }
       ]
     },
     "project": {
       "status": "ok",
-      "folds": 8,
-      "rows": 3161,
+      "folds": 9,
+      "rows": 3298,
       "tracks": {
         "pre-run": {
           "global": {
             "row": {
-              "mape": 491.2,
-              "mdape": 249.1,
-              "male": 1.548,
-              "coverage50": 78.17,
-              "coverage80": 91.14,
-              "coverage90": 94.78,
-              "pinball": 1015.0,
-              "width": 8.157,
-              "width80": 4.179
+              "mape": 481.6,
+              "mdape": 231.1,
+              "male": 1.526,
+              "coverage50": 75.5,
+              "coverage80": 90.87,
+              "coverage90": 94.82,
+              "pinball": 1013.0,
+              "width": 8.285,
+              "width80": 4.285
             },
             "session": {
-              "mape": 354.5,
-              "mdape": 87.95,
-              "male": 1.527,
-              "coverage50": 45.63,
-              "coverage80": 71.87,
-              "coverage90": 81.76,
-              "pinball": 1583.0,
-              "width": 7.869,
-              "width80": 4.047
+              "mape": 175.5,
+              "mdape": 65.54,
+              "male": 1.123,
+              "coverage50": 27.88,
+              "coverage80": 79.19,
+              "coverage90": 90.77,
+              "pinball": 1013.0,
+              "width": 7.911,
+              "width80": 4.072
             }
           },
           "kind": {
             "row": {
-              "mape": 925.3,
-              "mdape": 196.1,
-              "male": 1.727,
-              "coverage50": 74.06,
-              "coverage80": 90.22,
-              "coverage90": 95.1,
-              "pinball": 1115.0,
-              "width": 5.759,
-              "width80": 3.531
+              "mape": 898.0,
+              "mdape": 171.1,
+              "male": 1.681,
+              "coverage50": 73.35,
+              "coverage80": 90.96,
+              "coverage90": 95.54,
+              "pinball": 1141.0,
+              "width": 5.669,
+              "width80": 3.462
             },
             "session": {
-              "mape": 456.2,
-              "mdape": 87.82,
-              "male": 1.58,
-              "coverage50": 46.91,
-              "coverage80": 74.1,
-              "coverage90": 84.71,
-              "pinball": 1606.0,
-              "width": 7.633,
-              "width80": 3.699
+              "mape": 259.9,
+              "mdape": 70.43,
+              "male": 1.028,
+              "coverage50": 58.65,
+              "coverage80": 91.42,
+              "coverage90": 94.8,
+              "pinball": 1647.0,
+              "width": 11.63,
+              "width80": 4.997
             }
           },
           "backoff": {
             "row": {
-              "mape": 383.8,
-              "mdape": 94.62,
-              "male": 1.23,
-              "coverage50": 66.85,
-              "coverage80": 89.15,
-              "coverage90": 94.78,
-              "pinball": 668.8,
-              "width": 5.088,
-              "width80": 2.943
+              "mape": 376.6,
+              "mdape": 92.16,
+              "male": 1.213,
+              "coverage50": 66.34,
+              "coverage80": 89.6,
+              "coverage90": 95.03,
+              "pinball": 681.3,
+              "width": 5.245,
+              "width80": 3.089
             },
             "session": {
-              "mape": 345.8,
-              "mdape": 77.12,
-              "male": 1.277,
-              "coverage50": 44.83,
-              "coverage80": 76.99,
-              "coverage90": 89.79,
-              "pinball": 1148.0,
-              "width": 5.217,
-              "width80": 3.028
+              "mape": 196.5,
+              "mdape": 58.08,
+              "male": 0.9077,
+              "coverage50": 48.52,
+              "coverage80": 88.76,
+              "coverage90": 96.36,
+              "pinball": 1000.0,
+              "width": 7.048,
+              "width80": 3.88
             }
           },
           "shrunk": {
             "row": {
-              "mape": 419.3,
-              "mdape": 108.2,
-              "male": 1.269,
-              "coverage50": 68.71,
-              "coverage80": 89.75,
-              "coverage90": 95.13,
-              "pinball": 680.0,
-              "width": 5.271,
-              "width80": 2.938
+              "mape": 401.5,
+              "mdape": 95.65,
+              "male": 1.24,
+              "coverage50": 67.4,
+              "coverage80": 89.96,
+              "coverage90": 95.48,
+              "pinball": 682.5,
+              "width": 5.418,
+              "width80": 2.985
             },
             "session": {
-              "mape": 343.3,
-              "mdape": 78.65,
-              "male": 1.244,
-              "coverage50": 46.74,
-              "coverage80": 77.82,
-              "coverage90": 90.31,
-              "pinball": 1143.0,
-              "width": 5.271,
-              "width80": 2.938
+              "mape": 193.2,
+              "mdape": 56.42,
+              "male": 0.8685,
+              "coverage50": 50.23,
+              "coverage80": 88.93,
+              "coverage90": 96.75,
+              "pinball": 989.5,
+              "width": 7.211,
+              "width80": 3.824
             }
           },
           "weighted": {
             "row": {
-              "mape": 456.1,
-              "mdape": 106.4,
-              "male": 1.321,
-              "coverage50": 66.66,
-              "coverage80": 88.61,
-              "coverage90": 94.46,
-              "pinball": 685.7,
-              "width": 4.855,
-              "width80": 2.818
+              "mape": 452.4,
+              "mdape": 93.82,
+              "male": 1.306,
+              "coverage50": 65.01,
+              "coverage80": 88.66,
+              "coverage90": 94.42,
+              "pinball": 691.9,
+              "width": 4.951,
+              "width80": 2.909
             },
             "session": {
-              "mape": 321.2,
-              "mdape": 79.43,
-              "male": 1.263,
-              "coverage50": 45.96,
-              "coverage80": 73.93,
-              "coverage90": 88.29,
-              "pinball": 1159.0,
-              "width": 5.066,
-              "width80": 2.913
+              "mape": 178.8,
+              "mdape": 55.91,
+              "male": 0.8769,
+              "coverage50": 47.02,
+              "coverage80": 84.64,
+              "coverage90": 94.57,
+              "pinball": 884.7,
+              "width": 5.919,
+              "width80": 3.238
             }
           },
           "human-guess": {
             "row": {
-              "mape": 29640.0,
-              "mdape": 4970.0,
-              "male": 4.261,
-              "coverage50": 99.78,
-              "coverage80": 99.78,
-              "coverage90": 99.78,
-              "pinball": 11420.0,
+              "mape": 28500.0,
+              "mdape": 4515.0,
+              "male": 4.192,
+              "coverage50": 99.79,
+              "coverage80": 99.79,
+              "coverage90": 99.79,
+              "pinball": 11160.0,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 9307.0,
-              "mdape": 1746.0,
-              "male": 3.11,
-              "coverage50": 99.7,
-              "coverage80": 99.7,
-              "coverage90": 99.7,
-              "pinball": 8250.0,
+              "mape": 4627.0,
+              "mdape": 1295.0,
+              "male": 2.776,
+              "coverage50": 99.9,
+              "coverage80": 99.9,
+              "coverage90": 99.9,
+              "pinball": 6237.0,
               "width": 1.0,
               "width80": 1.0
             }
           },
           "fixed-rounds": {
             "row": {
-              "mape": 1519.0,
-              "mdape": 361.5,
-              "male": 1.947,
-              "coverage50": 81.94,
-              "coverage80": 81.94,
-              "coverage90": 81.94,
-              "pinball": 1006.0,
+              "mape": 1461.0,
+              "mdape": 323.5,
+              "male": 1.895,
+              "coverage50": 80.53,
+              "coverage80": 80.53,
+              "coverage90": 80.53,
+              "pinball": 999.5,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 563.3,
-              "mdape": 81.98,
-              "male": 1.29,
-              "coverage50": 56.94,
-              "coverage80": 56.94,
-              "coverage90": 56.94,
-              "pinball": 1504.0,
+              "mape": 268.5,
+              "mdape": 57.04,
+              "male": 0.9076,
+              "coverage50": 51.27,
+              "coverage80": 51.27,
+              "coverage90": 51.27,
+              "pinball": 1087.0,
               "width": 1.0,
               "width80": 1.0
             }
           },
           "rounds-oracle": {
             "row": {
-              "mape": 1518.0,
-              "mdape": 1217.0,
-              "male": 2.549,
-              "coverage50": 99.62,
-              "coverage80": 99.62,
-              "coverage90": 99.62,
-              "pinball": 2376.0,
+              "mape": 1481.0,
+              "mdape": 1169.0,
+              "male": 2.524,
+              "coverage50": 99.64,
+              "coverage80": 99.64,
+              "coverage90": 99.64,
+              "pinball": 2416.0,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 1399.0,
-              "mdape": 1025.0,
-              "male": 2.443,
-              "coverage50": 99.81,
-              "coverage80": 99.81,
-              "coverage90": 99.81,
-              "pinball": 5134.0,
+              "mape": 904.5,
+              "mdape": 647.8,
+              "male": 2.119,
+              "coverage50": 99.93,
+              "coverage80": 99.93,
+              "coverage90": 99.93,
+              "pinball": 3975.0,
               "width": 1.0,
               "width80": 1.0
             }
           },
           "global-median": {
             "row": {
-              "mape": 370.7,
-              "mdape": 154.5,
-              "male": 1.501,
-              "coverage50": 69.98,
-              "coverage80": 69.98,
-              "coverage90": 69.98,
-              "pinball": 870.3,
+              "mape": 419.2,
+              "mdape": 170.1,
+              "male": 1.576,
+              "coverage50": 68.74,
+              "coverage80": 68.74,
+              "coverage90": 68.74,
+              "pinball": 907.8,
               "width": 1.0,
               "width80": 1.0
             },
             "session": {
-              "mape": 167.9,
-              "mdape": 88.42,
-              "male": 1.703,
-              "coverage50": 29.94,
-              "coverage80": 29.94,
-              "coverage90": 29.94,
-              "pinball": 2025.0,
+              "mape": 114.5,
+              "mdape": 84.09,
+              "male": 1.689,
+              "coverage50": 15.75,
+              "coverage80": 15.75,
+              "coverage90": 15.75,
+              "pinball": 1678.0,
               "width": 1.0,
               "width80": 1.0
             }
@@ -816,7 +854,229 @@
       "status": "could not run (1 contributor)"
     },
     "harness": {
-      "status": "could not run (1 harness)"
+      "status": "ok",
+      "folds": 1,
+      "rows": 177,
+      "tracks": {
+        "pre-run": {
+          "global": {
+            "row": {
+              "mape": 76.91,
+              "mdape": 53.85,
+              "male": 0.8069,
+              "coverage50": 25.42,
+              "coverage80": 87.01,
+              "coverage90": 96.61,
+              "pinball": 682.1,
+              "width": 8.279,
+              "width80": 4.226
+            },
+            "session": {
+              "mape": 76.91,
+              "mdape": 53.85,
+              "male": 0.8069,
+              "coverage50": 25.42,
+              "coverage80": 87.01,
+              "coverage90": 96.61,
+              "pinball": 682.1,
+              "width": 8.279,
+              "width80": 4.226
+            }
+          },
+          "kind": {
+            "row": {
+              "mape": 177.6,
+              "mdape": 67.93,
+              "male": 0.7976,
+              "coverage50": 74.01,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 1708.0,
+              "width": 11.32,
+              "width80": 5.098
+            },
+            "session": {
+              "mape": 177.6,
+              "mdape": 67.93,
+              "male": 0.7976,
+              "coverage50": 74.01,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 1708.0,
+              "width": 11.32,
+              "width80": 5.098
+            }
+          },
+          "backoff": {
+            "row": {
+              "mape": 136.9,
+              "mdape": 55.44,
+              "male": 0.7322,
+              "coverage50": 61.02,
+              "coverage80": 95.48,
+              "coverage90": 100.0,
+              "pinball": 988.6,
+              "width": 7.51,
+              "width80": 4.008
+            },
+            "session": {
+              "mape": 136.9,
+              "mdape": 55.44,
+              "male": 0.7322,
+              "coverage50": 61.02,
+              "coverage80": 95.48,
+              "coverage90": 100.0,
+              "pinball": 988.6,
+              "width": 7.51,
+              "width80": 4.008
+            }
+          },
+          "shrunk": {
+            "row": {
+              "mape": 131.0,
+              "mdape": 54.6,
+              "male": 0.7174,
+              "coverage50": 59.32,
+              "coverage80": 99.44,
+              "coverage90": 100.0,
+              "pinball": 1638.0,
+              "width": 15.1,
+              "width80": 6.185
+            },
+            "session": {
+              "mape": 131.0,
+              "mdape": 54.6,
+              "male": 0.7174,
+              "coverage50": 59.32,
+              "coverage80": 99.44,
+              "coverage90": 100.0,
+              "pinball": 1638.0,
+              "width": 15.1,
+              "width80": 6.185
+            }
+          },
+          "weighted": {
+            "row": {
+              "mape": 148.7,
+              "mdape": 57.34,
+              "male": 0.7403,
+              "coverage50": 63.84,
+              "coverage80": 98.31,
+              "coverage90": 100.0,
+              "pinball": 1494.0,
+              "width": 12.08,
+              "width80": 5.185
+            },
+            "session": {
+              "mape": 148.7,
+              "mdape": 57.34,
+              "male": 0.7403,
+              "coverage50": 63.84,
+              "coverage80": 98.31,
+              "coverage90": 100.0,
+              "pinball": 1494.0,
+              "width": 12.08,
+              "width80": 5.185
+            }
+          },
+          "human-guess": {
+            "row": {
+              "mape": 2290.0,
+              "mdape": 1326.0,
+              "male": 2.71,
+              "coverage50": 100.0,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 5198.0,
+              "width": 1.0,
+              "width80": 1.0
+            },
+            "session": {
+              "mape": 2290.0,
+              "mdape": 1326.0,
+              "male": 2.71,
+              "coverage50": 100.0,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 5198.0,
+              "width": 1.0,
+              "width80": 1.0
+            }
+          },
+          "fixed-rounds": {
+            "row": {
+              "mape": 116.2,
+              "mdape": 48.82,
+              "male": 0.6956,
+              "coverage50": 56.5,
+              "coverage80": 56.5,
+              "coverage90": 56.5,
+              "pinball": 744.9,
+              "width": 1.0,
+              "width80": 1.0
+            },
+            "session": {
+              "mape": 116.2,
+              "mdape": 48.82,
+              "male": 0.6956,
+              "coverage50": 56.5,
+              "coverage80": 56.5,
+              "coverage90": 56.5,
+              "pinball": 744.9,
+              "width": 1.0,
+              "width80": 1.0
+            }
+          },
+          "rounds-oracle": {
+            "row": {
+              "mape": 659.9,
+              "mdape": 590.9,
+              "male": 1.971,
+              "coverage50": 100.0,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 3071.0,
+              "width": 1.0,
+              "width80": 1.0
+            },
+            "session": {
+              "mape": 659.9,
+              "mdape": 590.9,
+              "male": 1.971,
+              "coverage50": 100.0,
+              "coverage80": 100.0,
+              "coverage90": 100.0,
+              "pinball": 3071.0,
+              "width": 1.0,
+              "width80": 1.0
+            }
+          },
+          "global-median": {
+            "row": {
+              "mape": 75.52,
+              "mdape": 79.76,
+              "male": 1.601,
+              "coverage50": 7.345,
+              "coverage80": 7.345,
+              "coverage90": 7.345,
+              "pinball": 1326.0,
+              "width": 1.0,
+              "width80": 1.0
+            },
+            "session": {
+              "mape": 75.52,
+              "mdape": 79.76,
+              "male": 1.601,
+              "coverage50": 7.345,
+              "coverage80": 7.345,
+              "coverage90": 7.345,
+              "pinball": 1326.0,
+              "width": 1.0,
+              "width80": 1.0
+            }
+          }
+        }
+      }
     }
   },
   "locked": {
@@ -831,6 +1091,11 @@
         "rows": 3219,
         "completed": 3206,
         "sessions": 82
+      },
+      "codex": {
+        "rows": 211,
+        "completed": 177,
+        "sessions": 211
       }
     },
     "selection_folds": {
@@ -839,9 +1104,18 @@
         "rows": 2595,
         "pinball": 1047.0,
         "median_pinball": 1719.0,
-        "coverage80_session": 78.51,
-        "coverage80_row": 89.13,
+        "coverage80_session": 77.67,
+        "coverage80_row": 88.75,
         "width": 4.652
+      },
+      "codex": {
+        "sessions": 177,
+        "rows": 177,
+        "pinball": 1092.0,
+        "median_pinball": 1240.0,
+        "coverage80_session": 96.05,
+        "coverage80_row": 96.05,
+        "width": 10.4
       }
     }
   },
@@ -861,9 +1135,9 @@
         "width80": 1.983
       },
       "sum-of-medians": {
-        "mape": 85.31,
+        "mape": 85.3,
         "mdape": 90.08,
-        "male": 2.249,
+        "male": 2.247,
         "coverage50": 5.357,
         "coverage80": 5.357,
         "coverage90": 5.357,
@@ -891,8 +1165,8 @@
       ],
       "rival_minus_ours": {
         "sum-of-medians": [
-          7272.0,
-          31180.0
+          7271.0,
+          31170.0
         ]
       }
     }
@@ -905,7 +1179,7 @@
       "metric": "coverage80",
       "baseline": "fixed-rounds",
       "baseline_value": 82.16,
-      "agentpace_value": 89.13
+      "agentpace_value": 88.75
     },
     {
       "split": "time",
@@ -914,7 +1188,7 @@
       "metric": "mape",
       "baseline": "global-median",
       "baseline_value": 214.9,
-      "agentpace_value": 253.9
+      "agentpace_value": 249.3
     },
     {
       "split": "time",
@@ -922,8 +1196,8 @@
       "weighting": "session",
       "metric": "mape",
       "baseline": "global-median",
-      "baseline_value": 231.5,
-      "agentpace_value": 510.6
+      "baseline_value": 234.3,
+      "agentpace_value": 493.5
     },
     {
       "split": "time",
@@ -932,7 +1206,7 @@
       "metric": "coverage80",
       "baseline": "fixed-rounds",
       "baseline_value": 82.16,
-      "agentpace_value": 86.71
+      "agentpace_value": 86.47
     },
     {
       "split": "time",
@@ -940,8 +1214,8 @@
       "weighting": "session",
       "metric": "mape",
       "baseline": "global-median",
-      "baseline_value": 231.5,
-      "agentpace_value": 276.8
+      "baseline_value": 234.3,
+      "agentpace_value": 278.7
     },
     {
       "split": "project",
@@ -949,17 +1223,8 @@
       "weighting": "row",
       "metric": "coverage80",
       "baseline": "fixed-rounds",
-      "baseline_value": 81.94,
-      "agentpace_value": 89.75
-    },
-    {
-      "split": "project",
-      "track": "pre-run",
-      "weighting": "row",
-      "metric": "mape",
-      "baseline": "global-median",
-      "baseline_value": 370.7,
-      "agentpace_value": 419.3
+      "baseline_value": 80.53,
+      "agentpace_value": 89.96
     },
     {
       "split": "project",
@@ -967,8 +1232,116 @@
       "weighting": "session",
       "metric": "mape",
       "baseline": "global-median",
-      "baseline_value": 167.9,
-      "agentpace_value": 343.3
+      "baseline_value": 114.5,
+      "agentpace_value": 193.2
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "mape",
+      "baseline": "fixed-rounds",
+      "baseline_value": 116.2,
+      "agentpace_value": 131.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "mdape",
+      "baseline": "fixed-rounds",
+      "baseline_value": 48.82,
+      "agentpace_value": 54.6
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "male",
+      "baseline": "fixed-rounds",
+      "baseline_value": 0.6956,
+      "agentpace_value": 0.7174
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "pinball",
+      "baseline": "fixed-rounds",
+      "baseline_value": 744.9,
+      "agentpace_value": 1638.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "mape",
+      "baseline": "global-median",
+      "baseline_value": 75.52,
+      "agentpace_value": 131.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "row",
+      "metric": "pinball",
+      "baseline": "global-median",
+      "baseline_value": 1326.0,
+      "agentpace_value": 1638.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "mape",
+      "baseline": "fixed-rounds",
+      "baseline_value": 116.2,
+      "agentpace_value": 131.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "mdape",
+      "baseline": "fixed-rounds",
+      "baseline_value": 48.82,
+      "agentpace_value": 54.6
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "male",
+      "baseline": "fixed-rounds",
+      "baseline_value": 0.6956,
+      "agentpace_value": 0.7174
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "pinball",
+      "baseline": "fixed-rounds",
+      "baseline_value": 744.9,
+      "agentpace_value": 1638.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "mape",
+      "baseline": "global-median",
+      "baseline_value": 75.52,
+      "agentpace_value": 131.0
+    },
+    {
+      "split": "harness",
+      "track": "pre-run",
+      "weighting": "session",
+      "metric": "pinball",
+      "baseline": "global-median",
+      "baseline_value": 1326.0,
+      "agentpace_value": 1638.0
     },
     {
       "split": "time",
@@ -976,7 +1349,7 @@
       "weighting": "session",
       "metric": "mape",
       "baseline": "sum-of-medians",
-      "baseline_value": 85.31,
+      "baseline_value": 85.3,
       "agentpace_value": 248.6
     }
   ]
