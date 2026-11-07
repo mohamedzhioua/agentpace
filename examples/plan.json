@@ -1,0 +1,11 @@
+{
+  "agent_cap": 3,
+  "model": "claude-opus-5-5",
+  "tasks": [
+    { "id": "schema", "kind": "feature", "risk": "normal" },
+    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "ui", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
+    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
+  ]
+}

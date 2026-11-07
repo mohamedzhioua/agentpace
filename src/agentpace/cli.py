@@ -8,7 +8,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from agentpace import __version__, ingest, paths, pseudonym, schema
+from agentpace import __version__, estimate, ingest, paths, pseudonym, render, schema
 from agentpace.adapters import ADAPTERS, get_adapter
 
 
@@ -80,6 +80,34 @@ def cmd_label(args: argparse.Namespace) -> int:
     return 0
 
 
+def _dataset(sources: Sequence[str]) -> list[schema.Row]:
+    """Explicit sources, or else the bundled seed rows plus your own ingested rows."""
+    if sources:
+        chosen = [Path(source) for source in sources]
+        for path in chosen:
+            if not path.exists():
+                raise ValueError("a --data path does not exist")
+    else:
+        chosen = [path for path in (paths.seed_dir(), paths.local_runs()) if path.exists()]
+    rows = schema.read_dataset(chosen)
+    if not rows:
+        raise ValueError("no runs found; run `agentpace ingest` or pass --data")
+    return rows
+
+
+def cmd_estimate(args: argparse.Namespace) -> int:
+    text = sys.stdin.read() if args.plan == "-" else Path(args.plan).read_text(encoding="utf-8")
+    try:
+        document = json.loads(text)
+    except json.JSONDecodeError:
+        raise ValueError("the plan is not valid JSON") from None
+    tasks, cap = estimate.tasks_from_json(document)
+    model = estimate.fit(_dataset(args.data), args.method, args.use_size)
+    plan = estimate.estimate(model, tasks, cap, args.draws, args.seed)
+    print(render.plan_json(plan) if args.json else render.plan_text(plan))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentpace",
@@ -116,6 +144,22 @@ def build_parser() -> argparse.ArgumentParser:
     label_cmd.add_argument("--kind", choices=schema.enum("task_kind"))
     label_cmd.add_argument("--risk", choices=schema.enum("risk"))
     label_cmd.set_defaults(handler=cmd_label)
+
+    estimate_cmd = commands.add_parser("estimate", help="P50/P80/P90 for a plan of tasks")
+    estimate_cmd.add_argument("plan", help="tasks JSON file, or - for stdin")
+    estimate_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")
+    estimate_cmd.add_argument(
+        "--method", default=estimate.DEFAULT_METHOD, choices=[m.name for m in estimate.METHODS]
+    )
+    estimate_cmd.add_argument(
+        "--use-size",
+        action="store_true",
+        help="use size: an oracle track, because stored size is measured after a run",
+    )
+    estimate_cmd.add_argument("--draws", type=int, default=estimate.DEFAULT_DRAWS)
+    estimate_cmd.add_argument("--seed", type=int, default=estimate.DEFAULT_SEED)
+    estimate_cmd.add_argument("--json", action="store_true", help="machine-readable output")
+    estimate_cmd.set_defaults(handler=cmd_estimate)
     return parser
 
 
