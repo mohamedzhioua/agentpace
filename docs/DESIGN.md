@@ -243,7 +243,7 @@ for each draw:
 
 | Date | Host and model | How a trigger was detected | Positives | Near misses |
 |---|---|---|---|---|
-| 2026-11-07 | Claude Code 2.1.319, Sonnet 5.5 | a Skill call for `agentpace` in `claude -p` stream JSON | 6 of 6 | 0 of 3 |
+| 2026-11-07 | Claude Code (CLI version not recorded), Sonnet 5.5 | a Skill call for `agentpace` in `claude -p` stream JSON | 6 of 6 | 0 of 3 |
 | 2026-11-07 | Claude Code 2.1.319, Opus 5.5 | the same | 6 of 6 | 0 of 3 |
 | 2026-11-07 | Claude Code 2.1.319, Haiku 5.5 | the same | 6 of 6 | 0 of 3 |
 | 2026-11-07 | Codex CLI 0.164.0, gpt-6-sol at high effort, skills in the project's `.agents/skills/` | a command in the `codex exec --ephemeral --json` events that reads `agentpace/SKILL.md` | 6 of 6 | 1 of 3 |
