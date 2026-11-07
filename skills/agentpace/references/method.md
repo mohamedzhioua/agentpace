@@ -12,6 +12,6 @@ Use this page to answer questions about the method. It is not needed for a routi
 
 **What is measured.** Time an agent ran, with idle gaps over 900 seconds clipped.
 
-**The human part.** Review, testing, decisions and waiting between agent turns are not measured yet. Every estimate prints them on their own line as "not measured" and keeps them out of the total. No multiplier turns agent time into human time, so none is applied. A human-scale quote such as "three weeks" is shown beside the range as unverified, never converted.
+**The human part.** Review, testing, decisions and waiting between agent turns stay out of the total. Every estimate prints them on their own line. They read "not measured" unless `agentpace turns` has measured the user's own wait per human turn from their main-session timestamps. That measurement is elapsed time, not effort, and is kept local. No multiplier turns agent time into human time, so none is applied. A human-scale quote such as "three weeks" is shown beside the range as unverified, never converted.
 
 **How far to trust it.** See `docs/backtest.md`. Every number there is regenerated from the published rows by `agentpace backtest`.

@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +17,10 @@ class EstimateCommand(unittest.TestCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         self.root = Path(folder.name)
+        # Keep the user's own measured waits out of these results.
+        patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
+        patch.start()
+        self.addCleanup(patch.stop)
         self.data = self.root / "runs.jsonl"
         schema.write_rows(self.data, dataset())
         self.plan = self.root / "plan.json"

@@ -427,6 +427,13 @@ class HumanPart:
 
     status: str = "not measured"
     included_in_total: bool = False
+    # Filled only from the user's own history by `agentpace turns`, never from agent time.
+    source: str | None = None
+    per_turn_p50: float | None = None
+    per_turn_p80: float | None = None
+    per_turn_p90: float | None = None
+    gaps: int | None = None
+    sessions: int | None = None
 
 
 @dataclass(frozen=True)
@@ -505,6 +512,7 @@ def estimate(
     agent_cap: int,
     draws: int = DEFAULT_DRAWS,
     seed: int = DEFAULT_SEED,
+    human: HumanPart | None = None,
 ) -> PlanRange:
     """Simulate a plan. Every result is a range, so no single number can be misread as a promise."""
     if agent_cap < 1:
@@ -618,6 +626,7 @@ def estimate(
         draws=draws,
         seed=seed,
         warnings=tuple(notes),
+        human=human or HumanPart(),
     )
 
 

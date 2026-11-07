@@ -24,6 +24,7 @@ from agentpace import (
     schema,
     share,
     site,
+    turns,
     validate,
 )
 from agentpace.adapters import ADAPTERS, get_adapter
@@ -181,8 +182,59 @@ def cmd_estimate(args: argparse.Namespace) -> int:
         raise ValueError("the plan is not valid JSON") from None
     tasks, cap = estimate.tasks_from_json(document)
     model = estimate.fit(_dataset(args.data), args.method, args.use_size)
-    plan = estimate.estimate(model, tasks, cap, args.draws, args.seed)
+    if args.turns and not Path(args.turns).exists():
+        raise ValueError("the turns file does not exist")
+    human = _human_part(Path(args.turns) if args.turns else paths.turns_file())
+    plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
     print(render.plan_json(plan) if args.json else render.plan_text(plan))
+    return 0
+
+
+def _human_part(store: Path) -> estimate.HumanPart:
+    """The user's own waits per human turn, if `agentpace turns` has measured them."""
+    summary = turns.summarize(turns.read_turns(store))
+    if summary is None:
+        return estimate.HumanPart()
+    return estimate.HumanPart(
+        status="measured",
+        source="your history, local",
+        per_turn_p50=summary.p50,
+        per_turn_p80=summary.p80,
+        per_turn_p90=summary.p90,
+        gaps=summary.gaps,
+        sessions=summary.sessions,
+    )
+
+
+def cmd_turns(args: argparse.Namespace) -> int:
+    path = Path(args.path) if args.path else get_adapter("claude-code").default_path()
+    if not path.exists():
+        raise ValueError("the transcript path does not exist")
+    store = Path(args.out) if args.out else paths.turns_file()
+    report_lines = turns.update(path, store, pseudonym.load_secret(paths.home())).lines()
+    for line in report_lines:
+        print(line, file=sys.stderr)
+    summary = turns.summarize(turns.read_turns(store))
+    if summary is None:
+        print("No waits on you were found, so the human part stays not measured.")
+        return 0
+    print(
+        f"Waiting on you, from your history (local): {summary.gaps} gaps between agent turns "
+        f"in {summary.sessions} sessions."
+    )
+    print(
+        f"Per human turn: P50 {render.duration(summary.p50)}, P80 {render.duration(summary.p80)}, "
+        f"P90 {render.duration(summary.p90)}. {summary.over_hour:.0%} of gaps were over 1 h."
+    )
+    print(
+        "Median share of a session's elapsed time spent waiting on you: "
+        f"{summary.waiting_share:.0%}."
+    )
+    print(
+        "A gap runs from the agent's last record to the next prompt you typed, so it holds "
+        "review, testing, decisions and everything else between turns, breaks included. "
+        "It is elapsed time, not effort. It is kept on this machine and never shared."
+    )
     return 0
 
 
@@ -358,7 +410,17 @@ def build_parser() -> argparse.ArgumentParser:
     estimate_cmd.add_argument("--draws", type=int, default=estimate.DEFAULT_DRAWS)
     estimate_cmd.add_argument("--seed", type=int, default=estimate.DEFAULT_SEED)
     estimate_cmd.add_argument("--json", action="store_true", help="machine-readable output")
+    estimate_cmd.add_argument(
+        "--turns", help="waits measured by `agentpace turns` (default: ~/.agentpace/turns.jsonl)"
+    )
     estimate_cmd.set_defaults(handler=cmd_estimate)
+
+    turns_cmd = commands.add_parser(
+        "turns", help="measure how long you wait between agent turns, kept local"
+    )
+    turns_cmd.add_argument("path", nargs="?", help="Claude Code projects folder (default: its own)")
+    turns_cmd.add_argument("--out", help="turns file (default: ~/.agentpace/turns.jsonl)")
+    turns_cmd.set_defaults(handler=cmd_turns)
 
     backtest_cmd = commands.add_parser("backtest", help="evaluate on held-out runs")
     backtest_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")

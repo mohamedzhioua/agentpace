@@ -12,9 +12,17 @@ HUMAN_PART = "Human part (review, testing, decisions, waiting between agent turn
 
 def human_text(human: HumanPart) -> str:
     """The human block. It names the quantity and its status, and never offers a number derived
-    from agent time."""
+    from agent time. A measured form quotes only the user's own waits, per human turn."""
+    status = human.status
+    p50, p80, p90 = human.per_turn_p50, human.per_turn_p80, human.per_turn_p90
+    if p50 is not None and p80 is not None and p90 is not None:
+        status = (
+            f"{human.status} from {human.source}. Waiting on you per human turn: "
+            f"P50 {duration(p50)}, P80 {duration(p80)}, P90 {duration(p90)} "
+            f"({human.gaps} gaps, {human.sessions} sessions); elapsed time, not effort"
+        )
     return (
-        f"{HUMAN_PART}: {human.status}. Not included in the total above. "
+        f"{HUMAN_PART}: {status}. Not included in the total above. "
         "State it separately; do not derive it from the agent time."
     )
 
@@ -70,4 +78,6 @@ def plan_text(plan: PlanRange) -> str:
 
 
 def plan_json(plan: PlanRange) -> str:
-    return json.dumps(dataclasses.asdict(plan), indent=2)
+    data = dataclasses.asdict(plan)
+    data["human"] = {key: value for key, value in data["human"].items() if value is not None}
+    return json.dumps(data, indent=2)

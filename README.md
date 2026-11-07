@@ -100,6 +100,7 @@ Without Node, copy the four folders under [skills/](skills/) into your agent's s
 | `agentpace runs` | List recent runs and their references |
 | `agentpace label <ref>` | Correct the kind or risk of a run |
 | `agentpace share` | Preview exact rows, or write a file to contribute |
+| `agentpace turns` | Measure how long you wait between agent turns, from your own main sessions. Kept local, never shared |
 
 | Maintain | What it does |
 |---|---|
@@ -215,7 +216,7 @@ Each of these does something better than agentpace:
 - **Not a model speed ranking.** People send harder work to stronger models, so a slower row may just mean harder tasks.
 - **`feature` means any implementation work.** Without reading prompts, metadata cannot separate features, bug fixes and refactors. Those kinds stay thin until people label runs.
 - **Claude Code only.** The adapter interface is ready for other harnesses, but no other adapter exists yet.
-- **Agent time only.** Review, testing, decisions and waiting between agent turns are not measured yet. Every estimate says so on its own line, keeps them out of the total, and never derives them from agent time.
+- **Agent time only, unless you measure the rest.** Review, testing, decisions and waiting between agent turns are not in the total. Every estimate says so on its own line and never derives them from agent time. `agentpace turns` measures your own wait per human turn from your main-session timestamps and keeps it on your machine. That is elapsed time, not effort, and it is never added to the total.
 - **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low.
 - **Size is not used by default.** Stored size is measured after a run, so it would leak the answer into the forecast.
 - **The transcript format is undocumented.** It may change, and Claude Code removes old transcripts, so run `agentpace ingest` regularly.

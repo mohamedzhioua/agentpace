@@ -24,6 +24,11 @@ def schema_file() -> Path:
     return bundled if bundled.exists() else _REPO_ROOT / "schema" / "run.schema.json"
 
 
+def turn_schema_file() -> Path:
+    bundled = _PACKAGE / "_bundled" / "turn.schema.json"
+    return bundled if bundled.exists() else _REPO_ROOT / "schema" / "turn.schema.json"
+
+
 def seed_dir() -> Path:
     bundled = _PACKAGE / "_bundled" / "runs"
     return bundled if bundled.exists() else _REPO_ROOT / "data" / "runs"
@@ -31,6 +36,11 @@ def seed_dir() -> Path:
 
 def local_runs() -> Path:
     return home() / "runs.jsonl"
+
+
+def turns_file() -> Path:
+    """Waits on the human, from main sessions. Local only, never shared."""
+    return home() / "turns.jsonl"
 
 
 def labels_file() -> Path:

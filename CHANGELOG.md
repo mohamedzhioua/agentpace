@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-07
+
+### Added
+
+- `agentpace turns` measures how long you wait between agent turns, from the timestamps of your own main Claude Code sessions. A gap runs from the agent's last record to the next prompt a person typed (`turnOrigin: human`). It prints uncapped P50/P80/P90 per human turn with the number of gaps and sessions, the share of gaps over an hour, and the median share of a session spent waiting on you. It is elapsed time, not effort.
+  - Only the record type, the timestamp, `turnOrigin` and a tool-result flag are read from each line.
+  - Records go to `~/.agentpace/turns.jsonl` under the new `schema/turn.schema.json`, and are never shared, never run rows and never in the dataset.
+  - Sessions without `turnOrigin` are skipped and counted.
+- `estimate` reads those waits when they exist and states them in the human part line, from your history, per human turn, outside the total. `--turns` points at another file. JSON `human` gains `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90`, `gaps` and `sessions` when measured.
+
+### Changed
+
+- The `agentpace` skill passes a measured human part on without multiplying it by a guessed number of turns.
+
 ## 0.2.1 - 2026-11-07
 
 ### Added

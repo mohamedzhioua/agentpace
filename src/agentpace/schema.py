@@ -30,14 +30,18 @@ _KNOWN = _ANNOTATIONS | {
 }
 
 
-@lru_cache(maxsize=1)
-def load_schema() -> dict[str, Any]:
-    schema: dict[str, Any] = json.loads(paths.schema_file().read_text(encoding="utf-8"))
+@lru_cache(maxsize=4)
+def load_schema_file(path: Path) -> dict[str, Any]:
+    schema: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     for node in [schema, *schema["properties"].values()]:
         unknown = set(node) - _KNOWN
         if unknown:
             raise ValueError(f"unsupported schema keywords: {sorted(unknown)}")
     return schema
+
+
+def load_schema() -> dict[str, Any]:
+    return load_schema_file(paths.schema_file())
 
 
 def fields() -> tuple[str, ...]:
@@ -66,9 +70,13 @@ def _check_value(name: str, value: Any, rule: dict[str, Any]) -> str | None:
 
 def check_row(row: Any) -> list[str]:
     """Return every schema violation. Messages name fields, never echo values."""
+    return check_against(load_schema(), row)
+
+
+def check_against(schema: dict[str, Any], row: Any) -> list[str]:
+    """`check_row` for any schema this module can read."""
     if not isinstance(row, dict):
         return ["row is not a JSON object"]
-    schema = load_schema()
     properties = schema["properties"]
     errors = [f"{name}: missing" for name in schema["required"] if name not in row]
     errors += [f"unknown field #{i}" for i, name in enumerate(row) if name not in properties]
