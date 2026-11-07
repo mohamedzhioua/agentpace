@@ -254,7 +254,7 @@ class ScoreCommand(RecordCommand):
                 outcome="completed",
                 session="session-1",
             )
-            cache.store(f"/x/agent-{index}.jsonl", [[1, 1]], run)
+            cache.store(f"/x/agent-{index}.jsonl", [[1, 1]], [run])
         cache.save()
 
     def scores(self):

@@ -198,7 +198,7 @@ class ClaudeCodeAdapter:
                         companions=(_meta_path(transcript),),
                     )
 
-    def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> RawRun | None:
+    def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> list[RawRun]:
         times: list[float] = []
         models: Counter[str] = Counter()
         tokens_by_message: dict[str, int] = {}
@@ -238,14 +238,14 @@ class ClaudeCodeAdapter:
                     errors += line.errors
         except OSError:
             stats.unreadable_files += 1
-            return None
+            return []
         if len(times) < 2 or not models:
             stats.empty_runs += 1
-            return None
+            return []
         times.sort()
         active_s, spans = _active(times, idle_cap_s)
         agent_type, finished, effort = _read_meta(_meta_path(source.path))
-        return RawRun(
+        run = RawRun(
             harness=self.name,
             model=models.most_common(1)[0][0],
             start=times[0],
@@ -262,3 +262,4 @@ class ClaudeCodeAdapter:
             session=source.session,
             project=source.project,
         )
+        return [run]

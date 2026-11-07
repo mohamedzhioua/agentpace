@@ -50,7 +50,8 @@ class TempRoot(unittest.TestCase):
     def parse_only(self):
         stats = ParseStats()
         sources = list(ADAPTER.discover(self.root))
-        return [ADAPTER.parse(s, 900, stats) for s in sources], stats
+        # One run per Claude Code transcript, or None when a file holds none.
+        return [next(iter(ADAPTER.parse(s, 900, stats)), None) for s in sources], stats
 
 
 class Parsing(TempRoot):
@@ -159,7 +160,7 @@ class Parsing(TempRoot):
         write_run(self.root, "p", "s", "a", simple_run(0, 10))
         source = next(ADAPTER.discover(self.root))
         with mock.patch("builtins.open", side_effect=OSError("no")):
-            self.assertIsNone(ADAPTER.parse(source, 900, stats))
+            self.assertEqual(ADAPTER.parse(source, 900, stats), [])
         self.assertEqual(stats.unreadable_files, 1)
 
     @unittest.skipUnless(os.name == "nt", "the 260-character limit is Windows only")
@@ -580,10 +581,43 @@ class Adapters(unittest.TestCase):
                 yield from ()
 
             def parse(self, source, idle_cap_s, stats):
-                return None
+                return []
 
         rows, report = ingest.ingest(Fake(), Path("."), SECRET)
         self.assertEqual((rows, report.files), ([], 0))
+
+
+class ManyRunsPerFile(TempRoot):
+    """A file may hold several runs, as a Codex rollout does with several turns."""
+
+    def cache(self):
+        return RunCache(self.root / "cache.json", "claude-code", 1, 900)
+
+    def test_every_run_of_a_file_round_trips_through_the_cache(self):
+        runs = [raw(0, 100), raw(200, 260)]
+        cache = self.cache()
+        cache.store(str(self.root / "gone.jsonl"), [[1, 1]], runs)
+        cache.save()
+        reloaded = self.cache()
+        self.assertEqual(reloaded.lookup(str(self.root / "gone.jsonl"), [[1, 1]]), (True, runs))
+        self.assertEqual(reloaded.runs(), runs)
+        self.assertEqual(reloaded.vanished({("p", "s")}, set()), runs)
+
+    def test_a_file_with_no_runs_is_cached_as_empty(self):
+        cache = self.cache()
+        cache.store(str(self.root / "x.jsonl"), [[1, 1]], [])
+        self.assertEqual(cache.lookup(str(self.root / "x.jsonl"), [[1, 1]]), (True, []))
+
+    def test_an_older_cache_format_is_rebuilt(self):
+        path = self.root / "cache.json"
+        path.write_text(
+            '{"format": 2, "adapter": "claude-code", "adapter_version": 1, "idle_cap_s": 900, '
+            '"entries": {"a": {"stamps": [], "run": null}}}',
+            encoding="utf-8",
+        )
+        cache = self.cache()
+        self.assertTrue(cache.rebuilt)
+        self.assertEqual(cache.entries, {})
 
 
 class Cli(TempRoot):
