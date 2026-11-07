@@ -1,9 +1,10 @@
 """Remember parsed runs, so a second ingest reads only what changed.
 
 A cold ingest of a few thousand transcripts takes minutes, because every line has to be decoded.
-The cache maps each transcript path to its size, its modification time and the `RawRun` parsed
-from it. A file is parsed again when either stamp changes, or when its run had not completed,
-since an unfinished run may still be going.
+The cache maps each transcript path to the size and modification time of the transcript and of
+its companion files, such as Claude Code's `.meta.json`, and to the `RawRun` parsed from them. A
+run is parsed again when any of those stamps changes. An unfinished run can only change by
+writing to one of those files, so it needs no special case.
 
 The cache also keeps runs whose transcript has since been deleted. Claude Code removes old
 transcripts, and a session's surviving runs take their offsets from every sibling's spans, so
@@ -25,6 +26,9 @@ from typing import Any
 from agentpace.adapters.base import RawRun
 
 FORMAT = 1
+
+# [size, mtime_ns] for the transcript and each companion file, or None for a missing companion.
+Stamps = list[list[int] | None]
 
 
 def _to_json(run: RawRun | None) -> dict[str, Any] | None:
@@ -60,24 +64,23 @@ class RunCache:
                 raise ValueError("cache was written by another version")
             entries = stored["entries"]
             for entry in entries.values():
+                if not isinstance(entry["stamps"], list):
+                    raise ValueError("cache entry has no stamps")
                 _from_json(entry["run"])  # reject anything that no longer fits a RawRun
             self.entries = entries
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             self.entries = {}
             self.rebuilt = True
 
-    def lookup(self, path: str, size: int, mtime_ns: int) -> tuple[bool, RawRun | None]:
-        """Return (hit, run). Only an unchanged file whose run completed, or was empty, hits."""
+    def lookup(self, path: str, stamps: Stamps) -> tuple[bool, RawRun | None]:
+        """Return (hit, run). A hit needs the transcript and every companion file unchanged."""
         entry = self.entries.get(path)
-        if entry is None or entry["size"] != size or entry["mtime_ns"] != mtime_ns:
+        if entry is None or entry["stamps"] != stamps:
             return False, None
-        run = _from_json(entry["run"])
-        if run is not None and run.outcome != "completed":
-            return False, None
-        return True, run
+        return True, _from_json(entry["run"])
 
-    def store(self, path: str, size: int, mtime_ns: int, run: RawRun | None) -> None:
-        self.entries[path] = {"size": size, "mtime_ns": mtime_ns, "run": _to_json(run)}
+    def store(self, path: str, stamps: Stamps, run: RawRun | None) -> None:
+        self.entries[path] = {"stamps": stamps, "run": _to_json(run)}
 
     def vanished(self, sessions: set[tuple[str, str]], seen: set[str]) -> list[RawRun]:
         """Cached runs of these sessions whose transcript no longer exists."""

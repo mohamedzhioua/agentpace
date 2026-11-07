@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from collections.abc import Sequence
+from contextlib import suppress
 from pathlib import Path
 
 from agentpace import (
@@ -40,24 +41,78 @@ def _kind_map(pairs: Sequence[str]) -> dict[str, str]:
     return mapping
 
 
+def _ingest_into_store(
+    args: argparse.Namespace, path: Path, wait_s: float
+) -> tuple[ingest.IngestReport, int]:
+    adapter = get_adapter(args.source)
+    out = Path(args.out) if args.out else paths.local_runs()
+    with ingest.store_lock(out, wait_s=wait_s):
+        secret = pseudonym.load_secret(paths.home())
+        labels = ingest.load_labels(paths.labels_file())
+        # A non-default idle cap changes durations and keys, so it neither reads nor feeds the
+        # cache.
+        cache = (
+            RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, args.idle_cap)
+            if args.idle_cap == ingest.DEFAULT_IDLE_CAP_S
+            else None
+        )
+        rows, report = ingest.ingest(
+            adapter, path, secret, args.idle_cap, _kind_map(args.kind_map), labels, cache=cache
+        )
+        return report, ingest.merge_into(out, rows)
+
+
+def hook_session(payload_text: str) -> Path | None:
+    """The session folder a SubagentStop payload points at, or None.
+
+    Only `agent_transcript_path` is taken from the payload. Other fields, such as the agent's
+    last message, are content and are dropped unread. The whole session is ingested, not the one
+    file, because a run's offset comes from every sibling run in its session.
+    """
+    try:
+        payload = json.loads(payload_text)
+    except ValueError:
+        return None
+    value = payload.get("agent_transcript_path") if isinstance(payload, dict) else None
+    del payload
+    if not isinstance(value, str) or not value:
+        return None
+    parts = Path(value).parts
+    if "subagents" not in parts:
+        return None
+    anchor = parts.index("subagents")
+    if anchor < 3:  # needs a root, a project and a session above it
+        return None
+    folder = Path(*parts[:anchor])
+    return folder if folder.is_dir() else None
+
+
+def _ingest_hook(args: argparse.Namespace) -> int:
+    """Run from a SubagentStop hook. It must never block or fail the agent it runs after.
+
+    So it always exits 0, prints nothing, and gives up quietly when the store is busy: the next
+    ingest picks the run up, since the cache re-reads anything that changed.
+    """
+    with suppress(Exception):  # a hook that raised would show its error in the user's session
+        folder = hook_session(sys.stdin.read())
+        if folder is not None:
+            _ingest_into_store(args, folder, wait_s=5.0)
+    return 0
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
+    if args.hook:
+        return _ingest_hook(args)
     adapter = get_adapter(args.source)
     path = Path(args.path) if args.path else adapter.default_path()
     if not path.exists():
         raise ValueError("the transcript path does not exist")
-    secret = pseudonym.load_secret(paths.home())
-    labels = ingest.load_labels(paths.labels_file())
-    # A non-default idle cap changes durations and keys, so it neither reads nor feeds the cache.
-    cache = (
-        RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, args.idle_cap)
-        if args.idle_cap == ingest.DEFAULT_IDLE_CAP_S
-        else None
-    )
-    rows, report = ingest.ingest(
-        adapter, path, secret, args.idle_cap, _kind_map(args.kind_map), labels, cache=cache
-    )
-    out = Path(args.out) if args.out else paths.local_runs()
-    total = ingest.merge_into(out, rows)
+    try:
+        report, total = _ingest_into_store(args, path, wait_s=30.0)
+    except ingest.StoreBusy as busy:
+        raise ValueError(
+            f"another ingest is writing the store. Try again, or delete {busy} if none is running"
+        ) from None
     for line in report.lines():
         print(line, file=sys.stderr)
     print(f"store now holds:  {total} rows", file=sys.stderr)
@@ -271,6 +326,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="NAME=KIND",
         help="map one of your agent types to a task kind (repeatable)",
+    )
+    ingest_cmd.add_argument(
+        "--hook",
+        action="store_true",
+        help="read a Claude Code SubagentStop payload on stdin and ingest that session quietly",
     )
     ingest_cmd.set_defaults(handler=cmd_ingest)
 

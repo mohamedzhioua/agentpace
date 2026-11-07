@@ -7,12 +7,19 @@ table in `docs/backtest.md`.
 
 from __future__ import annotations
 
+import html
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from xml.sax.saxutils import escape
 
 from agentpace.render import duration
+
+
+def escape(text: str) -> str:
+    """Escape &, < and >, as xml.sax.saxutils.escape does, without importing the network stack
+    that module drags in."""
+    return html.escape(text, quote=False)
+
 
 _STYLE = """
 <style>

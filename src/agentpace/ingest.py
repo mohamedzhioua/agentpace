@@ -8,7 +8,8 @@ import re
 import time
 from bisect import bisect_right
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -205,6 +206,14 @@ def build_rows(
     return rows, dropped, withheld
 
 
+def _stamp(path: str) -> list[int] | None:
+    try:
+        stamp = os.stat(path)
+    except OSError:
+        return None
+    return [stamp.st_size, stamp.st_mtime_ns]
+
+
 def _parse(
     adapter: Adapter,
     source: Source,
@@ -219,7 +228,8 @@ def _parse(
     except OSError:
         report.parse.unreadable_files += 1
         return None
-    hit, run = cache.lookup(source.path, stamp.st_size, stamp.st_mtime_ns)
+    stamps = [[stamp.st_size, stamp.st_mtime_ns], *map(_stamp, source.companions)]
+    hit, run = cache.lookup(source.path, stamps)
     if hit:
         report.cached += 1
         if run is None:
@@ -230,7 +240,7 @@ def _parse(
     if report.parse.unreadable_files == unreadable:
         # Normalize before storing, so no raw model name (an ARN, a proxy) sits on disk.
         run = run and replace(run, model=normalize_model(run.model))
-        cache.store(source.path, stamp.st_size, stamp.st_mtime_ns, run)
+        cache.store(source.path, stamps, run)
     return run
 
 
@@ -270,3 +280,38 @@ def merge_into(path: Path, rows: Sequence[Row]) -> int:
     existing = schema.read_rows(path) if path.exists() else []
     merged = {schema.dedupe_key(row): row for row in [*existing, *rows]}
     return schema.write_rows(path, (merged[key] for key in sorted(merged)))
+
+
+class StoreBusy(Exception):
+    """Another ingest holds the store."""
+
+
+@contextmanager
+def store_lock(store: Path, wait_s: float = 5.0, stale_s: float = 900.0) -> Iterator[None]:
+    """Hold `<store>.lock` while reading, merging and writing, so a hook and a manual ingest
+    never interleave. A lock older than `stale_s` is taken to be left by a crash. That is longer
+    than a cold ingest takes, so a live holder is never mistaken for a dead one."""
+    lock = store.with_name(store.name + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + wait_s
+    while True:
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            break
+        except FileExistsError:
+            try:
+                age = time.time() - lock.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            if age > stale_s:
+                with suppress(FileNotFoundError):
+                    lock.unlink()
+                continue
+            if time.monotonic() > deadline:
+                raise StoreBusy(str(lock)) from None
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        with suppress(FileNotFoundError):
+            lock.unlink()

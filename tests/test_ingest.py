@@ -408,11 +408,22 @@ class Cache(TempRoot):
         self.assertEqual(calls, 1)
         self.assertIn(50, [row["duration_s"] for row in rows])
 
-    def test_an_unfinished_run_is_parsed_on_every_pass(self):
+    def test_a_settled_unfinished_run_is_not_parsed_again(self):
         write_run(self.history, "p", "s", "u", [user(500), assistant(510, "u1", "Read")])
         self.ingest()
-        _, calls, _ = self.ingest()
+        rows, calls, _ = self.ingest()
+        self.assertEqual(calls, 0)
+        self.assertIn("unknown", [row["outcome"] for row in rows])
+
+    def test_a_meta_file_that_flips_to_finished_is_seen(self):
+        lines = [user(500), assistant(510, "u1", "Read")]
+        transcript = write_run(self.history, "p", "s", "u", lines)
+        self.ingest()
+        meta = transcript.with_suffix(".meta.json")
+        meta.write_text(json.dumps({"agentType": "implementer", "finished": True}), "utf-8")
+        rows, calls, _ = self.ingest()
         self.assertEqual(calls, 1)
+        self.assertNotIn("unknown", [row["outcome"] for row in rows])
 
     def test_a_new_adapter_version_discards_the_cache(self):
         self.ingest()
@@ -580,6 +591,127 @@ class Cli(TempRoot):
         self.run_cli("ingest", str(self.root), "--out", str(store))
         for line in store.read_text(encoding="utf-8").splitlines():
             self.assertIsInstance(json.loads(line), dict)
+
+
+class Hook(TempRoot):
+    """`ingest --hook`, run by Claude Code after each subagent stops."""
+
+    def setUp(self):
+        super().setUp()
+        self.history = self.root / "projects"
+        self.paths = [
+            write_run(self.history, "p", "s", str(i), simple_run(i * 30, 40)) for i in range(3)
+        ]
+        write_run(self.history, "p", "other-session", "x", simple_run(0, 10))
+        self.store = self.root / "home" / "runs.jsonl"
+
+    def hook(self, payload):
+        out, err = io.StringIO(), io.StringIO()
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        env = {"AGENTPACE_HOME": str(self.root / "home")}
+        with (
+            mock.patch.dict(os.environ, env),
+            mock.patch("sys.stdin", io.StringIO(text)),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            code = cli.main(["ingest", "--hook"])
+        return code, out.getvalue() + err.getvalue()
+
+    def payload(self, path, **extra):
+        return {"hook_event_name": "SubagentStop", "agent_transcript_path": str(path), **extra}
+
+    def test_the_hook_ingests_the_whole_session_like_a_full_ingest(self):
+        code, output = self.hook(self.payload(self.paths[1]))
+        self.assertEqual((code, output), (0, ""))
+        full, _ = ingest.ingest(ADAPTER, self.history, pseudonym.load_secret(self.root / "home"))
+        session = {r["batch"] for r in schema.read_rows(self.store)}
+        expected = [r for r in full if r["batch"] in session]
+        self.assertEqual(len(expected), 3)  # only this session, every sibling
+        self.assertEqual(
+            sorted(map(schema.canonical, schema.read_rows(self.store))),
+            sorted(map(schema.canonical, expected)),
+        )
+
+    def test_no_content_from_the_payload_or_transcript_leaks(self):
+        transcript = write_run(
+            self.history,
+            "CANARY_REPO",
+            "CANARY_PATH",
+            "c",
+            [*simple_run(0, 40, "CANARY_TOOL_INPUT"), user(50, is_error=True)],
+            effort="CANARY_EFFORT",
+        )
+        payload = self.payload(transcript, last_assistant_message="CANARY_RESULT CANARY_CODE")
+        code, output = self.hook(payload)
+        self.assertEqual(code, 0)
+        written = self.store.read_text(encoding="utf-8")
+        cache = (self.root / "home" / "cache-claude-code.json").read_text(encoding="utf-8")
+        for canary in CANARIES:
+            self.assertNotIn(canary, output + written)
+        for canary in ("CANARY_RESULT", "CANARY_CODE", "CANARY_TOOL_INPUT", "CANARY_EFFORT"):
+            self.assertNotIn(canary, cache)
+
+    def test_bad_payloads_do_nothing_and_exit_zero(self):
+        for payload in (
+            {"agent_transcript_path": ""},
+            {"agent_transcript_path": str(self.root / "missing" / "subagents" / "a.jsonl")},
+            {"agent_transcript_path": str(self.root / "no-anchor.jsonl")},
+            {"agent_transcript_path": 7},
+            {},
+            [],
+            "not json",
+        ):
+            self.assertEqual(self.hook(payload), (0, ""), payload)
+        self.assertFalse(self.store.exists())
+
+    def test_a_busy_store_is_left_alone(self):
+        self.store.parent.mkdir(parents=True)
+        self.store.with_name("runs.jsonl.lock").touch()
+        with (
+            mock.patch.object(ingest.time, "sleep"),
+            mock.patch.object(ingest.time, "monotonic", side_effect=[0.0, 10.0]),
+        ):
+            self.assertEqual(self.hook(self.payload(self.paths[0])), (0, ""))
+        self.assertFalse(self.store.exists())
+
+
+class StoreLock(TempRoot):
+    def test_a_second_writer_waits_then_gives_up(self):
+        store = self.root / "runs.jsonl"
+        with (
+            ingest.store_lock(store),
+            self.assertRaises(ingest.StoreBusy),
+            ingest.store_lock(store, wait_s=0.1),
+        ):
+            pass
+        with ingest.store_lock(store, wait_s=0.1):  # released, so free again
+            pass
+
+    def test_a_lock_left_by_a_crash_is_taken_over(self):
+        store = self.root / "runs.jsonl"
+        lock = store.with_name("runs.jsonl.lock")
+        lock.touch()
+        os.utime(lock, (0, 0))
+        with ingest.store_lock(store, wait_s=0.1):
+            pass
+        self.assertFalse(lock.exists())
+
+    def test_two_writers_end_with_the_union(self):
+        import threading
+
+        store = self.root / "runs.jsonl"
+
+        def write(offset):
+            with ingest.store_lock(store):
+                ingest.merge_into(store, [synthetic.row(offset_s=offset)])
+
+        threads = [threading.Thread(target=write, args=(i,)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(len(schema.read_rows(store)), 8)
 
 
 if __name__ == "__main__":

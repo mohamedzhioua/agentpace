@@ -106,6 +106,10 @@ def _project(record: Any) -> _Line | None:
     )
 
 
+def _meta_path(transcript: str) -> str:
+    return transcript[: -len(".jsonl")] + ".meta.json"
+
+
 def _read_meta(path: str) -> tuple[str | None, bool, str | None]:
     """Return only `agentType`, `finished` and `effort`. `description` and the rest stay unread.
 
@@ -186,10 +190,12 @@ class ClaudeCodeAdapter:
                 continue
             for file in sorted(files):
                 if file.startswith("agent-") and file.endswith(".jsonl"):
+                    transcript = os.path.join(directory, file)
                     yield Source(
-                        path=os.path.join(directory, file),
+                        path=transcript,
                         session=parts[anchor - 1],
                         project=parts[anchor - 2],
+                        companions=(_meta_path(transcript),),
                     )
 
     def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> RawRun | None:
@@ -238,7 +244,7 @@ class ClaudeCodeAdapter:
             return None
         times.sort()
         active_s, spans = _active(times, idle_cap_s)
-        agent_type, finished, effort = _read_meta(source.path[: -len(".jsonl")] + ".meta.json")
+        agent_type, finished, effort = _read_meta(_meta_path(source.path))
         return RawRun(
             harness=self.name,
             model=models.most_common(1)[0][0],
