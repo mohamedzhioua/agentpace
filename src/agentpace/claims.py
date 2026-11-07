@@ -66,6 +66,12 @@ def values(
         if project["status"] == "ok"
         else "not available"
     )
+    # Defined by rank, never by fold number, because ranks shift as data is added.
+    largest = project.get("without_largest")
+    project_top_harness = largest["harness"] if largest else "not available"
+    project_top_sessions = (
+        f"{largest['sessions']} of {largest['of_sessions']}" if largest else "not available"
+    )
     completed = sorted(row["duration_s"] for row in rows if row["outcome"] == "completed")
     found = report["splits"]["time"]["intervals"]
     plan_found = report["plans"]["intervals"]
@@ -131,6 +137,8 @@ def values(
         "selection_last_week": report["selection"]["last_week"],
         "locked_status": report["locked"]["status"],
         "project_p80": project_p80,
+        "project_top_harness": project_top_harness,
+        "project_top_sessions": project_top_sessions,
         "contributor_split": contributor,
         "loss_count": str(len(report["losses"])),
         "kind_table": _kind_table(rows),

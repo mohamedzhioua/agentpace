@@ -171,7 +171,7 @@ for each draw:
 
 - **Time:** rolling origin. Train on weeks up to W, test on later weeks. A whole session belongs to the week of its first run, because sessions can cross week boundaries and would otherwise land on both sides.
 - **Contributor:** leave one contributor out. With fewer than two contributors it prints "could not run (1 contributor)" and never substitutes another split under this name.
-- **Project:** leave one project out, reported under its own name. It tests generalization across codebases, not across people. It runs over every harness. Codex project pseudonyms never join Claude Code ones, even for the same folder, so one codebase used from both harnesses counts as two projects.
+- **Project:** leave one project out, reported under its own name. It tests generalization across codebases, not across people. It runs over every harness. Codex project pseudonyms never join Claude Code ones, even for the same folder, so one codebase used from both harnesses counts as two projects. Since 0.6.3 the report also shows each held-out project on its own, numbered by rank and never by pseudonym, and the split's session-weighted pinball without the project holding the most held-out sessions, so one project's vote is visible. Both come from the per-fold forecasts the split already draws. The split never chooses the method.
 - **Harness (0.5.0):** leave one harness out. With fewer than two harnesses it prints "could not run (1 harness)". The report also shows each harness on its own: rows, sessions, and the shipped method against the global median on the selection folds. The per-harness tables reuse the selection-fold forecasts already drawn. The split draws its own named streams, like the project split. Neither touches a published number. The estimator does not use the harness. A harness term could only be added as a new candidate appended last, after this split can run. Codex rows join the published seed only through a separate data change that lists every number it moves. With the 0.6.0 seed only the Codex-held-out fold runs, because holding out Claude Code leaves fewer than `MIN_TRAIN_ROWS` completed rows.
 - **Selection population (0.6.0):** `SELECTION_HARNESS` in `backtest.py` is `claude-code`, the harness the rule was frozen on. Selection, the time-split tables and intervals, the week-by-week table, the whole-session test and the locked holdout's headline score only its sessions. Rows from every harness still train every candidate, because the shipped estimator trains on them too. A dataset without that harness scores all of its rows. The same rule over every harness is printed under "Pooled, for the record" with its own random stream, and never ships. This scope was registered after a local run with the maintainer's Codex rows pooled in had been seen, and section 11 gives that result.
 - **Locked holdout:** `SELECTION_LAST_WEEK` in `backtest.py` is frozen at `2026-W45`. Selection and the headline time-split numbers use only folds up to that week, and selection never re-runs on later ones. Later weeks are forecast with the same per-method random streams, after the selection folds, so they cannot move a published number. They score the shipped method against the baselines in their own section, which prints "not enough data" until at least 20 later sessions have 5 or more completed runs. Below it, every candidate is scored per harness at task level, whatever that status. A harness selection does not score, Codex first, is tested there and nowhere else: whether it would be better served by another method is answered on weeks no method was chosen on. Selection ran on the 0.1.0 seed rows on 2026-11-07, while 2026-W45 was still in progress. Rows from W45 sessions shared later join the W45 selection fold and may move the pooled selection-period figures. They cannot change the shipped method unnoticed, because a test pins the default to the published winner, so a flip fails CI and needs re-registration in `CHANGELOG.md`.
@@ -395,6 +395,21 @@ Fable 5.1 ruled on 2026-11-07, after a local backtest with the maintainer's Code
 ### Ruling for 0.6.2
 
 - **Turn data is never shared.** The 0.3.0 ruling kept turn records out of `share` and the seed; this extends it to every derived form, binned or aggregated, and makes it permanent. The grounds are linkage to public commit times, uniqueness under coarsening, and the rule that the human part is never derived, which a population wait would breach as soon as it was multiplied. Deferral is rejected, because no number of contributors removes the first two. The measured wait is shown only to the person it describes, from their own file. Tests pin it: `share` succeeds with every route to the turns file trapped, `share.py` imports nothing named `turns`, and `validate` rejects a turns file placed among the run rows.
+
+### Rulings for 0.6.3
+
+Fable 5.1 ruled on 2026-11-07.
+
+- **Each project on its own.** The project split's pooled tables hid that one Codex project held 137 of its 212 held-out sessions. Without that project the lowest candidate changes from `weighted` to `shrunk`.
+  - The report lists each held-out project by rank, most held-out sessions first. Ties go to more rows, then to the pseudonym. The pseudonym is never printed.
+  - One generated sentence gives each candidate's loss without the largest project, and says whether the lowest candidate changes.
+  - Everything comes from the forecasts the split already draws. No random number is added, and no published value moves.
+  - README numbers about it are defined by rank ("the largest project"), because ranks shift as data is added.
+- **One table when the weightings agree.** When every held-out session is one run, the session and run weightings are identical and the report prints one table, saying why. "Where agentpace loses" still lists both weightings, so its count does not change.
+- **Roadmap.**
+  - A Codex data change for 2026-W46 once that week has ended. It excludes the maintainer's tooling sessions of 2026-11-07 by a filter it names.
+  - Then a presentation pass on the README.
+  - Per-user calibration stays deferred.
 
 ## 12. Sources
 

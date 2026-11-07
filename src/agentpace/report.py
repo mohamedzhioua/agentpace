@@ -141,6 +141,15 @@ def _split_section(title: str, split: dict[str, Any], track: str, intro: str) ->
         return [f"## {title}", "", f"**{split['status'].capitalize()}.**", ""]
     results = split["tracks"][track]
     lines = [f"## {title}", "", intro, ""]
+    if all(results[name]["session"] == results[name]["row"] for name in _method_names()):
+        lines += [
+            "Each session counts equally, and each run counts equally: every held-out session "
+            "here has the same number of runs, so both weightings give the same table.",
+            "",
+        ]
+        lines += _metric_rows(results, _method_names(), "session")
+        lines.append("")
+        return lines
     lines += ["Each session counts equally:", ""]
     lines += _metric_rows(results, _method_names(), "session")
     lines += ["", "Each run counts equally:", ""]
@@ -274,6 +283,43 @@ def _plan_rows(results: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _project_lines(project: dict[str, Any], winner: str) -> list[str]:
+    """Each held-out project on its own, by rank, so one project's vote is visible."""
+    if "by_project" not in project:
+        return []
+    lines = [
+        "Each project on its own, most held-out sessions first. Projects are numbered by rank, "
+        "not named, so the numbers change as data is added.",
+        "",
+        f"| Project | Harness | Test sessions | Runs | `{winner}` pinball | "
+        "global-median pinball | P80 coverage, per session | P80 coverage, per run | P90/P50 |",
+        "|---:|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for rank, m in enumerate(project["by_project"], start=1):
+        lines.append(
+            f"| {rank} | {m['harness']} | {m['sessions']} | {m['rows']:,} | {m['pinball']:.0f} | "
+            f"{m['median_pinball']:.0f} | {m['coverage80_session']:.1f}% | "
+            f"{m['coverage80_row']:.1f}% | {m['width']:.1f}x |"
+        )
+    largest = project["without_largest"]
+    losses = ", ".join(f"{name} {value:.0f}" for name, value in largest["loss"].items())
+    if largest["lowest"] == largest["lowest_with_it"]:
+        verdict = f"The lowest candidate is still `{largest['lowest']}`."
+    else:
+        verdict = (
+            f"The lowest candidate changes from `{largest['lowest_with_it']}` to "
+            f"`{largest['lowest']}`."
+        )
+    lines += [
+        "",
+        f"Without project {largest['project']} ({largest['sessions']} of "
+        f"{largest['of_sessions']} test sessions), session-weighted pinball: {losses}. "
+        f"{verdict} This split does not choose the method.",
+        "",
+    ]
+    return lines
+
+
 def _harness_section(harness: dict[str, Any], split: dict[str, Any], winner: str) -> list[str]:
     lines = [
         "## By harness",
@@ -385,6 +431,7 @@ def markdown(report: dict[str, Any]) -> str:
             f"Leave one project out, over {splits['project']['folds']} projects. This tests "
             "generalizing to a new codebase, not to a new person.",
         )
+        lines += _project_lines(stored["splits"]["project"], winner)
     else:
         lines += _split_section("Project split", splits["project"], "pre-run", "")
     if splits["contributor"]["status"] == "ok":
