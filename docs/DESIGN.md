@@ -60,6 +60,7 @@ The local project folder name is an input to the `project` HMAC and is never sto
 ```python
 class Adapter(Protocol):
     name: str
+
     def discover(self, path: Path) -> Iterator[Source]: ...
     def parse(self, source: Source) -> RawRun | None: ...
 ```
