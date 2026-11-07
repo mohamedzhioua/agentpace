@@ -95,6 +95,32 @@ class Skills(unittest.TestCase):
         text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("never give a single number", text)
 
+    def test_the_skill_triggers_without_agents_being_named(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        description = text.split("description:", 1)[1].split("\n", 1)[0]
+        self.assertIn("even when agents are not mentioned", description)
+        self.assertIn("days, weeks or months", description)
+        self.assertNotIn("without agents", description)
+        self.assertIn("Re-answer a human quote", text)
+
+    def test_skills_and_prompt_never_derive_the_human_part(self):
+        for path in (
+            SKILLS / "agentpace" / "SKILL.md",
+            SKILLS / "pace-estimate" / "SKILL.md",
+            SKILLS / "agentpace" / "assets" / "portable-prompt.md",
+        ):
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn("Human part" if "prompt" in path.name else "human part", text)
+                self.assertRegex(text, r"[Dd]o not derive")
+
+    def test_portable_prompt_does_not_sum_quantiles(self):
+        text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")
+        self.assertNotIn("P90 values for", text)
+        self.assertIn("<!-- claim:plan_width80 -->", text)
+        self.assertIn("<!-- claim:plan_width -->", text)
+        self.assertIn("rule of thumb", text)
+
     def test_portable_prompt_exists_and_carries_numbers(self):
         text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")
         self.assertIn("<!-- claim:kind_table -->", text)

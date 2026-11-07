@@ -5,7 +5,18 @@ from __future__ import annotations
 import dataclasses
 import json
 
-from agentpace.estimate import PlanRange
+from agentpace.estimate import HumanPart, PlanRange
+
+HUMAN_PART = "Human part (review, testing, decisions, waiting between agent turns)"
+
+
+def human_text(human: HumanPart) -> str:
+    """The human block. It names the quantity and its status, and never offers a number derived
+    from agent time."""
+    return (
+        f"{HUMAN_PART}: {human.status}. Not included in the total above. "
+        "State it separately; do not derive it from the agent time."
+    )
 
 
 def duration(seconds: float) -> str:
@@ -24,6 +35,7 @@ def plan_text(plan: PlanRange) -> str:
     lines = [
         f"Total wall clock: P50 {duration(plan.p50)}, P80 {duration(plan.p80)}, "
         f"P90 {duration(plan.p90)}",
+        human_text(plan.human),
         "",
         f"{'task':<{width}}  {'P50':>9}  {'P80':>9}  {'P90':>9}  {'critical':>8}  cell (n)",
     ]

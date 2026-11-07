@@ -38,6 +38,7 @@ EOF
 ```text
 <!-- claim:example_output -->
 Total wall clock: P50 2.4 h, P80 6.0 h, P90 9.1 h
+Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
 
 task          P50        P80        P90  critical  cell (n)
 schema     30 min     85 min      2.5 h     100%  feature x normal x claude-opus-5-5 (n=205)
@@ -188,7 +189,7 @@ Each of these does something better than agentpace:
 - **Not a model speed ranking.** People send harder work to stronger models, so a slower row may just mean harder tasks.
 - **`feature` means any implementation work.** Without reading prompts, metadata cannot separate features, bug fixes and refactors. Those kinds stay thin until people label runs.
 - **Claude Code only.** The adapter interface is ready for other harnesses, but no other adapter exists yet.
-- **Agent time only.** It leaves out human review and decisions, which often take longer.
+- **Agent time only.** Review, testing, decisions and waiting between agent turns are not measured yet. Every estimate says so on its own line, keeps them out of the total, and never derives them from agent time.
 - **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low.
 - **Size is not used by default.** Stored size is measured after a run, so it would leak the answer into the forecast.
 - **The transcript format is undocumented.** It may change, and Claude Code removes old transcripts, so run `agentpace ingest` regularly.

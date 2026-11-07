@@ -53,6 +53,17 @@ class EstimateCommand(unittest.TestCase):
         parsed = json.loads(out)
         self.assertLessEqual(parsed["p50"], parsed["p90"])
         self.assertEqual(parsed["critical_path"], ["a", "b"])
+        self.assertEqual(parsed["human"], {"status": "not measured", "included_in_total": False})
+
+    def test_text_output_states_the_human_part_without_a_number(self):
+        _, out, _ = self.run_cli(
+            "estimate", str(self.plan), "--data", str(self.data), "--draws", "500"
+        )
+        line = next(line for line in out.splitlines() if line.startswith("Human part"))
+        self.assertIn("review, testing, decisions, waiting between agent turns", line)
+        self.assertIn("not measured. Not included in the total above.", line)
+        self.assertIn("do not derive it from the agent time", line)
+        self.assertNotRegex(line, r"\d")
 
     def test_plan_can_come_from_stdin(self):
         code, out, _ = self.run_cli(

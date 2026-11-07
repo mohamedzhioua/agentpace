@@ -421,6 +421,15 @@ class TaskRange:
 
 
 @dataclass(frozen=True)
+class HumanPart:
+    """Review, testing, decisions and waiting between agent turns. Never derived from agent time:
+    until it is measured, it is reported as not measured and kept out of the total."""
+
+    status: str = "not measured"
+    included_in_total: bool = False
+
+
+@dataclass(frozen=True)
 class PlanRange:
     p50: float
     p80: float
@@ -439,6 +448,7 @@ class PlanRange:
     draws: int
     seed: int
     warnings: tuple[str, ...]
+    human: HumanPart = HumanPart()
 
 
 def topological_order(tasks: Sequence[Task]) -> list[Task]:

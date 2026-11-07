@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- `estimate` prints the human part on its own line in every result: review, testing, decisions and waiting between agent turns are not measured, are not in the total, and must not be derived from agent time. JSON output gains `human` (`status`, `included_in_total`).
+- Backtest: a `width80` metric, the median P80/P50 ratio, beside the existing P90/P50 `width`. It comes from the same forecasts with no new random draw, so no published number moves.
+
+### Changed
+
+- The `agentpace` skill triggers on any question about how long software work will take, even when agents are not mentioned, and assumes agents do the implementation unless told otherwise. It gains a step for re-answering a timeline someone already quoted in days, weeks or months: the quote is shown beside the measured range as unverified and never converted by a constant.
+- `/pace-estimate` passes the human-part line through verbatim, and says it is the explicit command while `agentpace` handles natural-language questions.
+
+### Fixed
+
+- The portable prompt no longer adds up P50s for the low end and P90s for the high end, which overstates the high end and ignores throughput. It now takes the larger of the critical chain and the total work over the agents running at once, then applies the published whole-session P80/P50 and P90/P50 ratios, and calls the result a rule of thumb.
+
 ## 0.2.0 - 2026-11-07
 
 ### Added
