@@ -57,7 +57,7 @@ When the conversation already holds a timeline in days, weeks or months, from th
 ## Report the result
 
 - Lead with the agent time as a range: P50, P80 and P90. Recommend P80 for planning.
-- Pass on the human part line as the CLI prints it: review, testing, decisions and waiting between agent turns are not measured and not in the total. Do not derive a number for it from the agent time. If the user gives their own figure, repeat it and label it as theirs.
+- Pass on the human part line as the CLI prints it. Unmeasured, it says review, testing, decisions and waiting between agent turns are not in the total. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
 - Name the critical path and the effective parallelism.
 - Pass every warning on. A warning means a cell had too few runs, so that range leans on broader data.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.

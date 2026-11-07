@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agentpace turn gap",
+  "description": "One wait on the human in a main Claude Code session: the time from the agent's last record to the next human-typed prompt, beside the agent turn before it. Local only: these records are never shared, never part of the dataset and never a run row.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session", "week", "gap_s", "agent_turn_s"],
+  "properties": {
+    "session": {
+      "description": "HMAC of the session id under the local secret, the same pseudonym as a run's batch.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{12}$"
+    },
+    "week": {
+      "description": "ISO week of the human prompt, in UTC.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$"
+    },
+    "gap_s": {
+      "description": "Seconds from the agent's last record to the next human-typed prompt. Elapsed time, not effort.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "agent_turn_s": {
+      "description": "Seconds from the previous human prompt to the agent's last record before this gap, or 0 when the agent wrote nothing in between.",
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
