@@ -45,6 +45,7 @@ packages = ["src/agentpace"]
 [tool.hatch.build.targets.wheel.force-include]
 "schema/run.schema.json" = "agentpace/_bundled/run.schema.json"
 "data/runs" = "agentpace/_bundled/runs"
+"data/LICENSE" = "agentpace/_bundled/DATA-LICENSE"
 
 [tool.ruff]
 line-length = 100

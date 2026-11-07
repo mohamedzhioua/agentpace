@@ -13,6 +13,7 @@ from pathlib import Path
 from agentpace import (
     __version__,
     backtest,
+    claims,
     estimate,
     ingest,
     paths,
@@ -21,6 +22,7 @@ from agentpace import (
     report,
     schema,
     share,
+    site,
     validate,
 )
 from agentpace.adapters import ADAPTERS, get_adapter
@@ -188,6 +190,52 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_site(args: argparse.Namespace) -> int:
+    rows = _dataset(args.data or [str(paths.seed_dir())])
+    page = Path(args.out)
+    if not page.exists():
+        raise ValueError("the page does not exist")
+    stored = page.parent / "backtest.json"
+    if not stored.exists():
+        raise ValueError("run `agentpace backtest` first: the page quotes its results")
+    results = json.loads(stored.read_text(encoding="utf-8"))
+    current = page.read_text(encoding="utf-8")
+    updated = site.embed(current, site.payload(rows, results))
+    if args.check:
+        if updated == current:
+            print("the page's data is current")
+            return 0
+        print("the page's data is out of date; run `agentpace site`", file=sys.stderr)
+        return 1
+    page.write_text(updated, encoding="utf-8", newline="\n")
+    print(f"updated {page}")
+    return 0
+
+
+def cmd_claims(args: argparse.Namespace) -> int:
+    stored = Path(args.report)
+    if not stored.exists():
+        raise ValueError("run `agentpace backtest` first: claims come from its report")
+    rows = _dataset(args.data or [str(paths.seed_dir())])
+    report_data = json.loads(stored.read_text(encoding="utf-8"))
+    known = claims.values(rows, report_data, Path("examples/plan.json"))
+    stale = []
+    for name in args.files:
+        path = Path(name)
+        current = path.read_text(encoding="utf-8")
+        updated = claims.apply(current, known)
+        if updated == current:
+            continue
+        stale.append(name)
+        if not args.check:
+            path.write_text(updated, encoding="utf-8", newline="\n")
+    if args.check and stale:
+        print(f"out of date: {', '.join(stale)}. Run `agentpace claims`.", file=sys.stderr)
+        return 1
+    print("claims match the data" if args.check else f"updated {len(stale)} files")
+    return 0
+
+
 def _reader_went_away(error: OSError) -> bool:
     return isinstance(error, BrokenPipeError) or (os.name == "nt" and error.errno == errno.EINVAL)
 
@@ -268,6 +316,21 @@ def build_parser() -> argparse.ArgumentParser:
     validate_cmd = commands.add_parser("validate", help="check data files")
     validate_cmd.add_argument("paths", nargs="*", help="files or folders (default: seed data)")
     validate_cmd.set_defaults(handler=cmd_validate)
+
+    site_cmd = commands.add_parser("site", help="refresh the data inside the static page")
+    site_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")
+    site_cmd.add_argument("--out", default="docs/index.html", help="default: %(default)s")
+    site_cmd.add_argument("--check", action="store_true", help="fail if the page is out of date")
+    site_cmd.set_defaults(handler=cmd_site)
+
+    claims_cmd = commands.add_parser("claims", help="tie numbers in documents to the data")
+    claims_cmd.add_argument(
+        "files", nargs="*", default=["README.md", "skills/agentpace/assets/portable-prompt.md"]
+    )
+    claims_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")
+    claims_cmd.add_argument("--report", default="docs/backtest.json")
+    claims_cmd.add_argument("--check", action="store_true", help="fail if any number is stale")
+    claims_cmd.set_defaults(handler=cmd_claims)
     return parser
 
 

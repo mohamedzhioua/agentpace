@@ -17,28 +17,47 @@ from agentpace.render import duration
 _STYLE = """
 <style>
   svg {
-    --text: #0b0b0b; --muted: #52514e; --grid: #e4e3df;
+    --panel: #fcfcfb; --text: #0b0b0b; --muted: #52514e; --grid: #e4e3df;
     --primary: #2a78d6; --second: #eb6834;
   }
   @media (prefers-color-scheme: dark) {
     svg {
-      --text: #f0efec; --muted: #c3c2b7; --grid: #3a3a37;
+      --panel: #1a1a19; --text: #f0efec; --muted: #c3c2b7; --grid: #3a3a37;
       --primary: #3987e5; --second: #d95926;
     }
   }
-  text { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+  .panel { fill: var(--panel); }
+  text {
+    font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--panel);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
   .title { font-size: 15px; font-weight: 600; fill: var(--text); }
   .label { fill: var(--text); }
   .grid { stroke: var(--grid); stroke-width: 1; }
   .goal { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
   .range { stroke: var(--primary); stroke-width: 8; stroke-linecap: round; }
-  .dot { fill: var(--primary); stroke: var(--surface, none); }
+  .dot { fill: var(--primary); }
   .second { fill: var(--second); }
-  .tick { stroke: #ffffff; stroke-width: 2; }
+  .tick { stroke: var(--panel); stroke-width: 2; }
 </style>
 """
 
-_TICKS = (1, 10, 60, 600, 3600, 36000, 86400)
+_TICKS = (
+    (10, "10 s"),
+    (30, "30 s"),
+    (60, "1 min"),
+    (300, "5 min"),
+    (600, "10 min"),
+    (1800, "30 min"),
+    (3600, "1 h"),
+    (10800, "3 h"),
+    (36000, "10 h"),
+)
+_MARGIN = 16
 
 
 @dataclass(frozen=True)
@@ -52,10 +71,14 @@ class RangeBar:
 
 def _open(width: int, height: int, title: str) -> list[str]:
     return [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'width="{width}" height="{height}" role="img" aria-label="{escape(title)}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="{-_MARGIN} {-_MARGIN} {width + 2 * _MARGIN} {height + 2 * _MARGIN}" '
+        f'width="{width + 2 * _MARGIN}" height="{height + 2 * _MARGIN}" role="img" '
+        f'aria-label="{escape(title)}">',
         f"<title>{escape(title)}</title>",
         _STYLE,
+        f'<rect class="panel" x="{-_MARGIN}" y="{-_MARGIN}" width="{width + 2 * _MARGIN}" '
+        f'height="{height + 2 * _MARGIN}" rx="8"/>',
     ]
 
 
@@ -65,7 +88,7 @@ def range_chart(title: str, bars: Sequence[RangeBar]) -> str:
     width = 860
     height = top + row * len(bars) + 34
     low = min(bar.p50 for bar in bars) / 1.5
-    high = max(bar.p90 for bar in bars) * 1.1
+    high = max(max(bar.p90 for bar in bars) * 1.1, 3700.0)
 
     def x(value: float) -> float:
         span = math.log(high) - math.log(low)
@@ -74,10 +97,10 @@ def range_chart(title: str, bars: Sequence[RangeBar]) -> str:
     parts = _open(width, height, title)
     parts.append(f'<text class="title" x="0" y="20">{escape(title)}</text>')
     parts.append(
-        '<text x="0" y="42">Bar runs from P50 to P90. The white tick marks P80. '
+        '<text x="0" y="42">Bar runs from P50 to P90. The gap marks P80. '
         "Log scale, seconds to hours.</text>"
     )
-    for tick in _TICKS:
+    for tick, label in _TICKS:
         if low <= tick <= high:
             position = x(tick)
             parts.append(
@@ -85,8 +108,7 @@ def range_chart(title: str, bars: Sequence[RangeBar]) -> str:
                 f'x2="{position:.1f}" y2="{height - 26}"/>'
             )
             parts.append(
-                f'<text x="{position:.1f}" y="{height - 8}" text-anchor="middle">'
-                f"{duration(tick)}</text>"
+                f'<text x="{position:.1f}" y="{height - 8}" text-anchor="middle">{label}</text>'
             )
     for index, bar in enumerate(bars):
         y = top + row * index + row / 2

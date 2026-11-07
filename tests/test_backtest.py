@@ -81,13 +81,13 @@ class Metrics(unittest.TestCase):
 
     def test_weights_change_the_answer(self):
         forecasts = [f(100, p50=200), f(100)]
-        self.assertEqual(backtest.metrics(forecasts, [3, 1])["mape"], 75)
+        self.assertAlmostEqual(backtest.metrics(forecasts, [3, 1])["mape"], 75)
 
     def test_session_weighting_stops_one_session_dominating(self):
         big = [f(100, p50=200, session="big") for _ in range(9)]
         both = backtest.both_weightings([*big, f(100, session="small")])
-        self.assertEqual(both["row"]["mape"], 90)
-        self.assertEqual(both["session"]["mape"], 50)
+        self.assertAlmostEqual(both["row"]["mape"], 90)
+        self.assertAlmostEqual(both["session"]["mape"], 50)
 
 
 class Selection(unittest.TestCase):

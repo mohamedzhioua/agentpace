@@ -278,6 +278,14 @@ Fable 5.1 ruled at maximum effort on 2026-11-07, as the maintainer directed.
 | E2 | Ship the winner of the pre-registered selection in section 6 |
 | E3 | Duplicate key is (`contributor`, `batch`, `offset_s`, `duration_s`). "Byte-identical" holds per interpreter and platform |
 
+### Results after implementation
+
+- The pre-registered selection chose `shrunk`, not the session-weighted design this document proposed. They tied inside the bootstrap interval, so the tie went to the simpler candidate. Session weighting remains a candidate, and `n_eff` equals `n` under the default.
+- `delta` uses `s² / (n_eff + k)`, as section 5 states, rather than the `s² / n_eff` first drafted, which diverges on an unseen cell.
+- Within-session noise is scaled by `sqrt(m / (m - 1))` to undo centering, and session effects are scaled down by the share of their variance that is real.
+- Two runs can tie on start and duration to the second, so ingest nudges `offset_s` by a second to keep them distinct under the duplicate key.
+- The Claude Code adapter's discovery claim is proven by a real `npx skills add`. All four skills install.
+
 ## 12. Sources
 
 Repos, audited at: `kiloloop/agent-estimate@8857979`, `MMMProd-Org/claude-eta@5448ae4` (the `mmmprod/claude-eta` URL redirects there), `ZhangHanDong/agent-estimation@71a4697`, `ecappa/web-dev-estimation@c61fb1c`, `MedAdemBHA/mythical-agent-month@b60165f`.

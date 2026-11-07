@@ -1,28 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 382" width="760" height="382" role="img" aria-label="P80 coverage on the time split, per session">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 792 414" width="792" height="414" role="img" aria-label="P80 coverage on the time split, per session">
 <title>P80 coverage on the time split, per session</title>
 
 <style>
   svg {
-    --text: #0b0b0b; --muted: #52514e; --grid: #e4e3df;
+    --panel: #fcfcfb; --text: #0b0b0b; --muted: #52514e; --grid: #e4e3df;
     --primary: #2a78d6; --second: #eb6834;
   }
   @media (prefers-color-scheme: dark) {
     svg {
-      --text: #f0efec; --muted: #c3c2b7; --grid: #3a3a37;
+      --panel: #1a1a19; --text: #f0efec; --muted: #c3c2b7; --grid: #3a3a37;
       --primary: #3987e5; --second: #d95926;
     }
   }
-  text { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+  .panel { fill: var(--panel); }
+  text {
+    font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--panel);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
   .title { font-size: 15px; font-weight: 600; fill: var(--text); }
   .label { fill: var(--text); }
   .grid { stroke: var(--grid); stroke-width: 1; }
   .goal { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
   .range { stroke: var(--primary); stroke-width: 8; stroke-linecap: round; }
-  .dot { fill: var(--primary); stroke: var(--surface, none); }
+  .dot { fill: var(--primary); }
   .second { fill: var(--second); }
-  .tick { stroke: #ffffff; stroke-width: 2; }
+  .tick { stroke: var(--panel); stroke-width: 2; }
 </style>
 
+<rect class="panel" x="-16" y="-16" width="792" height="414" rx="8"/>
 <text class="title" x="0" y="20">P80 coverage on the time split, per session</text>
 <circle class="dot" cx="6" cy="38" r="5"/><text x="18" y="42">agentpace candidate</text><rect class="second" x="170" y="33" width="10" height="10"/><text x="188" y="42">baseline</text>
 <line class="grid" x1="150.0" y1="72" x2="150.0" y2="356"/><text x="150.0" y="374" text-anchor="middle">0%</text>
