@@ -237,7 +237,7 @@ agentpace share --dry-run           # the exact rows you would contribute</code>
     ". Time runs left to right on a log scale.";
   document.getElementById("reading-scope").textContent =
     count(data.runs) + " runs in " + data.sessions + " sessions from " + data.contributors +
-    " contributor, with heavy automated fan-out. It will not match your setup until more people contribute.";
+    (data.contributors === 1 ? " contributor" : " contributors") + ", with heavy automated fan-out. It will not match your setup until more people contribute.";
   var b = data.backtest;
   document.getElementById("reading-backtest").textContent =
     "On " + b.sessions + " held-out sessions, the P80 for the whole session covered " + b.plan_p80_coverage +

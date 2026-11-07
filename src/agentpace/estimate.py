@@ -210,10 +210,9 @@ class Model:
     def throughput(self, cap: int) -> ThroughputBucket | None:
         if not self.buckets:
             return None
-        for bucket in self.buckets:
-            if bucket.low <= cap <= bucket.high:
-                return bucket
-        return self.buckets[-1] if cap > self.buckets[-1].high else self.buckets[0]
+        # A cap between observed peaks uses the nearest bucket at or below it.
+        reachable = [bucket for bucket in self.buckets if bucket.low <= cap]
+        return reachable[-1] if reachable else self.buckets[0]
 
 
 def _session_weights(rows: Sequence[Row], enabled: bool) -> list[float]:

@@ -335,6 +335,14 @@ class Throughput(unittest.TestCase):
         model = fit(self.build({1: 1.0, 2: 1.5}))
         self.assertIs(model.throughput(50), model.buckets[-1])
 
+    def test_a_cap_between_observed_peaks_uses_the_bucket_below(self):
+        model = fit(self.build({1: 1.0, 3: 1.5, 6: 2.5}))
+        self.assertEqual(model.throughput(5).low, 3)
+
+    def test_a_cap_below_every_peak_uses_the_lowest_bucket(self):
+        model = fit(self.build({3: 1.5, 6: 2.5}))
+        self.assertEqual(model.throughput(1).low, 3)
+
     def test_rare_peaks_merge_into_neighbors(self):
         rows = self.build({1: 1.0}) + self.session("e" * 12, 9, [100] * 20, 3.0)
         model = fit(rows)

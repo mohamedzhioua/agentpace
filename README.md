@@ -52,6 +52,8 @@ Warnings:
 <!-- /claim -->
 ```
 
+Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
+
 To use your own history instead of only the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine.
 
 Plans are JSON. `depends_on`, `risk` and `model` are optional:
@@ -84,9 +86,9 @@ There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of med
 
 Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The [full report](docs/backtest.md) has every split, every baseline and every loss.
 
-Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast.
+Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast. These headline numbers come from the same time folds that chose the method, so treat them as slightly optimistic.
 
-**Whole sessions.** Each of <!-- claim:plan_sessions -->56<!-- /claim --> later sessions was predicted from earlier weeks only. This is the only direct test of plan totals.
+**Whole sessions.** Each of <!-- claim:plan_sessions -->56<!-- /claim --> later sessions with at least 5 completed runs was predicted from earlier weeks only. This is the only direct test of plan totals.
 
 | Forecast | Target | Got |
 |---|---:|---:|
@@ -94,7 +96,7 @@ Forecasts use only what is known before a run: model, kind and risk. Whole sessi
 | Session finished within P80 | 80% | <!-- claim:plan_p80 -->80%<!-- /claim --> |
 | Session finished within P90 | 90% | <!-- claim:plan_p90 -->91%<!-- /claim --> |
 
-The ranges are calibrated, but they are wide: P90 is typically <!-- claim:plan_width -->2.7x<!-- /claim --> P50, and the median error of the P50 is <!-- claim:plan_mdape -->67%<!-- /claim -->. The test also uses information a real forecast would not have, namely the session's actual task list and peak concurrency, and real dependencies are not recorded. So it tests the throughput model, not dependency planning.
+Coverage lands on target at P80 and P90, but the ranges are wide: P90 is typically <!-- claim:plan_width -->2.7x<!-- /claim --> P50, and the median error of the P50 is <!-- claim:plan_mdape -->67%<!-- /claim -->. The test also uses information a real forecast would not have, namely the session's actual task list and peak concurrency, and real dependencies are not recorded. So it tests the throughput model, not dependency planning.
 
 **Single tasks.** On the time split, with each session counting equally:
 

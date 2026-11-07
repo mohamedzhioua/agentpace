@@ -140,7 +140,8 @@ def markdown(report: dict[str, Any]) -> str:
         "",
         f"From {data['rows']:,} runs ({data['completed']:,} completed) in {data['sessions']} "
         f"sessions across {data['projects']} projects, {weeks[0]} to {weeks[-1]}, from "
-        f"{data['contributors']} contributor. The largest project holds "
+        f"{data['contributors']} contributor{'' if data['contributors'] == 1 else 's'}. "
+        f"The largest project holds "
         f"{data['top_project_share']:.0f}% of runs and the three largest sessions hold "
         f"{data['top_three_session_share']:.0f}%.",
         "",
