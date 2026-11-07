@@ -117,14 +117,14 @@ def _project(record: Any) -> _Line | None:
     if kind != "event_msg":
         return _Line("line", time)
     event = payload.get("type")
-    if event in ("task_started", "turn_started"):
+    if event == "task_started":
         return _Line(
             "start",
             time,
             turn_id=_text(payload.get("turn_id")),
             epoch=_epoch(payload.get("started_at")),
         )
-    if event in ("task_complete", "turn_complete"):
+    if event == "task_complete":
         return _Line(
             "complete",
             time,

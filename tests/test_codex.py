@@ -363,6 +363,30 @@ class Privacy(Temp):
             self.assertIn(text, after.splitlines())
         self.assertIn('"codex"', after)
 
+    def test_function_arguments_and_odd_abort_reasons_are_never_copied(self):
+        lines = turn(0, 60, "t1")
+        call = {
+            "type": "function_call",
+            "name": "x",
+            "arguments": "CANARY_ARGUMENTS",
+            "call_id": "f",
+        }
+        lines.insert(3, line(2, "response_item", call))
+        lines[-1] = line(
+            60, "event_msg", {"type": "turn_aborted", "turn_id": "t1", "reason": "CANARY_SOURCE"}
+        )
+        (run,), _ = self.parse(self.write([meta(), *lines]))
+        self.assertEqual((run.tool_calls, run.outcome), (2, "unknown"))
+        self.assertNotIn("CANARY", repr(run))
+
+    def test_alias_event_names_never_open_a_turn(self):
+        lines = [
+            line(0, "event_msg", {"type": "turn_started", "turn_id": "t1"}),
+            *turn(0, 60, "t1"),
+        ]
+        runs, _ = self.parse(self.write([meta(), *lines]))
+        self.assertEqual(len(runs), 1)
+
     def test_reprs_hold_no_session_or_folder(self):
         (run,), _ = self.parse(self.write([meta(), *turn(0, 60, "t1")]))
         self.assertNotIn("CANARY_CWD", repr(run))
