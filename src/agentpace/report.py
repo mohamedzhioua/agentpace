@@ -175,6 +175,7 @@ def _selection_section(selection: dict[str, Any]) -> list[str]:
 
 
 def _population_lines(selection: dict[str, Any]) -> list[str]:
+    # Tied to `backtest.SELECTION_HARNESS`: if that constant ever changes, so must this text.
     harness = selection.get("harness", "all")
     if harness == "all":
         return []
