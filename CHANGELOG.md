@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- Schema: `harness` accepts `codex`, ahead of the Codex adapter. The change is additive, so every existing row stays valid and unchanged. It merges alone first, because data pull requests are validated with the base branch's schema.
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
