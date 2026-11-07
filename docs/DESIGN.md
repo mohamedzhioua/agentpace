@@ -90,6 +90,7 @@ The Claude Code adapter reads `subagents/**/agent-*.jsonl` and the sibling `.met
   - **Outcome.** A clean `task_complete` is `completed`, one with an error is `failed`, and an abort or an unclosed turn is `unknown`.
   - **Model and effort** come from the matching `turn_context`, else the model is the file's last seen one. A turn with neither is dropped.
   - **Skipped files.** Forked files, files whose metadata names more than one session, and upkeep sessions (`compact`, `memory_consolidation`) are skipped whole and counted. Copied history would otherwise count turns twice.
+  - **Skipped runs (adapter version 2, 0.6.0).** A turn whose model is `codex-auto-review` is Codex's automatic approval check on a command. In the maintainer's history these took 3 s at the median and called no tool. They are not tasks anyone plans, so they are skipped and counted in `skipped runs`, never rows. Version 1 emitted them as reviews. `skipped files` and `skipped runs` are counted on a cold ingest only, because the cache stores runs and not counters, so on a warm cache a file whose turns were all skipped counts as one empty run.
   - **Subagent threads** are their own batch, so `parallel_agents` is 1 for Codex rows.
   - **What is copied.** A projection copies only record and event types, timestamps, turn ids, epoch times, the model, an effort from the enum, an error flag, an abort reason from a fixed set, item types and a completed/failed status, two token counters, the session id, a fork flag and the session source reduced to a fixed word. The working folder is a hash input for `project`, kept in memory and the local cache as Claude Code folder names are, and never in a row. Project pseudonyms do not join across harnesses, and rollouts without a working folder share one project pseudonym. Only the exact event names `task_started` and `task_complete` are read, so a turn can never open twice under two names.
 - **Retention.** Claude Code cleans old transcripts (`cleanupPeriodDays`, documented default 30), so `ingest` is incremental and the docs tell users to run it regularly. The transcript format has no official schema, so unknown record types are counted and skipped, never fatal.
@@ -112,7 +113,7 @@ The privacy rule removes the signal competitors use. claude-eta and mythical-age
 | `db-migration` | `migration` | `high` |
 | `implementer` | `feature` | `normal` |
 | anything else | `other` | `normal` |
-| Codex: a review session, or a `codex-auto-review` turn (emitted as `reviewer`) | `review` | `low` |
+| Codex: a review session (emitted as `reviewer`) | `review` | `low` |
 | Codex: any other turn (no agent type) | `other` | `normal` |
 
 Order of precedence: user label, then `--kind-map name=kind`, then this table. Labels come from `agentpace label` or `/pace-log`.
@@ -364,6 +365,12 @@ Fable 5.1 ruled on 2026-11-07.
   - Nesting `contributor` above the shrink hierarchy is rejected. An unseen contributor would stop at the root cell and lose kind, risk and model, and labels would carry the pseudonym.
   - The planned design is a crossed contributor offset on top of the population model. It is the contributor's mean residual, shrunk by the between-contributor variance, with zero offset and added variance for an unseen contributor.
   - It ships only behind the contributor split of the backtest, because with two contributors that variance rests on one degree of freedom.
+
+### Rulings for 0.6.0
+
+Fable 5.1 ruled on 2026-11-07, after a local backtest with the maintainer's Codex rows pooled in.
+
+- **Approval checks are not runs.** This amends the 0.5.0 Codex ruling, which mapped `codex-auto-review` turns to `reviewer` before their shape had been seen. In the maintainer's history they were 528 of 739 Codex rows, at 3 s median and zero tool calls, against 472 s and 21 tool calls for the other turns. Left in, they would pull the shared `review` x `low` cell toward zero and distort the shrinkage of sparse Claude reviewer cells. Adapter version 2 skips them and counts them. No row had shipped, so no published row changes meaning. User-invoked review sessions (`source: review`) stay reviews; none exists locally to compare.
 
 ## 12. Sources
 

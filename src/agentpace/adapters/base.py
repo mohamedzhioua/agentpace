@@ -58,6 +58,7 @@ class ParseStats:
     empty_runs: int = 0
     unparsed_lines: int = 0
     skipped_files: int = 0  # files read but deliberately not used, such as copied history
+    skipped_runs: int = 0  # runs read but deliberately not used, such as approval checks
 
 
 class Adapter(Protocol):

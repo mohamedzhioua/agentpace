@@ -272,12 +272,10 @@ class Runs(Temp):
         (run,), _ = self.parse(self.write([meta(), *turn(0, 60, "t1", effort="CANARY_EFFORT")]))
         self.assertIsNone(run.effort)
 
-    def test_review_sessions_and_review_models_are_reviews(self):
+    def test_review_sessions_are_reviews(self):
         self.write([meta(session="r", source="review"), *turn(0, 30, "t1")])
-        self.write([meta(session="m"), *turn(0, 30, "t1", model="codex-auto-review")])
         rows, _ = self.ingest()
-        self.assertEqual([row["task_kind"] for row in rows], ["review", "review"])
-        self.assertIn("other", {row["model"] for row in rows})
+        self.assertEqual([(row["task_kind"], row["risk"]) for row in rows], [("review", "low")])
 
     def test_subagent_threads_are_their_own_batch(self):
         self.write([meta(session="parent"), *turn(0, 300, "t1")])
@@ -310,6 +308,25 @@ class Skipped(Temp):
                     self.write([meta(source=source), *turn(0, 60, "t1")], f"rollout-{index}.jsonl")
                 )
                 self.assertEqual((runs, stats.skipped_files), ([], 1))
+
+    def test_approval_checks_are_skipped_and_counted(self):
+        lines = [
+            meta(),
+            *turn(0, 60, "t1"),
+            *turn(100, 103, "t2", model="codex-auto-review"),
+            *turn(200, 230, "t3"),
+        ]
+        runs, stats = self.parse(self.write(lines))
+        self.assertEqual([run.active_s for run in runs], [60, 30])
+        self.assertEqual({run.agent_type for run in runs}, {None})
+        self.assertEqual((stats.skipped_runs, stats.skipped_files, stats.empty_runs), (1, 0, 0))
+
+    def test_the_report_names_skipped_runs(self):
+        self.write([meta(), *turn(0, 3, "t1", model="codex-auto-review"), *turn(10, 70, "t2")])
+        rows, err = self.ingest()
+        self.assertEqual(len(rows), 1)
+        self.assertIn("skipped runs:     1", err)
+        self.assertNotIn("codex-auto-review", err)
 
     def test_a_file_without_metadata_is_empty(self):
         runs, stats = self.parse(self.write(turn(0, 60, "t1")))
