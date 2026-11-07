@@ -40,6 +40,7 @@ class RawRun:
     tokens: int | None
     errors: int
     outcome: str
+    effort: str | None = None
     agent_type: str | None = field(repr=False, default=None)
     session: str = field(repr=False, default="")
     project: str = field(repr=False, default="")

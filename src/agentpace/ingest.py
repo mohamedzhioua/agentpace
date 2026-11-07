@@ -17,6 +17,7 @@ from agentpace.adapters.base import Adapter, ParseStats, RawRun
 from agentpace.schema import Row
 
 DEFAULT_IDLE_CAP_S = 900
+_EFFORTS = frozenset(schema.enum("effort"))
 
 _FAMILIES = (
     re.compile(r"claude-(?:opus|sonnet|haiku|fable)-\d+(?:-\d{1,2})?(?!\d)"),
@@ -188,6 +189,8 @@ def build_rows(
             }
             if run.tokens is not None:
                 row["tokens"] = run.tokens
+            if run.effort in _EFFORTS:
+                row["effort"] = run.effort
             if labels:
                 apply_labels(row, labels)
             problems = schema.check_row(row)

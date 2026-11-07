@@ -136,6 +136,19 @@ class Parsing(TempRoot):
         (run,), _ = self.parse_only()
         self.assertIsNone(run.agent_type)
 
+    def test_effort_is_captured_when_recorded(self):
+        write_run(self.root, "p", "s", "a", simple_run(0, 10), effort="xhigh")
+        write_run(self.root, "p", "s", "b", simple_run(20, 10))
+        rows, _ = ingest.ingest(ADAPTER, self.root, SECRET)
+        self.assertEqual([row.get("effort") for row in rows], ["xhigh", None])
+        self.assertEqual([schema.check_row(row) for row in rows], [[], []])
+
+    def test_an_unknown_effort_is_dropped(self):
+        for i, value in enumerate(("turbo", 3, None, ["high"], "HIGH")):
+            write_run(self.root, "p", "s", str(i), simple_run(i * 20, 10), effort=value)
+        runs, _ = self.parse_only()
+        self.assertEqual([run.effort for run in runs], [None] * 5)
+
     def test_a_single_file_path_is_accepted(self):
         path = write_run(self.root, "p", "s", "a", simple_run(0, 10))
         self.assertEqual(len(list(ADAPTER.discover(path))), 1)
@@ -286,6 +299,7 @@ class Privacy(TempRoot):
             "1",
             [*simple_run(0, 40, "Edit"), user(50, is_error=True)],
             agent_type="CANARY_AGENT",
+            effort="CANARY_EFFORT",
         )
         write_run(
             self.root,
