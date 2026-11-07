@@ -6,6 +6,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added
 
+- Adapters return every run in a file, so a harness can keep several runs in one transcript, as Codex does with several turns. The ingest cache moves to format 3 to hold a list of runs per file, so the first ingest after upgrading reads every transcript again (minutes rather than seconds on a large history). Rows are byte-identical to before.
 - Schema: `harness` accepts `codex`, ahead of the Codex adapter. The change is additive, so every existing row stays valid and unchanged. It merges alone first, because data pull requests are validated with the base branch's schema.
 
 ## 0.4.0 - 2026-11-07

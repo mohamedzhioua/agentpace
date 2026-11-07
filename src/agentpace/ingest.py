@@ -58,7 +58,7 @@ class IngestReport:
 
     def lines(self) -> list[str]:
         parse = self.parse
-        return [
+        lines = [
             f"files seen:       {self.files}",
             f"read from cache:  {self.cached}" + (" (cache rebuilt)" if self.cache_rebuilt else ""),
             f"rows produced:    {self.rows}",
@@ -68,6 +68,9 @@ class IngestReport:
             f"zero-duration:    {self.zero_duration}",
             f"still running:    {self.still_running}",
         ]
+        if parse.skipped_files:
+            lines.append(f"skipped files:    {parse.skipped_files}")
+        return lines
 
 
 class SessionClock:
@@ -231,28 +234,28 @@ def _parse(
     idle_cap_s: int,
     report: IngestReport,
     cache: RunCache | None,
-) -> RawRun | None:
+) -> list[RawRun]:
     if cache is None:
         return adapter.parse(source, idle_cap_s, report.parse)
     try:
         stamp = os.stat(source.path)
     except OSError:
         report.parse.unreadable_files += 1
-        return None
+        return []
     stamps = [[stamp.st_size, stamp.st_mtime_ns], *map(_stamp, source.companions)]
-    hit, run = cache.lookup(source.path, stamps)
+    hit, runs = cache.lookup(source.path, stamps)
     if hit:
         report.cached += 1
-        if run is None:
+        if not runs:
             report.parse.empty_runs += 1
-        return run
+        return runs
     unreadable = report.parse.unreadable_files
-    run = adapter.parse(source, idle_cap_s, report.parse)
+    runs = adapter.parse(source, idle_cap_s, report.parse)
     if report.parse.unreadable_files == unreadable:
         # Normalize before storing, so no raw model name (an ARN, a proxy) sits on disk.
-        run = run and replace(run, model=normalize_model(run.model))
-        cache.store(source.path, stamps, run)
-    return run
+        runs = [replace(run, model=normalize_model(run.model)) for run in runs]
+        cache.store(source.path, stamps, runs)
+    return runs
 
 
 def ingest(
@@ -272,9 +275,7 @@ def ingest(
     for source in adapter.discover(path):
         report.files += 1
         seen.add(source.path)
-        run = _parse(adapter, source, idle_cap_s, report, cache)
-        if run is not None:
-            runs.append(run)
+        runs.extend(_parse(adapter, source, idle_cap_s, report, cache))
     if cache is not None:
         sessions = {(run.project, run.session) for run in runs}
         runs += cache.vanished(sessions, seen)

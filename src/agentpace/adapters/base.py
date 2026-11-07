@@ -18,7 +18,8 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class Source:
-    """A location holding one run. `session` and `project` are hash inputs, never stored."""
+    """A transcript file holding one run or more. `session` and `project` are hash inputs,
+    never stored. An adapter may leave them empty and set them on each run it parses."""
 
     path: str = field(repr=False)
     session: str = field(repr=False)
@@ -56,6 +57,7 @@ class ParseStats:
     unreadable_files: int = 0
     empty_runs: int = 0
     unparsed_lines: int = 0
+    skipped_files: int = 0  # files read but deliberately not used, such as copied history
 
 
 class Adapter(Protocol):
@@ -66,4 +68,6 @@ class Adapter(Protocol):
 
     def discover(self, path: Path) -> Iterator[Source]: ...
 
-    def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> RawRun | None: ...
+    def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> list[RawRun]:
+        """Every run in one file, in order. Empty when the file holds none."""
+        ...

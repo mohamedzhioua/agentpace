@@ -25,7 +25,7 @@ from typing import Any
 
 from agentpace.adapters.base import RawRun
 
-FORMAT = 2  # 2: keys are os.path.normcase paths
+FORMAT = 3  # 2: keys are os.path.normcase paths. 3: each entry holds a list of runs
 
 # [size, mtime_ns] for the transcript and each companion file, or None for a missing companion.
 Stamps = list[list[int] | None]
@@ -37,15 +37,17 @@ def _key(path: str) -> str:
     return os.path.normcase(path)
 
 
-def _to_json(run: RawRun | None) -> dict[str, Any] | None:
-    return None if run is None else dataclasses.asdict(run)
+def _to_json(run: RawRun) -> dict[str, Any]:
+    return dataclasses.asdict(run)
 
 
-def _from_json(data: dict[str, Any] | None) -> RawRun | None:
-    if data is None:
-        return None
+def _from_json(data: dict[str, Any]) -> RawRun:
     spans = tuple((float(start), float(end)) for start, end in data["spans"])
     return RawRun(**{**data, "spans": spans})
+
+
+def _entry_runs(entry: dict[str, Any]) -> list[RawRun]:
+    return [_from_json(run) for run in entry["runs"]]
 
 
 class RunCache:
@@ -70,44 +72,39 @@ class RunCache:
                 raise ValueError("cache was written by another version")
             entries = stored["entries"]
             for entry in entries.values():
-                if not isinstance(entry["stamps"], list):
-                    raise ValueError("cache entry has no stamps")
-                _from_json(entry["run"])  # reject anything that no longer fits a RawRun
+                if not isinstance(entry["stamps"], list) or not isinstance(entry["runs"], list):
+                    raise ValueError("cache entry has no stamps or runs")
+                _entry_runs(entry)  # reject anything that no longer fits a RawRun
             self.entries = entries
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             self.entries = {}
             self.rebuilt = True
 
-    def lookup(self, path: str, stamps: Stamps) -> tuple[bool, RawRun | None]:
-        """Return (hit, run). A hit needs the transcript and every companion file unchanged."""
+    def lookup(self, path: str, stamps: Stamps) -> tuple[bool, list[RawRun]]:
+        """Return (hit, runs). A hit needs the transcript and every companion file unchanged."""
         entry = self.entries.get(_key(path))
         if entry is None or entry["stamps"] != stamps:
-            return False, None
-        return True, _from_json(entry["run"])
+            return False, []
+        return True, _entry_runs(entry)
 
-    def store(self, path: str, stamps: Stamps, run: RawRun | None) -> None:
-        self.entries[_key(path)] = {"stamps": stamps, "run": _to_json(run)}
+    def store(self, path: str, stamps: Stamps, runs: list[RawRun]) -> None:
+        self.entries[_key(path)] = {"stamps": stamps, "runs": [_to_json(run) for run in runs]}
 
     def vanished(self, sessions: set[tuple[str, str]], seen: set[str]) -> list[RawRun]:
         """Cached runs of these sessions whose transcript no longer exists."""
         runs = []
         seen = {_key(path) for path in seen}
         for path, entry in self.entries.items():
-            run = _from_json(entry["run"])
-            if run is None or path in seen or (run.project, run.session) not in sessions:
+            if path in seen:
                 continue
-            if not os.path.exists(path):
-                runs.append(run)
+            found = [run for run in _entry_runs(entry) if (run.project, run.session) in sessions]
+            if found and not os.path.exists(path):
+                runs.extend(found)
         return runs
 
     def runs(self) -> list[RawRun]:
         """Every cached run, including runs whose transcript is gone."""
-        found = []
-        for entry in self.entries.values():
-            run = _from_json(entry["run"])
-            if run is not None:
-                found.append(run)
-        return found
+        return [run for entry in self.entries.values() for run in _entry_runs(entry)]
 
     def save(self) -> None:
         """Write atomically, so a reader never sees half a file."""
