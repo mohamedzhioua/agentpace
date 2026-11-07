@@ -1,40 +1,26 @@
 # agentpace
 
-**How long do coding agents really take? Real runs, real ranges.**
+**How long will your coding-agent work take? A range you can plan on, measured from real runs.**
 
 [![CI](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![Data: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-blue)](data/LICENSE)
 
-agentpace is an open dataset, a CLI and an agent skill. It turns the run history of coding agents into P50/P80/P90 ranges for a plan of tasks. It measures instead of guessing, and it publishes how often it is wrong.
+Give agentpace a list of agent tasks, and it answers with P50/P80/P90 wall-clock ranges and a critical path, fitted to real run history instead of a guess. It publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
 ![How long subagent runs took, by task kind](docs/assets/run-ranges.svg)
 
 These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->19 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
 
-## Install
-
-```bash
-uv tool install git+https://github.com/mohamedzhioua/agentpace
-```
-
-`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. The seed data ships inside the package, so estimates work straight away.
-
-To add the agent skills, which give you `/pace-estimate`, `/pace-log` and `/pace-share`:
-
-```bash
-npx skills add mohamedzhioua/agentpace
-```
-
-No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+**Does it fit your setup?** Estimating works anywhere, because the seed data ships inside the package. Logging your own runs works with Claude Code today, and only for subagent runs: work Claude Code hands to a subagent, not the main conversation. A task in a plan is one such run. Once you have ingested, `agentpace estimate` pools your rows with the seed. Pass `--data ~/.agentpace/runs.jsonl` to use only yours. A Codex adapter is tracked in [#3](https://github.com/mohamedzhioua/agentpace/issues/3).
 
 ## Quickstart
 
-Describe the work as tasks and pass it in. You need no clone and no history of your own:
+Describe the work as tasks and pass them in. Each task is one agent run. With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own:
 
 ```bash
-agentpace estimate - <<'EOF'
+uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate - <<'EOF'
 {
   "agent_cap": 3,
   "model": "claude-opus-5-5",
@@ -69,9 +55,11 @@ Warnings:
 <!-- /claim -->
 ```
 
+On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. After the install below, drop the `uvx --from ...` prefix.
+
 Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
 
-To use your own history instead of only the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine.
+To add your own history to the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine.
 
 In a plan, `depends_on`, `risk` and `model` are optional. The same plan is in [examples/plan.json](examples/plan.json), so `agentpace estimate examples/plan.json` works from a clone.
 
@@ -89,7 +77,23 @@ In a plan, `depends_on`, `risk` and `model` are optional. The same plan is in [e
 
 There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of median, P75 and P90 by model, kind and risk.
 
-## Backtest
+## Install
+
+```bash
+uv tool install git+https://github.com/mohamedzhioua/agentpace
+```
+
+`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. The seed data ships inside the package, so estimates work straight away.
+
+To add the agent skills, which give you `/pace-estimate`, `/pace-log` and `/pace-share`:
+
+```bash
+npx skills add mohamedzhioua/agentpace
+```
+
+No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+
+## Backtest: how often it is wrong
 
 Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The [full report](docs/backtest.md) has every split, every baseline and every loss.
 
@@ -145,7 +149,7 @@ Rows are not anonymous in every sense. They link to each other, they show roughl
 Sharing is opt-in, and your rows join a public-domain dataset.
 
 ```bash
-git clone https://github.com/mohamedzhioua/agentpace && cd agentpace
+git clone https://github.com/<your-fork>/agentpace && cd agentpace
 agentpace ingest
 agentpace share --dry-run    # prints the exact rows and writes nothing
 agentpace share --write      # writes a file to data/runs, and still sends nothing
