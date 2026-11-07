@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- `estimate --record` keeps each forecast in a local ledger, `~/.agentpace/forecasts.jsonl`, exactly as it was shown, with the time it was issued. The ledger is never shared and holds no file paths or data sources. `--quoted "3 weeks"` stores a timeline someone already gave beside it. An exact "<number> <unit>" quote is also stored in seconds by fixed calendar units (1 d = 86,400 s, 1 w = 7 d, 1 mo = 30 d), and anything else is kept as text only.
+
 ## 0.3.0 - 2026-11-07
 
 ### Added

@@ -96,6 +96,8 @@ Without Node, copy the four folders under [skills/](skills/) into your agent's s
 | Use | What it does |
 |---|---|
 | `agentpace estimate <plan>` | P50, P80 and P90 for a plan, and the human part on its own line |
+| `agentpace estimate <plan> --data ~/.agentpace/runs.jsonl` | The same, from your own ingested runs only |
+| `agentpace estimate <plan> --record --quoted "3 weeks"` | Keep the forecast on your machine to score later, with any timeline someone already quoted |
 | `agentpace ingest [path]` | Read local agent history into rows |
 | `agentpace runs` | List recent runs and their references |
 | `agentpace label <ref>` | Correct the kind or risk of a run |
