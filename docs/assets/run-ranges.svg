@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 892 272" width="892" height="272" role="img" aria-label="How long subagent runs took, by task kind">
-<title>How long subagent runs took, by task kind</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 892 272" width="892" height="272" role="img" aria-label="How long agent runs took, by task kind">
+<title>How long agent runs took, by task kind</title>
 
 <style>
   svg {
@@ -32,7 +32,7 @@
 </style>
 
 <rect class="panel" x="-16" y="-16" width="892" height="272" rx="8"/>
-<text class="title" x="0" y="20">How long subagent runs took, by task kind</text>
+<text class="title" x="0" y="20">How long agent runs took, by task kind</text>
 <text x="0" y="42">Bar runs from P50 to P90. The gap marks P80. Log scale, seconds to hours.</text>
 <line class="grid" x1="190.0" y1="56" x2="190.0" y2="214"/>
 <text x="190.0" y="232" text-anchor="middle">30 s</text>
@@ -55,7 +55,7 @@
 <text class="label" x="0" y="156.0">review <tspan>n=1,560</tspan></text>
 <g><title>review: P50 2 min, P80 6 min, P90 12 min (n=1,560)</title><line class="range" x1="357.1" y1="152.0" x2="531.9" y2="152.0"/><line class="tick" x1="461.2" y1="148.0" x2="461.2" y2="156.0"/></g>
 <text x="543.9" y="156.0">2 min to 12 min</text>
-<text class="label" x="0" y="192.0">other <tspan>n=268</tspan></text>
-<g><title>other: P50 9 min, P80 33 min, P90 53 min (n=268)</title><line class="range" x1="498.6" y1="188.0" x2="693.9" y2="188.0"/><line class="tick" x1="641.0" y1="184.0" x2="641.0" y2="192.0"/></g>
-<text x="705.9" y="192.0">9 min to 53 min</text>
+<text class="label" x="0" y="192.0">other <tspan>n=445</tspan></text>
+<g><title>other: P50 8 min, P80 24 min, P90 43 min (n=445)</title><line class="range" x1="495.1" y1="188.0" x2="670.1" y2="188.0"/><line class="tick" x1="607.8" y1="184.0" x2="607.8" y2="192.0"/></g>
+<text x="682.1" y="192.0">8 min to 43 min</text>
 </svg>

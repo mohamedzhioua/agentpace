@@ -8,7 +8,7 @@ commit messages. `agentpace validate` checks all of this, and CI runs it on ever
 
 ## What is in the seed file
 
-Every row came from real Claude Code subagent runs by one person, read with `agentpace ingest`.
+Every row came from real agent runs by one person, read with `agentpace ingest`: Claude Code subagent runs, and since 0.6.0 Codex turns (`agentpace ingest --source codex`, with Codex's automatic approval checks skipped).
 Nothing is synthetic. Check the current counts with `agentpace backtest`, which reports them at the
 top of `docs/backtest.md`.
 

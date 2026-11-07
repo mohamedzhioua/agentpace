@@ -83,7 +83,7 @@ class Prerender(unittest.TestCase):
 
     def test_sentences_are_written_into_the_page(self):
         html = site.build(self.page(), self.data())
-        self.assertIn('<p id="lede">Measured from 21 completed subagent runs', html)
+        self.assertIn('<p id="lede">Measured from 21 completed agent runs', html)
         self.assertIn("from 1 contributor, with heavy", html)
         self.assertIn("held-out sessions, the P80 for the whole session covered 80%", html)
 

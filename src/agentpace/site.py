@@ -88,7 +88,7 @@ def texts(data: dict[str, Any]) -> dict[str, str]:
     people = "contributor" if data["contributors"] == 1 else "contributors"
     return {
         "lede": (
-            f"Measured from {data['completed']:,} completed subagent runs, not from anyone's "
+            f"Measured from {data['completed']:,} completed agent runs, not from anyone's "
             f"opinion. Half finished within {render.duration(overall['p50'])}. One in ten took "
             f"more than {render.duration(overall['p90'])}."
         ),

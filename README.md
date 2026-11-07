@@ -31,19 +31,19 @@ EOF
 
 ```text
 <!-- claim:example_output -->
-Total wall clock: P50 2.4 h, P80 6.0 h, P90 9.1 h
+Total wall clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
 Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
 
 task          P50        P80        P90  critical  cell (n)
 schema     30 min     85 min      2.5 h     100%  feature x normal x claude-opus-5-5 (n=205)
 api        30 min     87 min      2.5 h      53%  feature x normal x claude-opus-5-5 (n=205)
 ui         30 min     86 min      2.6 h      47%  feature x normal x claude-opus-5-5 (n=205)
-docs         73 s      6 min     14 min      19%  docs x normal x claude-opus-5-5 (n=0)
-review      3 min      8 min     13 min      81%  review x low x claude-opus-5-5 (n=1255)
+docs         72 s      6 min     13 min      18%  docs x normal x claude-opus-5-5 (n=0)
+review      3 min      8 min     13 min      82%  review x low x claude-opus-5-5 (n=1255)
 
 Critical path: schema -> ui -> review (longest in 47% of simulations)
 Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 76% of simulations.
-Method: shrunk. 3206 runs, 13 not completed so excluded. 20000 simulations, seed 20261107.
+Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
 
 Warnings:
   - cell docs x normal x claude-opus-5-5: n=0, effective n=0.0, below 30. Pooled with all and interval widened.
@@ -52,9 +52,9 @@ Warnings:
 
 On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. The same plan is in [examples/plan.json](examples/plan.json). In a plan, `depends_on`, `risk` and `model` are optional. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
 
-![How long subagent runs took, by task kind](docs/assets/run-ranges.svg)
+![How long agent runs took, by task kind](docs/assets/run-ranges.svg)
 
-These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->19 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
+These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Claude Code subagent runs and Codex turns. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->20 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
 
 ## Does it fit your setup?
 
@@ -62,7 +62,7 @@ These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. 
 |---|---|
 | Estimate a plan | Anywhere. The seed data ships inside the package, so no history of your own is needed |
 | Log your own runs | Claude Code, subagent runs only: work Claude Code hands to a subagent, not the main conversation. Your rows pool with the seed, and `--data ~/.agentpace/runs.jsonl` uses only yours |
-| Log your own Codex runs | Codex, one agent turn per run: `agentpace ingest --source codex` reads `~/.codex/sessions`. The published rows are all Claude Code so far |
+| Log your own Codex runs | Codex, one agent turn per run: `agentpace ingest --source codex` reads `~/.codex/sessions`. The published rows include Codex turns, and the backtest scores Codex on its own |
 | Another harness | Not yet. The adapter interface takes one module per harness |
 
 ## Install
@@ -119,9 +119,9 @@ There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of med
 
 ## Backtest: how often it is wrong
 
-**Bottom line.** On <!-- claim:plan_sessions -->56<!-- /claim --> held-out sessions, the whole-session P80 covered <!-- claim:plan_p80 -->80% (CI 70% to 91%)<!-- /claim --> and the P90 covered <!-- claim:plan_p90 -->91% (CI 84% to 98%)<!-- /claim -->. For a single task, the P80 covered <!-- claim:task_p80 -->78.5% (CI 72.7% to 84.2%)<!-- /claim -->, but the median miss of its P50 is <!-- claim:task_mdape -->78%<!-- /claim -->, so plan on the range, never the middle. Calibration drifts from week to week: per-session P80 coverage ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim -->.
+**Bottom line.** On <!-- claim:plan_sessions -->56<!-- /claim --> held-out sessions, the whole-session P80 covered <!-- claim:plan_p80 -->80% (CI 70% to 91%)<!-- /claim --> and the P90 covered <!-- claim:plan_p90 -->91% (CI 84% to 98%)<!-- /claim -->. For a single task, the P80 covered <!-- claim:task_p80 -->77.7% (CI 71.4% to 83.8%)<!-- /claim -->, but the median miss of its P50 is <!-- claim:task_mdape -->78%<!-- /claim -->, so plan on the range, never the middle. Calibration drifts from week to week: per-session P80 coverage ran from <!-- claim:weekly_p80 -->66% to 86%<!-- /claim -->.
 
-Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The [full report](docs/backtest.md) has every split, every baseline and every loss.
+Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The headline scores Claude Code sessions, the population the method was chosen on. Codex is [scored on its own](docs/backtest.md#by-harness). The [full report](docs/backtest.md) has every split, every baseline and every loss.
 
 Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast. These headline numbers come from the same time folds that chose the method, so treat them as slightly optimistic. Weeks after <!-- claim:selection_last_week -->2026-W45<!-- /claim --> form a locked holdout that never takes part in selection. Its status: <!-- claim:locked_status -->not enough data (no weeks after 2026-W45 yet)<!-- /claim -->. Every interval below is a 95% bootstrap interval that resamples whole sessions.
 
@@ -142,14 +142,14 @@ P80 and P90 coverage land near target, but with this few sessions the intervals 
 
 | Method | P80 coverage (target 80%) | Pinball loss (lower is better) | Its pinball minus agentpace's |
 |---|---:|---:|---:|
-| agentpace (`<!-- claim:winner -->shrunk<!-- /claim -->`) | <!-- claim:task_p80 -->78.5% (CI 72.7% to 84.2%)<!-- /claim --> | <!-- claim:task_pinball -->1047 (CI 830 to 1318)<!-- /claim --> | n/a |
+| agentpace (`<!-- claim:winner -->shrunk<!-- /claim -->`) | <!-- claim:task_p80 -->77.7% (CI 71.4% to 83.8%)<!-- /claim --> | <!-- claim:task_pinball -->1047 (CI 831 to 1316)<!-- /claim --> | n/a |
 | Fixed 3 minutes per round | n/a | <!-- claim:rounds_pinball -->1308<!-- /claim --> | <!-- claim:rounds_pinball_gap -->+75 to +467<!-- /claim --> |
-| Global median | n/a | <!-- claim:median_pinball -->1719<!-- /claim --> | <!-- claim:median_pinball_gap -->+375 to +992<!-- /claim --> |
-| Naive human-time guess | n/a | <!-- claim:human_pinball -->7569<!-- /claim --> | <!-- claim:human_pinball_gap -->+5725 to +7440<!-- /claim --> |
+| Global median | n/a | <!-- claim:median_pinball -->1719<!-- /claim --> | <!-- claim:median_pinball_gap -->+373 to +991<!-- /claim --> |
+| Naive human-time guess | n/a | <!-- claim:human_pinball -->7569<!-- /claim --> | <!-- claim:human_pinball_gap -->+5725 to +7439<!-- /claim --> |
 
 The human-time guess is a hand-written table, an assumption rather than a measurement. A difference interval wholly above zero means that baseline is worse at the 95% level.
 
-**Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->72%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
+**Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->66% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->66%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
 
 ![P80 coverage by method](docs/assets/backtest-coverage.svg)
 
@@ -158,11 +158,11 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 **Where it falls short.**
 
 - The median error on a single task is <!-- claim:task_mdape -->78%<!-- /claim -->. Use the range, not the middle.
-- Pooled, P80 coverage is <!-- claim:task_p80_row -->89.1%<!-- /claim --> when each run counts equally rather than each session, so the ranges are too wide for the small, fast runs that dominate the row count.
-- A global median beats agentpace on MAPE (<!-- claim:median_mape -->232%<!-- /claim --> against <!-- claim:task_mape -->511%<!-- /claim -->), and a sum of medians beats it on plan MAPE (<!-- claim:naive_plan_mape -->85%<!-- /claim --> against <!-- claim:plan_mape -->249%<!-- /claim -->), though that sum covers only <!-- claim:naive_plan_p80 -->5%<!-- /claim --> of sessions at P80. MAPE punishes the long tail of over-forecasts that honest ranges need.
-- The report lists <!-- claim:loss_count -->9<!-- /claim --> places where a baseline won. That list is generated, so it cannot be edited out.
-- On the project split, P80 coverage is <!-- claim:project_p80 -->77.8%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.
-- The session-weighted design this project started with did not beat the simpler unweighted one, so the simpler one shipped. The selection rule was fixed before the first result.
+- Pooled, P80 coverage is <!-- claim:task_p80_row -->88.8%<!-- /claim --> when each run counts equally rather than each session, so the ranges are too wide for the small, fast runs that dominate the row count.
+- A global median beats agentpace on MAPE (<!-- claim:median_mape -->234%<!-- /claim --> against <!-- claim:task_mape -->494%<!-- /claim -->), and a sum of medians beats it on plan MAPE (<!-- claim:naive_plan_mape -->85%<!-- /claim --> against <!-- claim:plan_mape -->249%<!-- /claim -->), though that sum covers only <!-- claim:naive_plan_p80 -->5%<!-- /claim --> of sessions at P80. MAPE punishes the long tail of over-forecasts that honest ranges need.
+- The report lists <!-- claim:loss_count -->20<!-- /claim --> places where a baseline won. That list is generated, so it cannot be edited out.
+- On the project split, which runs over both harnesses and where one Codex project's one-turn sessions carry most of the vote, P80 coverage is <!-- claim:project_p80 -->88.9%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.
+- The session-weighted design this project started with did not beat the simpler unweighted one, so the simpler one shipped. The selection rule was fixed before the first result. Scoring it on Claude Code sessions only was decided after a run with Codex rows pooled in had been seen, and that [pooled result](docs/backtest.md#pooled-for-the-record) is printed in the report.
 
 ## Privacy
 
@@ -216,10 +216,10 @@ Each of these does something better than agentpace:
 
 ## Limitations
 
-- **One person's workflow.** Every run comes from <!-- claim:contributors -->1<!-- /claim --> contributor, across <!-- claim:projects -->13<!-- /claim --> projects and <!-- claim:sessions -->82<!-- /claim --> sessions, from <!-- claim:first_week -->2026-W40<!-- /claim --> to <!-- claim:last_week -->2026-W45<!-- /claim -->. One project holds <!-- claim:top_project -->71%<!-- /claim --> of runs, and three sessions hold <!-- claim:top_sessions -->48%<!-- /claim -->. It includes heavy automated fan-out, so it may not resemble your setup.
+- **One person's workflow.** Every run comes from <!-- claim:contributors -->1<!-- /claim --> contributor, across <!-- claim:projects -->21<!-- /claim --> projects and <!-- claim:sessions -->293<!-- /claim --> sessions, from <!-- claim:first_week -->2026-W40<!-- /claim --> to <!-- claim:last_week -->2026-W45<!-- /claim -->. One project holds <!-- claim:top_project -->67%<!-- /claim --> of runs, and three sessions hold <!-- claim:top_sessions -->45%<!-- /claim -->. It includes heavy automated fan-out, so it may not resemble your setup.
 - **Not a model speed ranking.** People send harder work to stronger models, so a slower row may just mean harder tasks.
 - **`feature` means any implementation work.** Without reading prompts, metadata cannot separate features, bug fixes and refactors. Those kinds stay thin until people label runs.
-- **Published rows are Claude Code only.** A Codex adapter exists (`agentpace ingest --source codex`), but no Codex rows are in the published dataset yet, and other harnesses have no adapter.
+- **Two harnesses, still one person.** The published rows hold Claude Code subagent runs and, since 0.6.0, Codex turns, all from the same contributor. Codex is scored on its own, never in the headline. Each Codex exec session is a single turn, so the session effect and the parallelism factor learn nothing from Codex, and a Codex plan borrows Claude Code's session structure. Other harnesses have no adapter.
 - **Agent time only, unless you measure the rest.** Review, testing, decisions and waiting between agent turns are not in the total. Every estimate says so on its own line and never derives them from agent time. `agentpace turns` measures your own wait per human turn from your main-session timestamps and keeps it on your machine. That is elapsed time, not effort, and it is never added to the total.
 - **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low.
 - **Size is not used by default.** Stored size is measured after a run, so it would leak the answer into the forecast.

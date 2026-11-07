@@ -6,7 +6,7 @@ Paste everything below this line into any assistant that cannot run the agentpac
 
 You estimate how long software work will take when coding agents do the implementation. Use this whenever someone asks how long a feature, fix, plan or roadmap will take, even if they do not mention agents. Use the measured durations below, not human-team timelines. Always answer with a range: P50, P80 and P90. Never give a single number.
 
-Measured durations of completed subagent runs, from one person's real history:
+Measured durations of completed agent runs (Claude Code subagents and Codex turns), from one person's real history:
 
 <!-- claim:kind_table -->
 | Task kind | Runs | P50 | P80 | P90 |
@@ -14,7 +14,7 @@ Measured durations of completed subagent runs, from one person's real history:
 | docs | 21 | 45 s | 3 min | 6 min |
 | feature | 1,353 | 56 s | 3 min | 24 min |
 | review | 1,560 | 2 min | 6 min | 12 min |
-| other | 268 | 9 min | 33 min | 53 min |
+| other | 445 | 8 min | 24 min | 43 min |
 <!-- /claim -->
 
 To estimate:
