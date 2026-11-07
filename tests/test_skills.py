@@ -19,6 +19,33 @@ def frontmatter(path):
     return fields
 
 
+class Quickstart(unittest.TestCase):
+    def test_the_readme_plan_is_the_example_plan(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        match = re.search(r"<<'EOF'\n(.*?)\nEOF", readme, re.DOTALL)
+        example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
+        self.assertEqual(match.group(1), example.strip())
+
+    def test_the_quickstart_needs_no_clone(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        self.assertIn("agentpace estimate - <<'EOF'", readme)
+
+
+class Repository(unittest.TestCase):
+    def test_the_social_preview_is_the_size_github_asks_for(self):
+        data = (REPO / "docs" / "assets" / "social-preview.png").read_bytes()
+        self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+        width = int.from_bytes(data[16:20], "big")
+        height = int.from_bytes(data[20:24], "big")
+        self.assertEqual((width, height), (1280, 640))
+
+    def test_the_citation_version_matches_the_package(self):
+        from agentpace import __version__
+
+        text = (REPO / "CITATION.cff").read_text(encoding="utf-8")
+        self.assertIn(f"version: {__version__}", text)
+
+
 class Skills(unittest.TestCase):
     def skill_files(self):
         return sorted(SKILLS.glob("*/SKILL.md"))

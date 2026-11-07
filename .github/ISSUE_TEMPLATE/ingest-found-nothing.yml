@@ -1,0 +1,41 @@
+name: Ingest found nothing
+description: "`agentpace ingest` found no runs, or fewer than you expected."
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a transcript, a file path or a rows file here.** Issues are public. The summary below is all we need, and it holds no content.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `agentpace --version`.
+      placeholder: agentpace 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: harness
+    attributes:
+      label: Harness and its version
+      placeholder: Claude Code 2.1
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Ingest summary
+      description: The counts `agentpace ingest` printed, from "files seen" to "store now holds".
+      render: text
+    validations:
+      required: true

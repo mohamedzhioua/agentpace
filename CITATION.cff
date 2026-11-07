@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: If you use agentpace or its dataset, please cite it like this.
+title: "agentpace: real run times for coding agents"
+type: software
+authors:
+  - family-names: Zhioua
+    given-names: Mohamed
+repository-code: https://github.com/mohamedzhioua/agentpace
+url: https://mohamedzhioua.github.io/agentpace/
+license: MIT
+version: 0.1.0
+date-released: 2026-11-07
+keywords:
+  - coding agents
+  - estimation
+  - forecasting
+  - open data

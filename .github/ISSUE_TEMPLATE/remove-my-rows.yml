@@ -1,0 +1,19 @@
+name: Remove my rows
+description: Ask for rows you contributed to be removed from the dataset.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please open this from the GitHub account that contributed the rows. Removal covers the current tree. Git history and copies others have made cannot be recalled.
+
+        **Never paste your `~/.agentpace/secret` file here.** Only the `contributor` hash is needed.
+
+        If the rows hold personal data, do not use this form. Report it privately through the security policy instead.
+  - type: input
+    id: contributor
+    attributes:
+      label: Contributor hash
+      description: The 16-character `contributor` value from your rows.
+      placeholder: 0123456789abcdef
+    validations:
+      required: true

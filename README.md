@@ -2,6 +2,11 @@
 
 **How long do coding agents really take? Real runs, real ranges.**
 
+[![CI](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+[![Code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
+[![Data: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-blue)](data/LICENSE)
+
 agentpace is an open dataset, a CLI and an agent skill. It turns the run history of coding agents into P50/P80/P90 ranges for a plan of tasks. It measures instead of guessing, and it publishes how often it is wrong.
 
 ![How long subagent runs took, by task kind](docs/assets/run-ranges.svg)
@@ -26,10 +31,22 @@ No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/port
 
 ## Quickstart
 
-Describe the work as tasks, or try [examples/plan.json](examples/plan.json):
+Describe the work as tasks and pass it in. You need no clone and no history of your own:
 
 ```bash
-agentpace estimate examples/plan.json
+agentpace estimate - <<'EOF'
+{
+  "agent_cap": 3,
+  "model": "claude-opus-5-5",
+  "tasks": [
+    { "id": "schema", "kind": "feature", "risk": "normal" },
+    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "ui", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
+    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
+  ]
+}
+EOF
 ```
 
 ```text
@@ -56,17 +73,7 @@ Effective parallelism is work divided by elapsed time. It can be below 1, becaus
 
 To use your own history instead of only the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine.
 
-Plans are JSON. `depends_on`, `risk` and `model` are optional:
-
-```json
-{
-  "agent_cap": 3,
-  "tasks": [
-    { "id": "api", "kind": "feature", "risk": "normal" },
-    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api"] }
-  ]
-}
-```
+In a plan, `depends_on`, `risk` and `model` are optional. The same plan is in [examples/plan.json](examples/plan.json), so `agentpace estimate examples/plan.json` works from a clone.
 
 | Command | What it does |
 |---|---|

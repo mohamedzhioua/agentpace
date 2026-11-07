@@ -278,6 +278,16 @@ Fable 5.1 ruled at maximum effort on 2026-11-07, as the maintainer directed.
 | E2 | Ship the winner of the pre-registered selection in section 6 |
 | E3 | Duplicate key is (`contributor`, `batch`, `offset_s`, `duration_s`). "Byte-identical" holds per interpreter and platform |
 
+### Maintainer rulings for release
+
+The owner then made Fable 5.1 the acting maintainer. Its rulings on 2026-11-07:
+
+- Merge with a merge commit, so the phase commits survive. Serve Pages from `main` at `/docs`.
+- Keep Issues on, and Discussions, Wiki and Projects off. An empty forum reads as abandonment.
+- Protect `main` and `v*` tags against deletion and force-push only. Required reviews would double CI for one maintainer.
+- Tag `v0.1.0` as a full release once PyPI trusted publishing is ready. The README keeps the git install line until the first upload.
+- The Codex adapter comes after 0.1.0, because it changes the schema and the validator.
+
 ### Results after implementation
 
 - The pre-registered selection chose `shrunk`, not the session-weighted design this document proposed. They tied inside the bootstrap interval, so the tie went to the simpler candidate. Session weighting remains a candidate, and `n_eff` equals `n` under the default.
