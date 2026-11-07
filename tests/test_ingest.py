@@ -12,6 +12,7 @@ from agentpace import cli, ingest, pseudonym, schema
 from agentpace.adapters import ADAPTERS, get_adapter
 from agentpace.adapters.base import ParseStats, RawRun
 from agentpace.adapters.claude_code import ClaudeCodeAdapter
+from agentpace.cache import RunCache
 from tests import synthetic
 from tests.synthetic import CANARIES, assistant, simple_run, user, write_run
 
@@ -371,6 +372,101 @@ class Store(TempRoot):
         ingest.merge_into(store, [synthetic.row()])
         ingest.merge_into(store, [synthetic.row(task_kind="bugfix")])
         self.assertEqual(schema.read_rows(store)[0]["task_kind"], "bugfix")
+
+
+class Cache(TempRoot):
+    """A second ingest re-reads only what changed, and gives the same rows."""
+
+    def setUp(self):
+        super().setUp()
+        self.history = self.root / "history"
+        for i in range(3):
+            write_run(self.history, "p", "s", str(i), simple_run(i * 100, 40))
+        self.cache_path = self.root / "home" / "cache.json"
+
+    def cache(self, version=1):
+        return RunCache(self.cache_path, "claude-code", version, 900)
+
+    def ingest(self, version=1):
+        """Return the rows and how many files were parsed."""
+        cache = self.cache(version)
+        with mock.patch.object(ADAPTER, "parse", wraps=ADAPTER.parse) as parse:
+            rows, report = ingest.ingest(ADAPTER, self.history, SECRET, cache=cache)
+        return rows, parse.call_count, report
+
+    def test_a_second_ingest_parses_nothing_and_gives_the_same_rows(self):
+        first, calls, _ = self.ingest()
+        self.assertEqual(calls, 3)
+        second, calls, report = self.ingest()
+        self.assertEqual((calls, report.cached), (0, 3))
+        self.assertEqual(second, first)
+
+    def test_a_changed_file_is_parsed_again(self):
+        self.ingest()
+        write_run(self.history, "p", "s", "1", simple_run(100, 50))
+        rows, calls, _ = self.ingest()
+        self.assertEqual(calls, 1)
+        self.assertIn(50, [row["duration_s"] for row in rows])
+
+    def test_an_unfinished_run_is_parsed_on_every_pass(self):
+        write_run(self.history, "p", "s", "u", [user(500), assistant(510, "u1", "Read")])
+        self.ingest()
+        _, calls, _ = self.ingest()
+        self.assertEqual(calls, 1)
+
+    def test_a_new_adapter_version_discards_the_cache(self):
+        self.ingest()
+        _, calls, report = self.ingest(version=2)
+        self.assertEqual(calls, 3)
+        self.assertTrue(report.cache_rebuilt)
+
+    def test_a_corrupt_cache_is_rebuilt(self):
+        self.ingest()
+        self.cache_path.write_text("{not json", encoding="utf-8")
+        rows, calls, report = self.ingest()
+        self.assertEqual((calls, len(rows)), (3, 3))
+        self.assertTrue(report.cache_rebuilt)
+        self.assertIn("(cache rebuilt)", "\n".join(report.lines()))
+
+    def test_a_deleted_transcript_keeps_its_row_and_its_siblings_offsets(self):
+        first, _, _ = self.ingest()
+        (self.history / "p" / "s" / "subagents" / "agent-0.jsonl").unlink()
+        second, calls, _ = self.ingest()
+        self.assertEqual(calls, 0)
+        self.assertEqual(
+            sorted(map(schema.dedupe_key, second)), sorted(map(schema.dedupe_key, first))
+        )
+
+    def test_no_content_reaches_the_cache(self):
+        write_run(
+            self.history,
+            "p",
+            "s",
+            "c",
+            [*simple_run(700, 20, "CANARY_TOOL_INPUT"), user(730, is_error=True)],
+            effort="CANARY_EFFORT",
+        )
+        self.ingest()
+        text = self.cache_path.read_text(encoding="utf-8")
+        for canary in set(CANARIES) - {"CANARY_PATH", "CANARY_REPO", "CANARY_AGENT"}:
+            self.assertNotIn(canary, text)
+
+    def test_raw_model_names_are_normalized_before_caching(self):
+        model = "arn:aws:bedrock:CANARY_REPO:claude-opus-5-5-v1"
+        lines = [user(800), assistant(810, "x", "SubagentHandback", model=model)]
+        write_run(self.history, "p", "s", "m", lines)
+        self.ingest()
+        self.assertNotIn("arn:aws", self.cache_path.read_text(encoding="utf-8"))
+
+    def test_normalizing_a_model_twice_changes_nothing(self):
+        for raw_name in (
+            "claude-opus-5-5",
+            "us.anthropic.claude-sonnet-5-5-v1",
+            "gpt-6.1-sol",
+            "x",
+        ):
+            once = ingest.normalize_model(raw_name)
+            self.assertEqual(ingest.normalize_model(once), once)
 
 
 class StillRunning(TempRoot):

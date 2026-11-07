@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 from agentpace import classify, pseudonym, schema
-from agentpace.adapters.base import Adapter, ParseStats, RawRun
+from agentpace.adapters.base import Adapter, ParseStats, RawRun, Source
+from agentpace.cache import RunCache
 from agentpace.schema import Row
 
 DEFAULT_IDLE_CAP_S = 900
@@ -49,12 +51,15 @@ class IngestReport:
     rows: int = 0
     zero_duration: int = 0
     still_running: int = 0
+    cached: int = 0
+    cache_rebuilt: bool = False
     parse: ParseStats = field(default_factory=ParseStats)
 
     def lines(self) -> list[str]:
         parse = self.parse
         return [
             f"files seen:       {self.files}",
+            f"read from cache:  {self.cached}" + (" (cache rebuilt)" if self.cache_rebuilt else ""),
             f"rows produced:    {self.rows}",
             f"empty runs:       {parse.empty_runs}",
             f"unreadable files: {parse.unreadable_files}",
@@ -200,6 +205,35 @@ def build_rows(
     return rows, dropped, withheld
 
 
+def _parse(
+    adapter: Adapter,
+    source: Source,
+    idle_cap_s: int,
+    report: IngestReport,
+    cache: RunCache | None,
+) -> RawRun | None:
+    if cache is None:
+        return adapter.parse(source, idle_cap_s, report.parse)
+    try:
+        stamp = os.stat(source.path)
+    except OSError:
+        report.parse.unreadable_files += 1
+        return None
+    hit, run = cache.lookup(source.path, stamp.st_size, stamp.st_mtime_ns)
+    if hit:
+        report.cached += 1
+        if run is None:
+            report.parse.empty_runs += 1
+        return run
+    unreadable = report.parse.unreadable_files
+    run = adapter.parse(source, idle_cap_s, report.parse)
+    if report.parse.unreadable_files == unreadable:
+        # Normalize before storing, so no raw model name (an ARN, a proxy) sits on disk.
+        run = run and replace(run, model=normalize_model(run.model))
+        cache.store(source.path, stamp.st_size, stamp.st_mtime_ns, run)
+    return run
+
+
 def ingest(
     adapter: Adapter,
     path: Path,
@@ -208,14 +242,22 @@ def ingest(
     kind_map: Mapping[str, str] | None = None,
     labels: Mapping[str, Mapping[str, str]] | None = None,
     now: float | None = None,
+    cache: RunCache | None = None,
 ) -> tuple[list[Row], IngestReport]:
-    report = IngestReport()
+    """Parse every run under `path` into rows. With a cache, unchanged files are not re-read."""
+    report = IngestReport(cache_rebuilt=cache is not None and cache.rebuilt)
     runs: list[RawRun] = []
+    seen: set[str] = set()
     for source in adapter.discover(path):
         report.files += 1
-        run = adapter.parse(source, idle_cap_s, report.parse)
+        seen.add(source.path)
+        run = _parse(adapter, source, idle_cap_s, report, cache)
         if run is not None:
             runs.append(run)
+    if cache is not None:
+        sessions = {(run.project, run.session) for run in runs}
+        runs += cache.vanished(sessions, seen)
+        cache.save()
     rows, report.zero_duration, report.still_running = build_rows(
         runs, secret, idle_cap_s, kind_map, labels, now
     )

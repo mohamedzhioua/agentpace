@@ -163,6 +163,9 @@ def _extended(path: Path) -> str:
 
 class ClaudeCodeAdapter:
     name = "claude-code"
+    # Bump whenever `parse` would return something different for the same file, so cached
+    # runs from the old logic are discarded.
+    version = 1
 
     def default_path(self) -> Path:
         return Path.home() / ".claude" / "projects"

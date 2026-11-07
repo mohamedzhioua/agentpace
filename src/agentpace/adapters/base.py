@@ -57,6 +57,7 @@ class ParseStats:
 
 class Adapter(Protocol):
     name: str
+    version: int  # bumped when parsing changes, which invalidates cached runs
 
     def default_path(self) -> Path: ...
 

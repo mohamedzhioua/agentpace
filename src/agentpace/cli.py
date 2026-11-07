@@ -26,6 +26,7 @@ from agentpace import (
     validate,
 )
 from agentpace.adapters import ADAPTERS, get_adapter
+from agentpace.cache import RunCache
 
 
 def _kind_map(pairs: Sequence[str]) -> dict[str, str]:
@@ -46,8 +47,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         raise ValueError("the transcript path does not exist")
     secret = pseudonym.load_secret(paths.home())
     labels = ingest.load_labels(paths.labels_file())
+    # A non-default idle cap changes durations and keys, so it neither reads nor feeds the cache.
+    cache = (
+        RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, args.idle_cap)
+        if args.idle_cap == ingest.DEFAULT_IDLE_CAP_S
+        else None
+    )
     rows, report = ingest.ingest(
-        adapter, path, secret, args.idle_cap, _kind_map(args.kind_map), labels
+        adapter, path, secret, args.idle_cap, _kind_map(args.kind_map), labels, cache=cache
     )
     out = Path(args.out) if args.out else paths.local_runs()
     total = ingest.merge_into(out, rows)
