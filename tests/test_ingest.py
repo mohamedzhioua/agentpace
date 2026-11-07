@@ -1,0 +1,427 @@
+import contextlib
+import io
+import json
+import os
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from agentpace import cli, ingest, pseudonym, schema
+from agentpace.adapters import ADAPTERS, get_adapter
+from agentpace.adapters.base import ParseStats, RawRun
+from agentpace.adapters.claude_code import ClaudeCodeAdapter
+from tests import synthetic
+from tests.synthetic import CANARIES, assistant, simple_run, user, write_run
+
+SECRET = b"\x01" * 32
+ADAPTER = ClaudeCodeAdapter()
+
+
+def raw(start=0.0, end=100.0, session="s", spans=None, **overrides):
+    values = {
+        "harness": "claude-code",
+        "model": "claude-opus-5-5",
+        "start": start,
+        "end": end,
+        "spans": spans or ((start, end),),
+        "active_s": round(end - start),
+        "tool_calls": 3,
+        "edit_calls": 0,
+        "tokens": 10,
+        "errors": 0,
+        "outcome": "completed",
+        "agent_type": "reviewer",
+        "session": session,
+        "project": "p",
+    }
+    values.update(overrides)
+    return RawRun(**values)
+
+
+class TempRoot(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.root = Path(folder.name)
+
+    def parse_only(self):
+        stats = ParseStats()
+        sources = list(ADAPTER.discover(self.root))
+        return [ADAPTER.parse(s, 900, stats) for s in sources], stats
+
+
+class Parsing(TempRoot):
+    def test_counts_and_tokens_are_deduplicated_by_message(self):
+        write_run(
+            self.root,
+            "p",
+            "s",
+            "a",
+            [
+                user(0),
+                assistant(10, "m1", "Read", input_tokens=100, output_tokens=5),
+                assistant(10, "m1", "Edit", input_tokens=100, output_tokens=50),
+                user(20),
+                assistant(30, "m2", "SubagentHandback", input_tokens=7, output_tokens=3),
+            ],
+        )
+        (run,), _ = self.parse_only()
+        self.assertEqual(run.tool_calls, 3)
+        self.assertEqual(run.edit_calls, 1)
+        self.assertEqual(run.tokens, 150 + 10)
+        self.assertEqual(run.active_s, 30)
+
+    def test_idle_gaps_are_clipped_and_split_spans(self):
+        write_run(self.root, "p", "s", "a", [*simple_run(0, 10), *simple_run(5000, 10)])
+        (run,), _ = self.parse_only()
+        self.assertEqual(run.active_s, 10 + 900 + 10)
+        self.assertEqual(len(run.spans), 2)
+
+    def test_synthetic_model_entries_are_ignored(self):
+        write_run(
+            self.root,
+            "p",
+            "s",
+            "a",
+            [
+                user(0),
+                assistant(1, "x", model="<synthetic>"),
+                assistant(2, "y", model="<synthetic>"),
+                assistant(3, "z", model="claude-sonnet-5-5"),
+            ],
+        )
+        (run,), _ = self.parse_only()
+        self.assertEqual(run.model, "claude-sonnet-5-5")
+
+    def test_errored_tool_results_count_as_retries(self):
+        write_run(
+            self.root,
+            "p",
+            "s",
+            "a",
+            [user(0, is_error=True), assistant(5, "a", "Bash"), user(6), assistant(9, "b")],
+        )
+        (run,), _ = self.parse_only()
+        self.assertEqual(run.errors, 1)
+
+    def test_nested_workflow_transcripts_are_found(self):
+        write_run(self.root, "p", "s", "a", simple_run(0, 10), nested="workflows/wf_1")
+        (run,), _ = self.parse_only()
+        self.assertEqual((run.session, run.project), ("s", "p"))
+
+    def test_malformed_lines_are_counted_not_fatal(self):
+        path = write_run(self.root, "p", "s", "a", simple_run(0, 10))
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write('{"type":"assistant", CANARY_PROMPT\n')
+        (run,), stats = self.parse_only()
+        self.assertIsNotNone(run)
+        self.assertEqual(stats.unparsed_lines, 1)
+
+    def test_unknown_record_types_are_skipped(self):
+        write_run(self.root, "p", "s", "a", [{"type": "new-thing"}, *simple_run(0, 10)])
+        (run,), _ = self.parse_only()
+        self.assertEqual(run.active_s, 10)
+
+    def test_runs_with_no_activity_are_counted_as_empty(self):
+        write_run(self.root, "p", "s", "a", [user(0)])
+        (run,), stats = self.parse_only()
+        self.assertIsNone(run)
+        self.assertEqual(stats.empty_runs, 1)
+
+    def test_missing_meta_is_tolerated(self):
+        path = write_run(self.root, "p", "s", "a", simple_run(0, 10))
+        path.with_suffix(".meta.json").unlink()
+        (run,), _ = self.parse_only()
+        self.assertIsNone(run.agent_type)
+
+    def test_a_single_file_path_is_accepted(self):
+        path = write_run(self.root, "p", "s", "a", simple_run(0, 10))
+        self.assertEqual(len(list(ADAPTER.discover(path))), 1)
+
+    def test_unreadable_files_are_counted(self):
+        stats = ParseStats()
+        write_run(self.root, "p", "s", "a", simple_run(0, 10))
+        source = next(ADAPTER.discover(self.root))
+        with mock.patch("builtins.open", side_effect=OSError("no")):
+            self.assertIsNone(ADAPTER.parse(source, 900, stats))
+        self.assertEqual(stats.unreadable_files, 1)
+
+    @unittest.skipUnless(os.name == "nt", "the 260-character limit is Windows only")
+    def test_paths_beyond_the_windows_limit_are_read(self):
+        deep = "d" * 120
+        extended = Path("\\\\?\\" + str(self.root))
+        self.addCleanup(shutil.rmtree, extended / deep, ignore_errors=True)
+        write_run(extended, deep, deep + "s", "a", simple_run(0, 10), nested="w" * 60)
+        (run,), _ = self.parse_only()
+        self.assertIsNotNone(run)
+
+
+class Outcome(TempRoot):
+    def outcome(self, lines, finished=None):
+        write_run(self.root, "p", "s", "a", lines, finished=finished)
+        (run,), _ = self.parse_only()
+        return run.outcome
+
+    def test_terminal_tool_means_completed(self):
+        self.assertEqual(self.outcome(simple_run(0, 10)), "completed")
+
+    def test_finished_flag_means_completed(self):
+        self.assertEqual(
+            self.outcome([user(0), assistant(5, "a", "Read")], finished=True), "completed"
+        )
+
+    def test_end_turn_means_completed(self):
+        lines = [user(0), assistant(5, "a", stop_reason="end_turn")]
+        self.assertEqual(self.outcome(lines), "completed")
+
+    def test_refusal_wins_over_finished(self):
+        lines = [user(0), assistant(5, "a", stop_reason="refusal")]
+        self.assertEqual(self.outcome(lines, finished=True), "failed")
+
+    def test_errored_final_result_without_completion_signal_fails(self):
+        lines = [assistant(0, "a", "Bash"), user(5, is_error=True)]
+        self.assertEqual(self.outcome(lines), "failed")
+
+    def test_no_signal_is_unknown(self):
+        self.assertEqual(self.outcome([assistant(0, "a", "Bash"), user(5)]), "unknown")
+
+
+class ModelNames(unittest.TestCase):
+    def test_public_families_survive(self):
+        cases = {
+            "claude-opus-5-5": "claude-opus-5-5",
+            "claude-opus-5-5-20261001": "claude-opus-5-5",
+            "claude-opus-5-5[1m]": "claude-opus-5-5",
+            "claude-3-5-sonnet-20241022": "claude-3-5-sonnet",
+            "gpt-6-luna": "gpt-6-luna",
+            "gemini-2.5-pro": "gemini-2.5-pro",
+        }
+        for name, family in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(ingest.normalize_model(name), family)
+
+    def test_arns_keep_only_the_family(self):
+        arn = "arn:aws:bedrock:us-east-1:123456789012:inference-profile/claude-sonnet-5-5"
+        self.assertEqual(ingest.normalize_model(arn), "claude-sonnet-5-5")
+
+    def test_private_names_become_other(self):
+        for name in ("acme-internal-llm", "my.proxy.corp/model"):
+            self.assertEqual(ingest.normalize_model(name), "other")
+
+
+class Rows(unittest.TestCase):
+    def test_rows_are_valid_and_pseudonymous(self):
+        rows, dropped = ingest.build_rows([raw(session="real-session-id")], SECRET)
+        self.assertEqual(dropped, 0)
+        self.assertEqual(schema.check_row(rows[0]), [])
+        self.assertEqual(rows[0]["batch"], pseudonym.batch(SECRET, "real-session-id"))
+        self.assertNotIn("real-session-id", schema.canonical(rows[0]))
+
+    def test_the_same_input_gives_identical_rows(self):
+        runs = [raw(0, 100), raw(50, 200)]
+        self.assertEqual(ingest.build_rows(runs, SECRET), ingest.build_rows(runs, SECRET))
+
+    def test_different_secrets_give_unlinkable_rows(self):
+        first, _ = ingest.build_rows([raw()], SECRET)
+        second, _ = ingest.build_rows([raw()], b"\x02" * 32)
+        for field in ("contributor", "batch", "project"):
+            self.assertNotEqual(first[0][field], second[0][field])
+
+    def test_zero_duration_runs_are_dropped_and_counted(self):
+        rows, dropped = ingest.build_rows([raw(active_s=0)], SECRET)
+        self.assertEqual((rows, dropped), ([], 1))
+
+    def test_peak_overlap_is_per_run(self):
+        runs = [raw(0, 100), raw(50, 150), raw(60, 70), raw(500, 600)]
+        peaks = [row["parallel_agents"] for row in ingest.build_rows(runs, SECRET)[0]]
+        self.assertEqual(peaks, [3, 3, 3, 1])
+
+    def test_runs_touching_at_an_instant_do_not_overlap(self):
+        peaks = ingest.peak_overlaps([raw(0, 100), raw(100, 200)])
+        self.assertEqual(peaks, {0: 2, 1: 2})
+
+    def test_week_is_iso_and_utc(self):
+        self.assertEqual(ingest.iso_week(0), "1970-W01")
+        # 2026-12-31 23:30 UTC belongs to ISO week 53 of 2026.
+        self.assertEqual(ingest.iso_week(1_798_759_800), "2026-W53")
+
+
+class SessionClock(unittest.TestCase):
+    def test_offsets_skip_idle_time(self):
+        runs = [raw(0, 100), raw(5000, 5100)]
+        rows, _ = ingest.build_rows(runs, SECRET)
+        self.assertEqual([r["offset_s"] for r in rows], [0, 100 + 900])
+
+    def test_runs_tied_to_the_second_stay_distinct(self):
+        rows, _ = ingest.build_rows([raw(0, 100), raw(0, 100), raw(0, 100)], SECRET)
+        self.assertEqual([r["offset_s"] for r in rows], [0, 1, 2])
+        self.assertEqual(len({schema.dedupe_key(r) for r in rows}), 3)
+
+    def test_offset_plus_duration_recovers_the_span_for_sequential_runs(self):
+        runs = [raw(0, 100), raw(150, 300), raw(320, 330)]
+        rows, _ = ingest.build_rows(runs, SECRET)
+        span = max(r["offset_s"] + r["duration_s"] for r in rows)
+        self.assertEqual(span, 330)
+
+    def test_overlapping_runs_share_the_clock(self):
+        rows, _ = ingest.build_rows([raw(0, 100), raw(40, 80)], SECRET)
+        self.assertEqual([r["offset_s"] for r in rows], [0, 40])
+
+    def test_a_long_gap_inside_a_run_is_clipped_on_the_session_clock(self):
+        long_run = raw(0, 5000, spans=((0, 50), (4950, 5000)), active_s=1000)
+        rows, _ = ingest.build_rows([long_run, raw(5100, 5200)], SECRET)
+        self.assertEqual(rows[1]["offset_s"], 50 + 900 + 50 + 100)
+
+
+class Privacy(TempRoot):
+    """No sensitive value may reach a row, a report, a log or an error."""
+
+    def build_history(self):
+        write_run(
+            self.root,
+            "CANARY_REPO-project",
+            "CANARY_PATH-session",
+            "1",
+            [*simple_run(0, 40, "Edit"), user(50, is_error=True)],
+            agent_type="CANARY_AGENT",
+        )
+        write_run(
+            self.root,
+            "CANARY_REPO-project",
+            "CANARY_PATH-session",
+            "2",
+            [user(0), assistant(1, "m", "CANARY_TOOL_INPUT", model="CANARY_REPO-model")],
+            agent_type="plugin:CANARY_AGENT",
+        )
+        broken = self.root / "CANARY_REPO-project" / "CANARY_PATH-session" / "subagents"
+        (broken / "agent-3.jsonl").write_text('{"type":"user" CANARY_PROMPT\n', encoding="utf-8")
+
+    def run_cli(self):
+        out, err = io.StringIO(), io.StringIO()
+        store = self.root / "out" / "runs.jsonl"
+        env = {"AGENTPACE_HOME": str(self.root / "home")}
+        with (
+            mock.patch.dict(os.environ, env),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            code = cli.main(["ingest", str(self.root), "--out", str(store)])
+        self.assertEqual(code, 0)
+        return out.getvalue() + err.getvalue() + store.read_text(encoding="utf-8")
+
+    def test_no_canary_reaches_any_output(self):
+        self.build_history()
+        output = self.run_cli()
+        for canary in CANARIES:
+            self.assertNotIn(canary, output)
+        self.assertNotIn(self.root.name, output)
+
+    def test_repr_of_a_run_hides_identifying_fields(self):
+        text = repr(raw(session="CANARY_PATH", project="CANARY_REPO", agent_type="CANARY_AGENT"))
+        for canary in ("CANARY_PATH", "CANARY_REPO", "CANARY_AGENT"):
+            self.assertNotIn(canary, text)
+
+    def test_repr_of_a_source_hides_identifying_fields(self):
+        write_run(self.root, "CANARY_REPO", "s", "a", simple_run(0, 10))
+        self.assertNotIn("CANARY_REPO", repr(next(ADAPTER.discover(self.root))))
+
+
+class Secret(TempRoot):
+    def test_secret_is_stable_and_random(self):
+        first = pseudonym.load_secret(self.root / "a")
+        self.assertEqual(first, pseudonym.load_secret(self.root / "a"))
+        self.assertNotEqual(first, pseudonym.load_secret(self.root / "b"))
+
+    @unittest.skipIf(os.name == "nt", "POSIX permissions")
+    def test_secret_is_owner_only(self):
+        pseudonym.load_secret(self.root)
+        self.assertEqual((self.root / "secret").stat().st_mode & 0o777, 0o600)
+
+
+class Store(TempRoot):
+    def test_old_rows_survive_when_transcripts_are_gone(self):
+        store = self.root / "runs.jsonl"
+        ingest.merge_into(store, [synthetic.row(offset_s=1)])
+        total = ingest.merge_into(store, [synthetic.row(offset_s=2)])
+        self.assertEqual(total, 2)
+
+    def test_reingesting_is_idempotent(self):
+        store = self.root / "runs.jsonl"
+        ingest.merge_into(store, [synthetic.row()])
+        self.assertEqual(ingest.merge_into(store, [synthetic.row()]), 1)
+
+    def test_a_relabeled_run_replaces_the_old_row(self):
+        store = self.root / "runs.jsonl"
+        ingest.merge_into(store, [synthetic.row()])
+        ingest.merge_into(store, [synthetic.row(task_kind="bugfix")])
+        self.assertEqual(schema.read_rows(store)[0]["task_kind"], "bugfix")
+
+
+class Labels(unittest.TestCase):
+    def test_labels_override_heuristics(self):
+        rows, _ = ingest.build_rows([raw()], SECRET)
+        ref = ingest.run_ref(rows[0])
+        labels = {ref: {"kind": "bugfix", "risk": "high"}}
+        relabeled, _ = ingest.build_rows([raw()], SECRET, labels=labels)
+        self.assertEqual((relabeled[0]["task_kind"], relabeled[0]["risk"]), ("bugfix", "high"))
+
+
+class Adapters(unittest.TestCase):
+    def test_registry_lookup(self):
+        self.assertIs(get_adapter("claude-code"), ADAPTERS["claude-code"])
+
+    def test_unknown_adapter_is_a_clear_error(self):
+        with self.assertRaisesRegex(ValueError, "unknown source"):
+            get_adapter("nope")
+
+    def test_a_second_harness_needs_only_the_interface(self):
+        class Fake:
+            name = "fake"
+
+            def default_path(self):
+                return Path(".")
+
+            def discover(self, path):
+                yield from ()
+
+            def parse(self, source, idle_cap_s, stats):
+                return None
+
+        rows, report = ingest.ingest(Fake(), Path("."), SECRET)
+        self.assertEqual((rows, report.files), ([], 0))
+
+
+class Cli(TempRoot):
+    def run_cli(self, *args):
+        err = io.StringIO()
+        env = {"AGENTPACE_HOME": str(self.root / "home")}
+        with mock.patch.dict(os.environ, env), contextlib.redirect_stderr(err):
+            return cli.main(list(args)), err.getvalue()
+
+    def test_missing_path_is_a_clean_error(self):
+        code, err = self.run_cli("ingest", str(self.root / "missing"))
+        self.assertEqual(code, 2)
+        self.assertNotIn(self.root.name, err)
+
+    def test_kind_map_is_applied(self):
+        write_run(self.root, "p", "s", "a", simple_run(0, 10), agent_type="custom")
+        store = self.root / "o.jsonl"
+        self.run_cli("ingest", str(self.root), "--out", str(store), "--kind-map", "custom=docs")
+        self.assertEqual(schema.read_rows(store)[0]["task_kind"], "docs")
+
+    def test_bad_kind_map_is_rejected(self):
+        code, _ = self.run_cli("ingest", str(self.root), "--kind-map", "custom=nonsense")
+        self.assertEqual(code, 2)
+
+    def test_rows_file_holds_json_lines(self):
+        write_run(self.root, "p", "s", "a", simple_run(0, 10))
+        store = self.root / "o.jsonl"
+        self.run_cli("ingest", str(self.root), "--out", str(store))
+        for line in store.read_text(encoding="utf-8").splitlines():
+            self.assertIsInstance(json.loads(line), dict)
+
+
+if __name__ == "__main__":
+    unittest.main()

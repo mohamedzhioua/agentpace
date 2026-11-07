@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentpace"
+description = "Real run times for coding agents: an open dataset, CLI and agent skill that turn run history into P50/P80/P90 ranges."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Zhioua Mohamed" }]
+keywords = ["ai-agents", "estimation", "forecasting", "claude-code", "dataset"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development",
+  "Typing :: Typed",
+]
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://mohamedzhioua.github.io/agentpace/"
+Repository = "https://github.com/mohamedzhioua/agentpace"
+Issues = "https://github.com/mohamedzhioua/agentpace/issues"
+
+[project.scripts]
+agentpace = "agentpace.cli:main"
+
+[tool.hatch.version]
+path = "src/agentpace/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentpace"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schema/run.schema.json" = "agentpace/_bundled/run.schema.json"
+"data/runs" = "agentpace/_bundled/runs"
+"data/LICENSE" = "agentpace/_bundled/DATA-LICENSE"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PTH"]
+ignore = [
+  "S101",  # asserts are fine in tests and internal invariants
+  "S311",  # the seeded PRNG is for simulation, never for security
+  "PTH",   # long-path handling on Windows needs os.path string operations
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src"]

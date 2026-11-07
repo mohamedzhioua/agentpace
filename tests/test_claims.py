@@ -1,0 +1,84 @@
+import contextlib
+import io
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from agentpace import claims, cli, paths, schema
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+class Apply(unittest.TestCase):
+    def test_replaces_marked_values(self):
+        text = "We saw <!-- claim:runs -->1<!-- /claim --> runs."
+        self.assertEqual(
+            claims.apply(text, {"runs": "3,000"}),
+            "We saw <!-- claim:runs -->3,000<!-- /claim --> runs.",
+        )
+
+    def test_leaves_unmarked_text_alone(self):
+        self.assertEqual(claims.apply("plain 42", {"runs": "1"}), "plain 42")
+
+    def test_is_idempotent(self):
+        once = claims.apply("<!-- claim:a -->x<!-- /claim -->", {"a": "y"})
+        self.assertEqual(claims.apply(once, {"a": "y"}), once)
+
+    def test_an_unknown_claim_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, "unknown claim"):
+            claims.apply("<!-- claim:made_up -->1<!-- /claim -->", {})
+
+    def test_spans_multiple_lines(self):
+        text = "<!-- claim:t -->\nold\n<!-- /claim -->"
+        self.assertEqual(
+            claims.apply(text, {"t": "\nnew\n"}), "<!-- claim:t -->\nnew\n<!-- /claim -->"
+        )
+
+
+class Published(unittest.TestCase):
+    """Every number in the published documents must equal what the data says."""
+
+    def setUp(self):
+        self.known = claims.values(
+            schema.read_dataset([paths.seed_dir()]),
+            json.loads((REPO / "docs" / "backtest.json").read_text(encoding="utf-8")),
+            REPO / "examples" / "plan.json",
+        )
+
+    def test_documents_match_the_data(self):
+        for name in ("README.md", "skills/agentpace/assets/portable-prompt.md"):
+            text = (REPO / name).read_text(encoding="utf-8")
+            self.assertEqual(claims.apply(text, self.known), text, name)
+
+    def test_contributor_split_is_reported_honestly(self):
+        self.assertIn("could not run", self.known["contributor_split"])
+
+    def test_the_readme_cites_its_claims(self):
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        self.assertGreater(text.count("<!-- claim:"), 15)
+
+
+class Command(unittest.TestCase):
+    def test_check_fails_on_a_stale_number(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "doc.md"
+            path.write_text("<!-- claim:runs -->1<!-- /claim -->", encoding="utf-8")
+            args = [
+                "claims",
+                str(path),
+                "--report",
+                str(REPO / "docs" / "backtest.json"),
+                "--data",
+                str(paths.seed_dir()),
+            ]
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(cli.main([*args, "--check"]), 1)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(args), 0)
+                self.assertEqual(cli.main([*args, "--check"]), 0)
+            self.assertNotIn(">1<", path.read_text(encoding="utf-8"))
+
+
+if __name__ == "__main__":
+    unittest.main()

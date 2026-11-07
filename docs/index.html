@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentpace</title>
+<meta name="description" content="How long coding agents really take, from real runs. Median, P75 and P90 by model, task kind and risk.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface: #eef2f5;
+    --panel: #f8fafb;
+    --ink: #10202f;
+    --muted: #4a5866;
+    --rule: #c9d3db;
+    --mark: #2a78d6;
+    --mark-soft: #a9c6e8;
+    --flag: #10202f;
+    --thin: #6f7d8a;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #0f1a24;
+      --panel: #152230;
+      --ink: #e8eef2;
+      --muted: #a9b6c2;
+      --rule: #2c3c4b;
+      --mark: #3987e5;
+      --mark-soft: #274a72;
+      --flag: #e8eef2;
+      --thin: #8493a0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font: 16px/1.55 var(--sans);
+  }
+  .page { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 20px 0;
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  header.top nav { display: flex; gap: 20px; }
+  a { color: inherit; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, select:focus-visible {
+    outline: 2px solid var(--mark);
+    outline-offset: 2px;
+  }
+  h1 {
+    margin: 40px 0 8px;
+    font-family: var(--mono);
+    font-size: clamp(30px, 6vw, 56px);
+    line-height: 1.08;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    max-width: 18ch;
+  }
+  .lede { margin: 0 0 40px; color: var(--muted); max-width: 62ch; font-size: 18px; }
+  .trace { width: 100%; height: auto; display: block; overflow: visible; }
+  .trace text { font: 12px var(--mono); fill: var(--muted); }
+  .trace .flag-label { font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .trace .bar { fill: var(--mark); }
+  .trace .bar.tail { fill: var(--mark-soft); }
+  .trace .hit { fill: transparent; }
+  .trace .hit:hover + .bar { fill: var(--ink); }
+  .trace .flag { stroke: var(--flag); stroke-width: 1.5; }
+  .trace .axis { stroke: var(--rule); stroke-width: 1; }
+  .trace-note { margin: 8px 0 72px; font-size: 14px; color: var(--muted); }
+  h2 {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .section-note { margin: 0 0 20px; color: var(--muted); max-width: 66ch; }
+  .filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+  .filters label { display: grid; gap: 4px; font: 12px var(--mono); color: var(--muted); }
+  select {
+    min-height: 40px;
+    padding: 6px 10px;
+    font: 14px var(--mono);
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font: 14px/1.3 var(--mono); }
+  th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--ink); }
+  th button {
+    all: unset;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    padding: 8px 12px 8px 0;
+    box-sizing: border-box;
+  }
+  th button:hover { color: var(--ink); }
+  th[aria-sort="ascending"] button::after { content: " \2191"; }
+  th[aria-sort="descending"] button::after { content: " \2193"; }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .number { text-align: right; font-variant-numeric: tabular-nums; }
+  th.number button { text-align: right; }
+  tr.few td { color: var(--thin); }
+  tr.few .glyph-range { stroke: var(--thin); }
+  .glyph { width: 180px; padding-right: 0; }
+  .glyph svg { display: block; width: 180px; height: 12px; overflow: visible; }
+  .glyph-range { stroke: var(--mark); stroke-width: 4; stroke-linecap: round; }
+  .glyph-mid { stroke: var(--surface); stroke-width: 2; }
+  .empty { padding: 24px 0; color: var(--muted); }
+  .reading { margin-top: 72px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px 48px; }
+  .reading h3 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+  .reading p { margin: 0; color: var(--muted); }
+  .reproduce {
+    margin-top: 72px;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+  .reproduce pre { margin: 12px 0 0; font: 14px/1.7 var(--mono); overflow-x: auto; }
+  footer { margin: 48px 0; font-size: 14px; color: var(--muted); }
+  @media (max-width: 720px) {
+    .page { padding: 0 16px; }
+    .glyph { display: none; }
+    td, th button { padding-right: 8px; }
+    table { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <span>agentpace</span>
+    <nav>
+      <a href="https://github.com/mohamedzhioua/agentpace">GitHub</a>
+      <a href="https://github.com/mohamedzhioua/agentpace/blob/main/docs/backtest.md">Backtest</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>How long coding agents really take</h1>
+    <p class="lede" id="lede"></p>
+
+    <figure style="margin:0">
+      <svg class="trace" id="trace" role="img" aria-labelledby="trace-title">
+        <title id="trace-title">Number of runs by duration, on a log scale</title>
+      </svg>
+      <figcaption class="trace-note" id="trace-note"></figcaption>
+    </figure>
+
+    <section aria-labelledby="board-title">
+      <h2 id="board-title">Times by model, kind and risk</h2>
+      <p class="section-note">Completed runs only. Grey rows have fewer than 10 runs, so treat them as anecdotes.</p>
+      <div class="filters">
+        <label>Model <select id="filter-model"></select></label>
+        <label>Kind <select id="filter-kind"></select></label>
+        <label>Risk <select id="filter-risk"></select></label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="head"></tr>
+          </thead>
+          <tbody id="body"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="empty" hidden>No cell matches these filters. Clear one to see more.</p>
+    </section>
+
+    <section class="reading" aria-label="How to read these numbers">
+      <div>
+        <h3>This is not a model speed ranking</h3>
+        <p>People send harder work to stronger models, so a slower row may just mean harder tasks.</p>
+      </div>
+      <div>
+        <h3>This is one person's workflow, so far</h3>
+        <p id="reading-scope"></p>
+      </div>
+      <div>
+        <h3>How well the forecasts hold up</h3>
+        <p id="reading-backtest"></p>
+      </div>
+    </section>
+
+    <section class="reproduce" aria-labelledby="reproduce-title">
+      <h2 id="reproduce-title">Check it yourself</h2>
+      <pre><code>uv tool install git+https://github.com/mohamedzhioua/agentpace
+agentpace ingest                    # your own runs, stored locally
+agentpace estimate plan.json        # P50, P80 and P90 for a plan
+agentpace share --dry-run           # the exact rows you would contribute</code></pre>
+    </section>
+  </main>
+
+  <footer>This page loads nothing from anywhere else and tracks nobody. All of its data is inline.</footer>
+</div>
+
+<script id="leaderboard-data" type="application/json">{"runs":3219,"completed":3206,"sessions":82,"contributors":1,"first_week":"2026-W40","last_week":"2026-W45","overall":{"n":3206,"p50":103,"p75":289,"p90":1124},"histogram":[{"low":1,"high":1,"n":0},{"low":1,"high":2,"n":0},{"low":2,"high":2,"n":0},{"low":2,"high":3,"n":0},{"low":3,"high":3,"n":1},{"low":3,"high":4,"n":0},{"low":4,"high":5,"n":4},{"low":5,"high":6,"n":2},{"low":6,"high":8,"n":4},{"low":8,"high":10,"n":14},{"low":10,"high":13,"n":32},{"low":13,"high":16,"n":50},{"low":16,"high":20,"n":69},{"low":20,"high":25,"n":95},{"low":25,"high":32,"n":125},{"low":32,"high":40,"n":179},{"low":40,"high":50,"n":271},{"low":50,"high":63,"n":268},{"low":63,"high":79,"n":233},{"low":79,"high":100,"n":209},{"low":100,"high":126,"n":236},{"low":126,"high":158,"n":213},{"low":158,"high":200,"n":184},{"low":200,"high":251,"n":150},{"low":251,"high":316,"n":111},{"low":316,"high":398,"n":91},{"low":398,"high":501,"n":92},{"low":501,"high":631,"n":87},{"low":631,"high":794,"n":68},{"low":794,"high":1000,"n":65},{"low":1000,"high":1259,"n":59},{"low":1259,"high":1585,"n":51},{"low":1585,"high":1995,"n":60},{"low":1995,"high":2512,"n":45},{"low":2512,"high":3162,"n":42},{"low":3162,"high":3981,"n":32},{"low":3981,"high":5012,"n":27},{"low":5012,"high":6310,"n":15},{"low":6310,"high":7943,"n":7},{"low":7943,"high":10000,"n":5},{"low":10000,"high":12589,"n":5},{"low":12589,"high":15849,"n":4},{"low":15849,"high":19953,"n":0},{"low":19953,"high":25119,"n":1}],"cells":[{"model":"claude-fable-5-1","kind":"other","risk":"normal","n":46,"p50":662,"p75":1675,"p90":2472},{"model":"claude-fable-5-1","kind":"review","risk":"low","n":198,"p50":397,"p75":735,"p90":1293},{"model":"claude-haiku-5-5","kind":"other","risk":"low","n":7,"p50":18,"p75":27,"p90":32},{"model":"claude-haiku-5-5","kind":"other","risk":"normal","n":1,"p50":69,"p75":69,"p90":69},{"model":"claude-opus-5-5","kind":"bugfix","risk":"normal","n":1,"p50":2260,"p75":2260,"p90":2260},{"model":"claude-opus-5-5","kind":"feature","risk":"normal","n":205,"p50":1976,"p75":3629,"p90":5196},{"model":"claude-opus-5-5","kind":"other","risk":"low","n":12,"p50":455,"p75":708,"p90":1247},{"model":"claude-opus-5-5","kind":"other","risk":"normal","n":95,"p50":1426,"p75":3250,"p90":4976},{"model":"claude-opus-5-5","kind":"review","risk":"low","n":1255,"p50":128,"p75":234,"p90":492},{"model":"claude-opus-5-5","kind":"tests","risk":"normal","n":2,"p50":3070,"p75":3920,"p90":4430},{"model":"claude-sonnet-5-5","kind":"bugfix","risk":"normal","n":1,"p50":419,"p75":419,"p90":419},{"model":"claude-sonnet-5-5","kind":"docs","risk":"normal","n":21,"p50":45,"p75":140,"p90":347},{"model":"claude-sonnet-5-5","kind":"feature","risk":"normal","n":1148,"p50":50,"p75":77,"p90":147},{"model":"claude-sonnet-5-5","kind":"other","risk":"low","n":29,"p50":225,"p75":726,"p90":1334},{"model":"claude-sonnet-5-5","kind":"other","risk":"normal","n":78,"p50":318,"p75":843,"p90":1273},{"model":"claude-sonnet-5-5","kind":"review","risk":"low","n":107,"p50":175,"p75":554,"p90":1122}],"backtest":{"sessions":56,"plan_p80_coverage":80,"plan_p90_coverage":91,"task_p80_coverage":79,"task_mdape":78}}</script>
+<script>
+(function () {
+  "use strict";
+  var data = JSON.parse(document.getElementById("leaderboard-data").textContent);
+  var svgNS = "http://www.w3.org/2000/svg";
+
+  function duration(seconds) {
+    if (seconds < 90) return Math.round(seconds) + " s";
+    var minutes = seconds / 60;
+    if (minutes < 90) return Math.round(minutes) + " min";
+    var hours = minutes / 60;
+    return hours < 48 ? hours.toFixed(1) + " h" : (hours / 24).toFixed(1) + " days";
+  }
+  function count(value) { return value.toLocaleString("en-US"); }
+  function el(tag, attributes, parent) {
+    var node = document.createElementNS(svgNS, tag);
+    Object.keys(attributes).forEach(function (key) { node.setAttribute(key, attributes[key]); });
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  document.getElementById("lede").textContent =
+    "Measured from " + count(data.completed) + " completed subagent runs, not from anyone's opinion. " +
+    "Half finished within " + duration(data.overall.p50) + ". One in ten took more than " +
+    duration(data.overall.p90) + ".";
+  document.getElementById("trace-note").textContent =
+    "Every completed run from " + data.first_week + " to " + data.last_week +
+    ". Time runs left to right on a log scale.";
+  document.getElementById("reading-scope").textContent =
+    count(data.runs) + " runs in " + data.sessions + " sessions from " + data.contributors +
+    (data.contributors === 1 ? " contributor" : " contributors") + ", with heavy automated fan-out. It will not match your setup until more people contribute.";
+  var b = data.backtest;
+  document.getElementById("reading-backtest").textContent =
+    "On " + b.sessions + " held-out sessions, the P80 for the whole session covered " + b.plan_p80_coverage +
+    "% and the P90 covered " + b.plan_p90_coverage + "%. For a single task the median miss is " +
+    b.task_mdape + "%, so read a range, never one number.";
+
+  function drawTrace() {
+    var svg = document.getElementById("trace");
+    var width = Math.max(svg.parentNode.clientWidth, 280);
+    var narrow = width < 640;
+    var left = 2, right = width - 2, base = 190, top = 60;
+    svg.setAttribute("viewBox", "0 0 " + width + " 220");
+    Array.from(svg.children).forEach(function (child) {
+      if (child.tagName !== "title") svg.removeChild(child);
+    });
+    var bins = data.histogram;
+    var maxLog = Math.log(bins[bins.length - 1].high);
+    function x(value) { return left + Math.log(Math.max(value, 1)) / maxLog * (right - left); }
+    var tallest = Math.max.apply(null, bins.map(function (bin) { return bin.n; }));
+    el("line", { class: "axis", x1: left, x2: right, y1: base + 0.5, y2: base + 0.5 }, svg);
+    bins.forEach(function (bin) {
+      if (!bin.n) return;
+      var height = Math.max(Math.sqrt(bin.n / tallest) * (base - top), 2);
+      var from = x(bin.low), barWidth = Math.max(x(bin.high) - from - (narrow ? 1 : 2), 1);
+      var label = bin.n.toLocaleString("en-US") + " runs took " + duration(bin.low) + " to " + duration(bin.high);
+      var hit = el("rect", { class: "hit", x: from, y: top, width: barWidth + 2, height: base - top }, svg);
+      el("title", {}, hit).textContent = label;
+      var bar = el("rect", {
+        class: bin.low >= data.overall.p90 ? "bar tail" : "bar",
+        x: from, y: base - height, width: barWidth, height: height, rx: 1
+      }, svg);
+      el("title", {}, bar).textContent = label;
+    });
+    var ticks = [[1, "1 s"], [10, "10 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"], [21600, "6 h"]];
+    ticks.forEach(function (tick) {
+      if (tick[0] > bins[bins.length - 1].high) return;
+      var edge = tick[0] === 1 ? "start" : tick[0] === 21600 ? "end" : "middle";
+      var text = el("text", { x: x(tick[0]), y: base + 22, "text-anchor": edge }, svg);
+      text.textContent = tick[1];
+    });
+    // Labels stagger on phones, where the three flags sit too close to share a line.
+    var upper = 14, lower = narrow ? 34 : 14;
+    [["P50", data.overall.p50, upper], ["P75", data.overall.p75, lower], ["P90", data.overall.p90, upper]].forEach(function (flag) {
+      var at = x(flag[1]);
+      el("line", { class: "flag", x1: at, x2: at, y1: flag[2] + 6, y2: base }, svg);
+      var text = el("text", { class: "flag-label", x: at, y: flag[2], "text-anchor": "middle" }, svg);
+      text.textContent = flag[0] + " " + duration(flag[1]);
+    });
+  }
+
+  var columns = [
+    { key: "model", label: "Model" },
+    { key: "kind", label: "Kind" },
+    { key: "risk", label: "Risk" },
+    { key: "n", label: "n", number: true },
+    { key: "p50", label: "Median", number: true, time: true },
+    { key: "p75", label: "P75", number: true, time: true },
+    { key: "p90", label: "P90", number: true, time: true }
+  ];
+  var sort = { key: "n", descending: true };
+  var filters = { model: "", kind: "", risk: "" };
+  var scaleMax = Math.log(Math.max.apply(null, data.cells.map(function (cell) { return cell.p90; })));
+
+  function fillFilter(name) {
+    var select = document.getElementById("filter-" + name);
+    var values = Array.from(new Set(data.cells.map(function (cell) { return cell[name]; }))).sort();
+    ["All"].concat(values).forEach(function (value, index) {
+      var option = document.createElement("option");
+      option.value = index ? value : "";
+      option.textContent = value;
+      select.appendChild(option);
+    });
+    select.addEventListener("change", function () { filters[name] = select.value; render(); });
+  }
+
+  function drawHead() {
+    var head = document.getElementById("head");
+    head.textContent = "";
+    columns.forEach(function (column) {
+      var th = document.createElement("th");
+      th.scope = "col";
+      if (column.number) th.className = "number";
+      if (sort.key === column.key) th.setAttribute("aria-sort", sort.descending ? "descending" : "ascending");
+      var button = document.createElement("button");
+      button.type = "button";
+      button.textContent = column.label;
+      button.addEventListener("click", function () {
+        sort = { key: column.key, descending: sort.key === column.key ? !sort.descending : !!column.number };
+        render();
+      });
+      th.appendChild(button);
+      head.appendChild(th);
+    });
+    var range = document.createElement("th");
+    range.scope = "col";
+    range.className = "glyph";
+    range.textContent = "Median to P90";
+    head.appendChild(range);
+  }
+
+  function glyph(cell) {
+    var svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 180 12");
+    svg.setAttribute("aria-hidden", "true");
+    function x(value) { return 4 + Math.log(Math.max(value, 1)) / scaleMax * 172; }
+    el("line", { class: "glyph-range", x1: x(cell.p50), x2: Math.max(x(cell.p90), x(cell.p50) + 0.1), y1: 6, y2: 6 }, svg);
+    if (x(cell.p90) - x(cell.p50) > 8) {
+      el("line", { class: "glyph-mid", x1: x(cell.p75), x2: x(cell.p75), y1: 4, y2: 8 }, svg);
+    }
+    return svg;
+  }
+
+  function render() {
+    drawHead();
+    var rows = data.cells.filter(function (cell) {
+      return Object.keys(filters).every(function (name) { return !filters[name] || cell[name] === filters[name]; });
+    }).sort(function (a, b) {
+      var order = a[sort.key] < b[sort.key] ? -1 : a[sort.key] > b[sort.key] ? 1 : 0;
+      return sort.descending ? -order : order;
+    });
+    var body = document.getElementById("body");
+    body.textContent = "";
+    rows.forEach(function (cell) {
+      var row = document.createElement("tr");
+      if (cell.n < 10) row.className = "few";
+      columns.forEach(function (column) {
+        var td = document.createElement("td");
+        if (column.number) td.className = "number";
+        td.textContent = column.time ? duration(cell[column.key]) : count(cell[column.key]);
+        if (typeof cell[column.key] === "string") td.textContent = cell[column.key];
+        row.appendChild(td);
+      });
+      var range = document.createElement("td");
+      range.className = "glyph";
+      range.appendChild(glyph(cell));
+      row.appendChild(range);
+      body.appendChild(row);
+    });
+    document.getElementById("empty").hidden = rows.length > 0;
+  }
+
+  drawTrace();
+  window.addEventListener("resize", drawTrace);
+  ["model", "kind", "risk"].forEach(fillFilter);
+  render();
+}());
+</script>
+<noscript><p style="max-width:60ch;margin:24px auto">This table needs JavaScript to draw. The same numbers are in <code>docs/backtest.md</code> and <code>data/runs</code>.</p></noscript>
+</body>
+</html>
