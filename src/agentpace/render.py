@@ -86,3 +86,50 @@ def plan_dict(plan: PlanRange) -> dict[str, Any]:
 
 def plan_json(plan: PlanRange) -> str:
     return json.dumps(plan_dict(plan), indent=2)
+
+
+def score_text(forecast: dict[str, Any], score: dict[str, Any], source: str) -> str:
+    actual = score["actual_s"]
+    hits = ", ".join(
+        f"P{key[1:]} {'yes' if actual <= forecast[key] else 'no'}" for key in ("p50", "p80", "p90")
+    )
+    lines = [
+        f"Forecast {forecast['id']}: P50 {duration(forecast['p50'])}, "
+        f"P80 {duration(forecast['p80'])}, P90 {duration(forecast['p90'])}",
+        f"Actual: {duration(actual)} ({source})",
+        f"Within: {hits}",
+    ]
+    if "quoted_s" in forecast:
+        ratio = forecast["quoted_s"] / actual
+        closer = "closer" if score["quote_closer"] else "not closer"
+        lines.append(
+            f'Quoted: "{forecast["quoted"]}" (as quoted, calendar time), {ratio:.1f}x the actual, '
+            f"{closer} than the P50 by ratio"
+        )
+    elif "quoted" in forecast:
+        lines.append(f'Quoted: "{forecast["quoted"]}", not parseable, so not scored')
+    lines.append(f"Recorded score for {forecast['id']}.")
+    return "\n".join(lines)
+
+
+def ledger_summary_text(summary: Any) -> str:
+    lines = [f"Your forecasts, n = {summary.scored}, of which {summary.attested} attested by you."]
+    if summary.within is None:
+        lines.append(f"Not enough scored forecasts (n = {summary.scored}, need 5).")
+    else:
+        within = ", ".join(f"P{key[1:]} {share:.0%}" for key, share in summary.within.items())
+        lines.append(f"Actual within: {within}. Mean pinball loss: {summary.pinball:.0f} s.")
+    if summary.quotes:
+        if summary.quote_closer is None:
+            lines.append(f"Quoted timelines: not enough to rate (n = {summary.quotes}, need 5).")
+        else:
+            lines.append(
+                f"Quoted timelines (n = {summary.quotes}, calendar time as quoted): closer than "
+                f"the P50 in {summary.quote_closer:.0%}, median {summary.quote_ratio:.1f}x the "
+                "actual."
+            )
+    lines.append(
+        "Actuals are agent active time on a session's clock, or figures you attested. "
+        "The human part is outside them."
+    )
+    return "\n".join(lines)

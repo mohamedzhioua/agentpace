@@ -328,7 +328,28 @@ Fable 5.1 ruled on 2026-11-07, after research into why assistants quote human-te
   - Gaps are uncapped and no constant is applied. Re-reading a session replaces its gaps, and gaps from deleted transcripts are kept.
   - `estimate` reads the file when it exists and prints the user's own per-turn P50/P80/P90 with n, as elapsed time, not effort, and outside the total. It never multiplies them by a number of turns.
   - A test proves `share --dry-run` output is unchanged by a turns file.
-- **Order.** 0.2.1 is this change plus presentation. 0.3.0 is the measured human part. The forecast ledger and per-user calibration follow as 0.4.0, and the Codex adapter as 0.5.0.
+- **Order.** 0.2.1 is this change plus presentation. 0.3.0 is the measured human part. The forecast ledger follows as 0.4.0, and the Codex adapter as 0.5.0.
+
+### Rulings for 0.4.0
+
+Fable 5.1 ruled on 2026-11-07.
+
+- **Forecast ledger.** `estimate --record` appends one record per forecast to `~/.agentpace/forecasts.jsonl`. It is local only and never read by `share`.
+  - The record holds the forecast as shown, the issue time in UTC, the plan document and the human part. It holds no paths, sources or secret-derived values.
+  - The id is the first 8 hex of a sha256 over the issue time and the record, and no randomness is used.
+  - A quoted timeline is stored as text, and in seconds only when it is exactly "<number> <unit>", by fixed calendar units. It is labeled calendar time, as quoted.
+- **Scoring.**
+  - Scores are appended, and the latest per forecast wins.
+  - A session score uses the backtest's plan-level actual, the session span on its own clock. That is agent active time, not wall clock.
+  - It is verified only when the ingest cache shows the session's first run started at or after the forecast's issue time. It is refused when the cache cannot show that, or when the session's week precedes the issue week.
+  - `--actual` is the attested path, and is always labeled so.
+  - Rates print only from 5 scored forecasts, and never enter the README.
+  - No per-session human wait is reported, because turns cannot join batches by design. Only the user's overall measured wait is shown beside a score, never summed.
+- **Per-user calibration: deferred** until a second contributor exists.
+  - With one contributor every implementation is identity and untestable on real data.
+  - Nesting `contributor` above the shrink hierarchy is rejected. An unseen contributor would stop at the root cell and lose kind, risk and model, and labels would carry the pseudonym.
+  - The planned design is a crossed contributor offset on top of the population model. It is the contributor's mean residual, shrunk by the between-contributor variance, with zero offset and added variance for an unseen contributor.
+  - It ships only behind the contributor split of the backtest, because with two contributors that variance rests on one degree of freedom.
 
 ## 12. Sources
 

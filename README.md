@@ -102,6 +102,7 @@ Without Node, copy the four folders under [skills/](skills/) into your agent's s
 | `agentpace runs` | List recent runs and their references |
 | `agentpace label <ref>` | Correct the kind or risk of a run |
 | `agentpace share` | Preview exact rows, or write a file to contribute |
+| `agentpace score [id]` | Score a recorded forecast against a session that started after it, or see how your forecasts held up |
 | `agentpace turns` | Measure how long you wait between agent turns, from your own main sessions. Kept local, never shared |
 
 | Maintain | What it does |

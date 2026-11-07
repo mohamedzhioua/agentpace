@@ -4,8 +4,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-07
+
 ### Added
 
+- `agentpace score <id> --session <ref>` scores a recorded forecast against a session of your own ingested runs. The actual is agent active time on that session's clock, with idle gaps over the idle cap clipped and the human part outside it, the same quantity the backtest scores. A session scores only if the local ingest cache shows it started after the forecast was issued. Otherwise the score is refused, with no silent fallback. `--actual 2h` records a figure you attest, labeled as such. Scores are appended, and the latest per forecast wins.
+- `agentpace score` with no id shows how your forecasts held up: the share of actuals within P50, P80 and P90, and pinball loss. For parsed quotes it shows how often the quoted timeline was closer than the P50, and the median quote-to-actual ratio. Rates need at least 5 scored forecasts. None of these numbers is published.
 - `estimate --record` keeps each forecast in a local ledger, `~/.agentpace/forecasts.jsonl`, exactly as it was shown, with the time it was issued. The ledger is never shared and holds no file paths or data sources. `--quoted "3 weeks"` stores a timeline someone already gave beside it. An exact "<number> <unit>" quote is also stored in seconds by fixed calendar units (1 d = 86,400 s, 1 w = 7 d, 1 mo = 30 d), and anything else is kept as text only.
 
 ## 0.3.0 - 2026-11-07
