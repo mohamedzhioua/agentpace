@@ -11,6 +11,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Added
 
 - README: one sentence on why the answer is a range, and an "In your agent" block that installs the skills and gives a first question to ask.
+- Site: a shorter title and meta description for search, a canonical link to its own address, structured data describing the tool and the dataset (no version and no figures, so nothing can drift), and `robots.txt` with a one-page `sitemap.xml`. The page still loads nothing from anywhere.
 
 ## 0.6.3 - 2026-11-07
 

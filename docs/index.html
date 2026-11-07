@@ -3,14 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>agentpace: how long coding agents really take</title>
-<meta name="description" content="How long will your coding-agent work take? P50, P80 and P90 ranges measured from real agent runs, with the human part stated separately. Open data, a standard-library CLI and an agent skill.">
+<title>agentpace: how long coding agents actually take, measured</title>
+<meta name="description" content="Measured P50/P80/P90 time ranges for coding-agent work, from real Claude Code and Codex runs, the human part stated apart. Open data, stdlib CLI, agent skill.">
+<link rel="canonical" href="https://mohamedzhioua.github.io/agentpace/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="agentpace: how long coding agents really take">
-<meta property="og:description" content="P50, P80 and P90 ranges measured from real agent runs, with the human part stated separately. Open data, a standard-library CLI and an agent skill.">
+<meta property="og:title" content="agentpace: how long coding agents actually take, measured">
+<meta property="og:description" content="Measured P50/P80/P90 time ranges for coding-agent work, from real Claude Code and Codex runs, the human part stated apart. Open data, stdlib CLI, agent skill.">
 <meta property="og:url" content="https://mohamedzhioua.github.io/agentpace/">
 <meta property="og:image" content="https://mohamedzhioua.github.io/agentpace/assets/social-preview.png">
 <meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "agentpace",
+      "description": "Estimates how long coding-agent work will take, as a range measured from real agent runs, with the human part stated apart and never derived.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Windows, macOS, Linux",
+      "url": "https://mohamedzhioua.github.io/agentpace/",
+      "sameAs": "https://github.com/mohamedzhioua/agentpace",
+      "license": "https://opensource.org/licenses/MIT",
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+    },
+    {
+      "@type": "Dataset",
+      "name": "agentpace runs",
+      "description": "Durations of coding-agent runs from Claude Code subagents and Codex turns, with model, task kind and risk, under pseudonyms. No prompts, code, paths or repo names.",
+      "url": "https://mohamedzhioua.github.io/agentpace/",
+      "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "isAccessibleForFree": true,
+      "keywords": ["coding agents", "software estimation", "agent run time", "Claude Code", "Codex"],
+      "distribution": {
+        "@type": "DataDownload",
+        "encodingFormat": "application/jsonl",
+        "contentUrl": "https://github.com/mohamedzhioua/agentpace/tree/main/data/runs"
+      }
+    }
+  ]
+}
+</script>
 <style>
   :root {
     color-scheme: light dark;
@@ -160,7 +193,7 @@
   </header>
 
   <main>
-    <h1>How long coding agents really take</h1>
+    <h1>How long coding agents actually take</h1>
     <img class="hero" src="assets/hero.webp" width="1600" height="800" decoding="async" alt="An office worker pins up a Gantt chart so long it runs out the door, while a tiny crew of terminal cursors has already stacked finished boxes; a separate review desk with an outlined empty chair waits for the human part.">
     <p class="lede" id="lede">Measured from 3,383 completed agent runs, not from anyone's opinion. Half finished within 2 min. One in ten took more than 20 min.</p>
     <p class="lede">Ask an assistant how long a feature will take and it answers in human-team time. agentpace answers from measured agent runs instead: P50, P80 and P90 for your own plan of tasks, with the human part stated on its own line. Logging your own runs works with Claude Code subagents and Codex today.</p>
