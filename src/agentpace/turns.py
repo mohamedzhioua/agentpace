@@ -185,7 +185,7 @@ def collect(root: Path, secret: bytes) -> tuple[list[Turn], set[str], TurnsRepor
         if sum(mark.kind == _HUMAN for mark in session.marks) < 2:
             report.too_short += 1
             continue
-        pseudonym_id = pseudonym.batch(secret, session_id)
+        pseudonym_id = pseudonym.turn_session(secret, session_id)
         seen.add(pseudonym_id)
         found = gaps(session.marks)
         if found:
@@ -208,9 +208,18 @@ def read_turns(path: Path) -> list[Turn]:
         return []
     turns = []
     with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                turns.append(json.loads(line))
+        for number, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            try:
+                turn = json.loads(line)
+            except ValueError:
+                turn = None
+            if turn is None or check_turn(turn):
+                raise ValueError(
+                    f"line {number} of {path.name} is not a valid turn; run agentpace turns"
+                )
+            turns.append(turn)
     return turns
 
 

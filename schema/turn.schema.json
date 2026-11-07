@@ -7,7 +7,7 @@
   "required": ["session", "week", "gap_s", "agent_turn_s"],
   "properties": {
     "session": {
-      "description": "HMAC of the session id under the local secret, the same pseudonym as a run's batch.",
+      "description": "HMAC of the session id under the local secret, with its own label, so it never equals a run's batch.",
       "type": "string",
       "pattern": "^[0-9a-f]{12}$"
     },

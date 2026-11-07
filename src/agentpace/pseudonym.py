@@ -42,5 +42,10 @@ def batch(secret: bytes, session: str) -> str:
     return _digest(secret, f"batch-v1:{session}", 12)
 
 
+def turn_session(secret: bytes, session: str) -> str:
+    """A separate label from `batch`, so a turn could never be joined to a run row by session."""
+    return _digest(secret, f"turn-v1:{session}", 12)
+
+
 def project(secret: bytes, folder: str) -> str:
     return _digest(secret, f"project-v1:{folder}", 12)

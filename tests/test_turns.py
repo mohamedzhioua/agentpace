@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import cli, paths, schema, turns
+from agentpace import cli, paths, pseudonym, schema, turns
 from tests.synthetic import row
 
 MARKERS = (
@@ -209,6 +209,8 @@ class Estimate(Temp):
     def test_measured_waits_appear_per_turn_and_stay_out_of_the_total(self):
         self.write_session("s", SESSION)
         self.run_cli("turns", str(self.projects))
+        empty = self.root / "empty.jsonl"
+        empty.write_text("", encoding="utf-8")
         _, before, _ = self.run_cli(
             "estimate",
             self.plan,
@@ -216,7 +218,7 @@ class Estimate(Temp):
             "200",
             "--json",
             "--turns",
-            str(self.root / "none.jsonl"),
+            str(empty),
         )
         _, after, _ = self.run_cli("estimate", self.plan, "--draws", "200", "--json")
         measured = json.loads(after)
@@ -242,6 +244,22 @@ class Isolation(Temp):
         self.assertTrue(paths.turns_file().exists())
         _, with_turns, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.assertEqual(without, with_turns)
+
+    def test_a_turn_session_never_equals_a_run_batch(self):
+        secret = b"k" * 32
+        self.assertNotEqual(pseudonym.turn_session(secret, "s"), pseudonym.batch(secret, "s"))
+
+    def test_a_damaged_turns_file_is_a_clean_error(self):
+        paths.turns_file().parent.mkdir(parents=True, exist_ok=True)
+        paths.turns_file().write_text('{"session": "x"}\n', encoding="utf-8")
+        with self.assertRaises(ValueError):
+            turns.read_turns(paths.turns_file())
+
+    def test_a_missing_explicit_turns_file_is_an_error(self):
+        plan = str(Path("examples/plan.json").resolve())
+        code, _, err = self.run_cli("estimate", plan, "--turns", str(self.root / "nope.jsonl"))
+        self.assertNotEqual(code, 0)
+        self.assertIn("turns file does not exist", err)
 
     def test_the_run_schema_has_no_turn_fields(self):
         for name in ("gap_s", "agent_turn_s", "session"):

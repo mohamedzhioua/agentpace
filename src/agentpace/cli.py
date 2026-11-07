@@ -182,6 +182,8 @@ def cmd_estimate(args: argparse.Namespace) -> int:
         raise ValueError("the plan is not valid JSON") from None
     tasks, cap = estimate.tasks_from_json(document)
     model = estimate.fit(_dataset(args.data), args.method, args.use_size)
+    if args.turns and not Path(args.turns).exists():
+        raise ValueError("the turns file does not exist")
     human = _human_part(Path(args.turns) if args.turns else paths.turns_file())
     plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
     print(render.plan_json(plan) if args.json else render.plan_text(plan))
@@ -205,7 +207,7 @@ def _human_part(store: Path) -> estimate.HumanPart:
 
 
 def cmd_turns(args: argparse.Namespace) -> int:
-    path = Path(args.path) if args.path else Path.home() / ".claude" / "projects"
+    path = Path(args.path) if args.path else get_adapter("claude-code").default_path()
     if not path.exists():
         raise ValueError("the transcript path does not exist")
     store = Path(args.out) if args.out else paths.turns_file()
