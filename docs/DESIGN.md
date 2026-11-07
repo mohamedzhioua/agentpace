@@ -229,7 +229,7 @@ for each draw:
 
 **Leaderboard.** Median, P75 and P90 by `model × task_kind × risk`, with n shown on every cell and cells with n<10 greyed out. Greyed cells still show their timing, as the brief specifies. Rare model combinations are the quasi-identifiers in this data, and a stricter suppression rule can be added if contributors ask for one.
 
-**Site.** One `docs/index.html`, with no build step and no third-party requests. The leaderboard JSON is embedded inline, so it works from `file://`. Fetching it would add a network call. `agentpace site` regenerates the embedded block and CI checks that it is current.
+**Site.** One `docs/index.html`, with no build step and no third-party requests. The leaderboard JSON is embedded inline, so it works from `file://`. Fetching it would add a network call. Since 0.6.1 it shows one image, `assets/hero.webp`, read from beside the page, so nothing leaves the site. A test allows images only under `assets/`. `agentpace site` regenerates the embedded block and CI checks that it is current.
 
 ## 8. Skill and install
 

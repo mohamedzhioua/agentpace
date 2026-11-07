@@ -2,6 +2,8 @@
 
 **How long will your coding-agent work take? A range you can plan on, measured from real runs.**
 
+![An office worker pins up a Gantt chart so long it runs out the door, while a tiny crew of terminal cursors has already stacked finished boxes; a separate review desk with an outlined empty chair waits for the human part.](docs/assets/hero.webp)
+
 [![CI](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
