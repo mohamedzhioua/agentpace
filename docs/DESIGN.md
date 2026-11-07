@@ -394,7 +394,7 @@ Fable 5.1 ruled on 2026-11-07, after a local backtest with the maintainer's Code
 
 ### Ruling for 0.6.2
 
-- **Turn data is never shared.** This closes the question the 0.3.0 ruling left open. The grounds are linkage to public commit times, uniqueness under coarsening, and the rule that the human part is never derived, which a population wait would breach as soon as it was multiplied. Deferral is rejected, because no number of contributors removes the first two. The measured wait is shown only to the person it describes, from their own file. Tests pin it: `share` succeeds with every route to the turns file trapped, `share.py` imports nothing named `turns`, and `validate` rejects a turns file placed among the run rows.
+- **Turn data is never shared.** The 0.3.0 ruling kept turn records out of `share` and the seed; this extends it to every derived form, binned or aggregated, and makes it permanent. The grounds are linkage to public commit times, uniqueness under coarsening, and the rule that the human part is never derived, which a population wait would breach as soon as it was multiplied. Deferral is rejected, because no number of contributors removes the first two. The measured wait is shown only to the person it describes, from their own file. Tests pin it: `share` succeeds with every route to the turns file trapped, `share.py` imports nothing named `turns`, and `validate` rejects a turns file placed among the run rows.
 
 ## 12. Sources
 

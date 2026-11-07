@@ -263,16 +263,13 @@ class Isolation(Temp):
                 self.assertEqual(code, 0, err)
         trap.assert_not_called()
         source = (Path(cli.__file__).parent / "share.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
         imported = {
             alias.name
-            for node in ast.walk(ast.parse(source))
+            for node in ast.walk(tree)
             if isinstance(node, (ast.Import, ast.ImportFrom))
             for alias in node.names
-        } | {
-            node.module or ""
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.ImportFrom)
-        }
+        } | {node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
         self.assertFalse({name for name in imported if "turns" in name}, imported)
 
     def test_a_turns_file_under_data_runs_fails_validate(self):
