@@ -193,7 +193,7 @@ def session_span(rows: Sequence[Mapping[str, Any]]) -> int:
 def _quote_closer(forecast: Mapping[str, Any], actual_s: int) -> bool | None:
     """Whether the quoted timeline was closer to the actual than the P50, by ratio."""
     quoted = forecast.get("quoted_s")
-    if not isinstance(quoted, int):
+    if not isinstance(quoted, int) or quoted <= 0 or forecast["p50"] <= 0 or actual_s <= 0:
         return None
     return abs(math.log(quoted / actual_s)) < abs(math.log(forecast["p50"] / actual_s))
 
@@ -227,7 +227,9 @@ def check_session(
     """The actual for a session score, or a refusal. A session scores only when it provably
     started after the forecast was issued."""
     if len(rows) < 2:
-        raise ScoreRefused("that session has fewer than 2 local runs; run `agentpace ingest`")
+        raise ScoreRefused(
+            "that session has fewer than 2 completed local runs; run `agentpace ingest`"
+        )
     issued = parse_issued(forecast["issued_at"])
     if min(row["week"] for row in rows) < iso_week_of(issued):
         raise ScoreRefused("that session ran before the forecast was issued, so it cannot score it")

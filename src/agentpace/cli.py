@@ -522,7 +522,11 @@ def build_parser() -> argparse.ArgumentParser:
         "score", help="score a recorded forecast, or show how your forecasts held up"
     )
     score_cmd.add_argument("id", nargs="?", help="forecast id from `estimate --record`")
-    score_cmd.add_argument("--session", metavar="REF", help="a session or run ref from `runs`")
+    score_cmd.add_argument(
+        "--session",
+        metavar="REF",
+        help="a session, or any run ref from `runs` (its session is used)",
+    )
     score_cmd.add_argument("--actual", metavar="DURATION", help='your own figure, such as "2h"')
     score_cmd.set_defaults(handler=cmd_score)
 

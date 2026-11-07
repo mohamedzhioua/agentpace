@@ -118,7 +118,7 @@ def ledger_summary_text(summary: Any) -> str:
         lines.append(f"Not enough scored forecasts (n = {summary.scored}, need 5).")
     else:
         within = ", ".join(f"P{key[1:]} {share:.0%}" for key, share in summary.within.items())
-        lines.append(f"Actual within: {within}. Pinball loss: {summary.pinball:.0f} s.")
+        lines.append(f"Actual within: {within}. Mean pinball loss: {summary.pinball:.0f} s.")
     if summary.quotes:
         if summary.quote_closer is None:
             lines.append(f"Quoted timelines: not enough to rate (n = {summary.quotes}, need 5).")
