@@ -4,8 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.6.1 - 2026-11-07
+
 ### Added
 
+- DESIGN section 8 records the trigger evals. With only `skills/` installed and 9 prompts per run, the `agentpace` skill triggered on 6 of 6 questions about how long software work takes, and on none of 3 near misses, in Claude Code with Sonnet, Opus and Haiku. Codex CLI (gpt-6-sol) also loaded it on 6 of 6, and read it on one near miss (a git rebase's CPU time) before correctly answering without it.
 - A hero illustration at the top of the README and the site: a Gantt chart so long it runs out the door, a crew of terminal cursors that has already stacked the finished work, and an empty chair at a separate review desk for the human part. It holds no words and no numbers, so it cannot carry an unchecked figure. Generated with Codex image generation, then resized and encoded as WebP (`docs/assets/hero.webp`).
 
 ### Changed
