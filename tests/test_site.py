@@ -153,7 +153,8 @@ class Page(unittest.TestCase):
             self.assertIn(tag, self.html)
 
     def test_the_try_it_plan_is_the_example_plan(self):
-        match = re.search(r"&lt;&lt;'EOF'\n(.*?)\nEOF", self.html, re.DOTALL)
+        self.assertIn("agentpace estimate --example</code>", self.html)
+        match = re.search(r'<code id="example-plan">(.*?)</code>', self.html, re.DOTALL)
         example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
         self.assertEqual(html.unescape(match.group(1)), example.strip())
 

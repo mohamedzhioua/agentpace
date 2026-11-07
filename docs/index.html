@@ -201,9 +201,10 @@
 
     <section class="reproduce try" id="try" aria-labelledby="try-title">
       <h2 id="try-title">Try it, with no install</h2>
-      <p class="section-note">Needs <a href="https://docs.astral.sh/uv/">uv</a>. Each task is one agent run. The seed data ships inside the package.</p>
-      <pre><code>uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate - &lt;&lt;'EOF'
-{
+      <p class="section-note">Needs <a href="https://docs.astral.sh/uv/">uv</a>. The seed data and the example plan ship inside the package.</p>
+      <pre><code>uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --example</code></pre>
+      <p class="section-note">It estimates this plan, where each task is one agent run:</p>
+      <pre><code id="example-plan">{
   "agent_cap": 3,
   "model": "claude-opus-5-5",
   "tasks": [
@@ -213,8 +214,7 @@
     { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
     { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
   ]
-}
-EOF</code></pre>
+}</code></pre>
     </section>
 
     <figure style="margin:0">

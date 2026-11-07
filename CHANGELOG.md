@@ -4,16 +4,21 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
-### Changed
-
-- A new hero illustration, "the guess and the stopwatch": a dashed, fading speech bubble holds a calendar shedding blank pages, and beside it two small cursor robots measure a solid stopwatch with a tape measure. The old one, a Gantt chart running out of an office, read as an office scene at README width. It has no words and no numbers. It was generated with Codex image generation, then resized and encoded as WebP. The social preview reuses it under the line "Stop estimating agent work in human weeks.", and the site gains `og:image:alt`.
-
-- The README opens with what agentpace is for: "Stop estimating agent work in human weeks." Try it now comes straight after the badges. The problem statement moved under its own heading, below the example output.
+## 0.7.0 - 2026-11-07
 
 ### Added
 
+- `agentpace estimate --example` estimates the example plan that now ships inside the package. The README and the site make it the whole Try it command, one line with no heredoc, so it works the same in PowerShell, and they show the plan beside the output. Giving both a plan and `--example`, or neither, is an error that says what to give.
 - README: one sentence on why the answer is a range, and an "In your agent" block that installs the skills and gives a first question to ask.
 - Site: a shorter title and meta description for search, a canonical link to its own address, structured data describing the tool and the dataset (no version and no figures, so nothing can drift), and `robots.txt` with a one-page `sitemap.xml`. The page still loads nothing from anywhere.
+
+### Changed
+
+- The README opens with what agentpace is for: "Stop estimating agent work in human weeks." Try it now comes straight after the badges. The problem statement moved under its own heading, below the example output.
+- A new hero illustration, "the guess and the stopwatch": a dashed, fading speech bubble holds a calendar shedding blank pages, and beside it two small cursor robots measure a solid stopwatch with a tape measure. The old one, a Gantt chart running out of an office, read as an office scene at README width. It has no words and no numbers. It was generated with Codex image generation, then resized and encoded as WebP. The social preview reuses it under the line "Stop estimating agent work in human weeks.", and the site gains `og:image:alt`.
+- The package description and keywords match the GitHub description: Claude Code and Codex, not Claude Code only.
+
+No published number moved.
 
 ## 0.6.3 - 2026-11-07
 

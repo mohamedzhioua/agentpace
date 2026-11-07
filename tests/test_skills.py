@@ -22,7 +22,7 @@ def frontmatter(path):
 class Quickstart(unittest.TestCase):
     def test_the_readme_plan_is_the_example_plan(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        match = re.search(r"<<'EOF'\n(.*?)\nEOF", readme, re.DOTALL)
+        match = re.search(r"\(examples/plan\.json\).*?\n```json\n(.*?)\n```", readme, re.DOTALL)
         example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
         self.assertEqual(match.group(1), example.strip())
 
@@ -45,7 +45,12 @@ class Quickstart(unittest.TestCase):
 
     def test_the_quickstart_needs_no_clone(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        self.assertIn("agentpace estimate - <<'EOF'", readme)
+        command = "uvx --from git+https://github.com/mohamedzhioua/agentpace"
+        self.assertIn(f"{command} agentpace estimate --example", readme)
+
+    def test_the_example_plan_ships_in_the_package(self):
+        pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"examples/plan.json" = "agentpace/_bundled/example-plan.json"', pyproject)
 
 
 class Repository(unittest.TestCase):
