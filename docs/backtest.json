@@ -50,7 +50,11 @@
     },
     "lowest_loss": "shrunk",
     "winner": "shrunk",
-    "last_week": "2026-W45"
+    "last_week": "2026-W45",
+    "harness": "claude-code"
+  },
+  "pooled_selection": {
+    "status": "same as above (1 harness)"
   },
   "splits": {
     "time": {

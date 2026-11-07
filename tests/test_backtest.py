@@ -233,6 +233,92 @@ class Harnesses(unittest.TestCase):
         self.assertEqual(Forecast(1, 2, 3, 2, "s").harness, "claude-code")
 
 
+def _with_codex(sessions, duration):
+    """The synthetic Claude rows plus one-turn Codex sessions from W03 on, as Codex exec runs."""
+    rows = dataset(sessions=60, runs_per_session=8, weeks=6)
+    rng = random.Random(3)
+    for i in range(sessions):
+        rows.append(
+            row(
+                harness="codex",
+                model="gpt-6.1-sol",
+                task_kind="other",
+                size="na",
+                duration_s=max(1, round(duration * 2.718 ** rng.gauss(0, 0.3))),
+                tool_calls=1,
+                week=f"2026-W{3 + i % 4:02d}",
+                batch=f"c{i:011x}",
+                project="cccccccccccc",
+            )
+        )
+    return rows
+
+
+class SelectionPopulation(unittest.TestCase):
+    """Selection scores only the harness the rule was frozen on. Every harness still trains."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mixed = _small_run(_with_codex(200, 3000), selection_last_week="2026-W06")
+        cls.locked = _small_run(_with_codex(200, 3000), selection_last_week="2026-W04")
+
+    def test_selection_ignores_another_harness_and_the_pooled_rule_is_printed(self):
+        selection, pooled = self.mixed["selection"], self.mixed["pooled_selection"]
+        self.assertEqual(selection["harness"], backtest.SELECTION_HARNESS)
+        self.assertEqual((selection["winner"], pooled["winner"]), ("kind", "shrunk"))
+        self.assertEqual(set(pooled["baselines"]), set(backtest.BASELINES))
+        text = report.markdown(self.mixed)
+        self.assertIn("## Pooled, for the record", text)
+        self.assertIn("Pooled winner: `shrunk`", text)
+        self.assertIn("**Winner: `kind`.**", text)
+
+    def test_the_headline_scores_only_the_selection_harness(self):
+        time = self.mixed["splits"]["time"]
+        claude = self.mixed["harness"]["selection_folds"]["claude-code"]
+        self.assertEqual(time["rows"], claude["rows"])
+        self.assertEqual(sum(week["rows"] for week in time["by_week"]), claude["rows"])
+        self.assertEqual(self.mixed["splits"]["harness"]["status"], "ok")
+
+    def test_one_harness_is_its_own_population(self):
+        rows = dataset(sessions=48, runs_per_session=8, weeks=6)
+        claude = _small_run(rows)
+        self.assertEqual(claude["selection"]["harness"], "claude-code")
+        self.assertEqual(claude["pooled_selection"], {"status": "same as above (1 harness)"})
+        self.assertNotIn("## Pooled, for the record", report.markdown(claude))
+        for item in rows:
+            item["harness"] = "codex"
+        codex = _small_run(rows)
+        self.assertEqual(codex["selection"]["harness"], "all")
+        self.assertEqual(
+            report.to_json(codex["selection"]["loss"]), report.to_json(claude["selection"]["loss"])
+        )
+
+    def test_whole_sessions_of_another_harness_are_not_scored(self):
+        rows = dataset(sessions=48, runs_per_session=8, weeks=6)
+        for item in rows:
+            if int(item["batch"], 16) % 2 == 0:
+                item["harness"] = "codex"
+        folds = backtest.time_folds(rows)
+        with mock.patch.object(backtest, "PLAN_DRAWS", 100):
+            every = backtest.plan_forecasts(folds, "shrunk", backtest.SEED)
+            claude = backtest.plan_forecasts(folds, "shrunk", backtest.SEED, "claude-code")
+        kept = {f.session for f in claude["agentpace"]}
+        self.assertTrue(kept)
+        self.assertLess(len(kept), len(every["agentpace"]))
+        self.assertTrue(all(int(batch, 16) % 2 for batch in kept))
+        same = [f for f in every["agentpace"] if f.session in kept]
+        self.assertEqual(same, claude["agentpace"])
+
+    def test_the_locked_holdout_scores_every_harness_at_task_level(self):
+        found = self.locked["locked"]["by_harness"]
+        self.assertEqual(set(found), {"claude-code", "codex"})
+        names = {method.name for method in estimate.METHODS} | {"global-median"}
+        for entry in found.values():
+            self.assertEqual(set(entry["methods"]), names)
+            self.assertGreater(entry["sessions"], 0)
+        self.assertIn("| codex | global |", report.markdown(self.locked))
+
+
 class LockedHoldout(unittest.TestCase):
     """Weeks after the selection cutoff are scored but never feed back into selection.
 

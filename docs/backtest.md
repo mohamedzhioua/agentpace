@@ -13,6 +13,8 @@ Reading the columns: MAPE is the mean percentage error of the P50, which heavy t
 
 The rule was fixed before any result existed: lowest session-weighted pinball loss, summed over 0.5, 0.8 and 0.9, on the time split, with ties inside the 95% session-bootstrap interval going to the simpler candidate. Selection uses weeks up to 2026-W45 and never re-runs on later ones.
 
+Selection, the time-split tables and the whole-session test score `claude-code` sessions only, the population the rule was frozen on. Rows from every harness train the estimator. This scope was registered on 2026-11-07, after a local run with Codex rows pooled in had been seen.
+
 | Candidate, simplest first | Loss | Difference from lowest (95% interval) |
 |---|---:|---|
 | global | 1272 | +111 to +353 |
