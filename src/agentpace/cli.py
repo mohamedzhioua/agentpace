@@ -211,13 +211,14 @@ def cmd_estimate(args: argparse.Namespace) -> int:
 
 
 def _first_cached_start(batch: str) -> float | None:
-    """The earliest raw start of a session's runs, from the local ingest cache."""
-    adapter = get_adapter("claude-code")
-    cache = RunCache(
-        paths.cache_file(adapter.name), adapter.name, adapter.version, ingest.DEFAULT_IDLE_CAP_S
-    )
+    """The earliest raw start of a session's runs, from the local ingest caches."""
     secret = pseudonym.load_secret(paths.home())
-    starts = [run.start for run in cache.runs() if pseudonym.batch(secret, run.session) == batch]
+    starts = []
+    for adapter in ADAPTERS.values():
+        cache = RunCache(
+            paths.cache_file(adapter.name), adapter.name, adapter.version, ingest.DEFAULT_IDLE_CAP_S
+        )
+        starts += [r.start for r in cache.runs() if pseudonym.batch(secret, r.session) == batch]
     return min(starts) if starts else None
 
 

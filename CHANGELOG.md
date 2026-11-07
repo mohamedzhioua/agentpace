@@ -6,6 +6,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added
 
+- A Codex adapter: `agentpace ingest --source codex` reads `~/.codex/sessions`, one agent turn per run and one rollout file per batch, using the same idle cap and privacy rules as Claude Code. It copies only types, timestamps, ids, model, effort, counters and fixed-set flags, never prompts, commands, patches or tool output. Forked rollouts and upkeep sessions are skipped and counted. Review sessions and `codex-auto-review` turns count as reviews. Codex rows are not in the published dataset.
+- `score --session` finds a session in any adapter's cache.
 - Adapters return every run in a file, so a harness can keep several runs in one transcript, as Codex does with several turns. The ingest cache moves to format 3 to hold a list of runs per file, so the first ingest after upgrading reads every transcript again (minutes rather than seconds on a large history). Rows are byte-identical to before.
 - Schema: `harness` accepts `codex`, ahead of the Codex adapter. The change is additive, so every existing row stays valid and unchanged. It merges alone first, because data pull requests are validated with the base branch's schema.
 

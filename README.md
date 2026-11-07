@@ -62,7 +62,8 @@ These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. 
 |---|---|
 | Estimate a plan | Anywhere. The seed data ships inside the package, so no history of your own is needed |
 | Log your own runs | Claude Code, subagent runs only: work Claude Code hands to a subagent, not the main conversation. Your rows pool with the seed, and `--data ~/.agentpace/runs.jsonl` uses only yours |
-| Another harness | Not yet. A Codex adapter is tracked in [#3](https://github.com/mohamedzhioua/agentpace/issues/3) |
+| Log your own Codex runs | Codex, one agent turn per run: `agentpace ingest --source codex` reads `~/.codex/sessions`. The published rows are all Claude Code so far |
+| Another harness | Not yet. The adapter interface takes one module per harness |
 
 ## Install
 
