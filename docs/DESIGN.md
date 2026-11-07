@@ -146,7 +146,7 @@ for each draw:
 - **`P_eff`.** For each training session, `P_eff = work / active span`, grouped by peak concurrency and capped at `agent_cap`. The bucket medians must be non-decreasing, and each draw samples a session from the bucket. The reported factor is the median of that bucket. It describes what sessions achieved, and peak concurrency is only a proxy for a cap.
 - **Contention.** No slowdown term is applied, because F3 shows the available estimate is confounded. A term can be added only if it wins in Phase 4.
 
-**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
+**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and outside the total, and JSON carries it as `human`. No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
 
 ## 6. Backtest protocol
 
@@ -312,6 +312,16 @@ The owner then made Fable 5.1 the acting maintainer. Its rulings on 2026-11-07:
 | 1,800 s | shrunk | 78.3% | 1107 | 78% | 59% / 79% / 88% |
 
 The winner and the headline coverage hold across the three caps. Pinball moves with the cap because a longer cap leaves longer durations to forecast.
+
+### Rulings for 0.2.1 and 0.3.0
+
+Fable 5.1 ruled on 2026-11-07, after research into why assistants quote human-team timelines for agent work.
+
+- **The human part is named, never derived.** Every estimate states the human part (review, testing, decisions, waiting between agent turns) with its status and keeps it out of the total. Until it is measured, it carries no number and no multiplier. `--quote` is out of 0.2.1. A prior quote returns with the forecast ledger, where it can be scored.
+- **Trigger.** The `agentpace` skill triggers on any question about how long software work will take, assumes agents do the implementation, and re-answers a human-scale quote by showing it beside the measured range as unverified.
+- **Portable prompt.** No sums of quantiles. The P50 total is the larger of the critical chain and the total work over the agents running at once. P80 and P90 apply the published whole-session ratios (`width80`, `width`), and the result is labeled a rule of thumb.
+- **Main-session transcripts (narrow reversal, for 0.3.0).** They stay rejected as a source of run rows. They are admitted as the source of one quantity only, elapsed waiting on the human per human turn, through a separate `agentpace turns` command, a separate local file and schema, and a projection of record type, timestamp, `turnOrigin` and a tool-result flag. Nothing from it reaches `run.schema.json`, `share`, the seed or a README claim.
+- **Order.** 0.2.1 is this change plus presentation. 0.3.0 is the measured human part. The forecast ledger and per-user calibration follow as 0.4.0, and the Codex adapter as 0.5.0.
 
 ## 12. Sources
 

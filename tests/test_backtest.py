@@ -78,6 +78,7 @@ class Metrics(unittest.TestCase):
     def test_width_is_reported_beside_coverage(self):
         m = backtest.metrics([f(100, p50=100, p80=300, p90=400)], [1])
         self.assertEqual(m["width"], 4)
+        self.assertEqual(m["width80"], 3)
 
     def test_weights_change_the_answer(self):
         forecasts = [f(100, p50=200), f(100)]

@@ -1,13 +1,15 @@
 ---
 name: agentpace
-description: Estimates how long coding-agent work will take from real run data, as P50/P80/P90 ranges with a critical path. Use when asked how long agent work will take, to estimate or size a plan, roadmap or task list for agents, or when a timeline is being quoted in human days or months for work agents will do. Not for work done by people without agents.
+description: Estimates how long software work will take when coding agents do it, from measured agent runs, as P50/P80/P90 ranges with a critical path and the human part stated separately. Use whenever anyone asks how long software work will take, a feature, a fix, a plan, a roadmap or a task list, even when agents are not mentioned, and whenever a timeline is quoted in days, weeks or months. Assume agents do the implementation unless told otherwise. Not for non-software work.
 license: MIT
 compatibility: Requires Python 3.10+ and the agentpace CLI. No network access is needed at run time.
 ---
 
 # agentpace
 
-Answer "how long will this take?" with measured ranges from real agent runs. Do not quote human-scale timelines, and never give a single number.
+Answer "how long will this take?" with measured ranges from real agent runs, and state the human part on its own. Do not quote human-team timelines, and never give a single number.
+
+This skill triggers on natural-language questions. `/pace-estimate` is the explicit command for a given plan.
 
 ## Check the tool
 
@@ -21,9 +23,10 @@ If they do not want to install anything, use [assets/portable-prompt.md](assets/
 
 ## Estimate
 
-1. Break the work into tasks an agent would run as separate runs.
-2. Give each task an `id`, a `kind` and a `risk`, plus `depends_on` when it must wait for another task. Set `agent_cap` to the number of agents that will run at once.
-3. Write the plan to a file and run the estimator.
+1. Assume agents do the implementation unless the user says otherwise. If it is unclear and the answer would change, ask once.
+2. Break the work into tasks an agent would run as separate runs.
+3. Give each task an `id`, a `kind` and a `risk`, plus `depends_on` when it must wait for another task. Set `agent_cap` to the number of agents that will run at once.
+4. Write the plan to a file and run the estimator.
 
 ```json
 {
@@ -43,12 +46,16 @@ agentpace estimate plan.json
 
 Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`. Use `risk: high` for migrations and for work that is hard to reverse. `model` is optional.
 
+## Re-answer a human quote
+
+When the conversation already holds a timeline in days, weeks or months, from the user, a document or an earlier answer, estimate the plan anyway. Then show the quote beside the measured range and label it unverified. Never divide or multiply it by a constant to get agent time: the only agent time is the measured range.
+
 ## Report the result
 
-- Lead with the total as a range: P50, P80 and P90. Recommend P80 for planning.
+- Lead with the agent time as a range: P50, P80 and P90. Recommend P80 for planning.
+- Pass on the human part line as the CLI prints it: review, testing, decisions and waiting between agent turns are not measured and not in the total. Do not derive a number for it from the agent time. If the user gives their own figure, repeat it and label it as theirs.
 - Name the critical path and the effective parallelism.
 - Pass every warning on. A warning means a cell had too few runs, so that range leans on broader data.
-- Say the times cover agent work only. They leave out human review and decisions, which often take longer.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.
 
 ## Limits to state when they matter

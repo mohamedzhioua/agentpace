@@ -103,6 +103,7 @@ def values(
         "plan_mape": f"{plan['mape']:.0f}%",
         "plan_mdape": f"{plan['mdape']:.0f}%",
         "plan_width": f"{plan['width']:.1f}x",
+        "plan_width80": f"{plan['width80']:.1f}x",
         "naive_plan_p80": f"{naive_plan['coverage80']:.0f}%",
         "naive_plan_mape": f"{naive_plan['mape']:.0f}%",
         "task_p50": f"{ours['coverage50']:.1f}%",

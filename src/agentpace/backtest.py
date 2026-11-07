@@ -209,6 +209,10 @@ def metrics(forecasts: Sequence[Forecast], weights: Sequence[float]) -> dict[str
         "width": _weighted_median(
             [(f.p90 / f.p50, w) for f, w in zip(forecasts, weights, strict=True)]
         ),
+        # Added in 0.2.1 for the portable prompt. The same forecasts, no new random draw.
+        "width80": _weighted_median(
+            [(f.p80 / f.p50, w) for f, w in zip(forecasts, weights, strict=True)]
+        ),
     }
 
 
