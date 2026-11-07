@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Changed
+
+- The README opens with what agentpace is for: "Stop estimating agent work in human weeks." Try it now comes straight after the badges. The problem statement moved under its own heading, below the example output.
+
+### Added
+
+- README: one sentence on why the answer is a range, and an "In your agent" block that installs the skills and gives a first question to ask.
+
 ## 0.6.3 - 2026-11-07
 
 ### Added

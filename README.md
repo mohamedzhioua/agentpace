@@ -1,6 +1,6 @@
 # agentpace
 
-**How long will your coding-agent work take? A range you can plan on, measured from real runs.**
+**Stop estimating agent work in human weeks. agentpace measures how long coding agents actually take: a P50/P80/P90 range from real runs, with the human part stated apart, never derived.**
 
 ![An office worker pins up a Gantt chart so long it runs out the door, while a tiny crew of terminal cursors has already stacked finished boxes; a separate review desk with an outlined empty chair waits for the human part.](docs/assets/hero.webp)
 
@@ -8,8 +8,6 @@
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![Data: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-blue)](data/LICENSE)
-
-Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 wall-clock ranges and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
 ## Try it
 
@@ -53,6 +51,20 @@ Warnings:
 ```
 
 On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. The same plan is in [examples/plan.json](examples/plan.json). In a plan, `depends_on`, `risk` and `model` are optional. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
+
+Why a range and not one number? Agent run times have a long tail, so any single number misses most of the time. P50 is a coin flip, and P80 is the one to plan on.
+
+### In your agent
+
+```bash
+npx skills add mohamedzhioua/agentpace
+```
+
+Then ask your agent: "How long will the billing feature take?" The skill calls the CLI, so install it first ([Install](#install)). Without it, the skill offers the install command or a portable rule-of-thumb prompt.
+
+## Why agentpace
+
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 wall-clock ranges and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
 ![How long agent runs took, by task kind](docs/assets/run-ranges.svg)
 
