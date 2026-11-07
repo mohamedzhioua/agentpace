@@ -1,3 +1,3 @@
 """agentpace: real run times for coding agents, as P50/P80/P90 ranges."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>agentpace: how long coding agents really take</title>
-<meta name="description" content="How long coding agents really take, from real runs. Median, P75 and P90 by model, task kind and risk.">
+<meta name="description" content="How long will your coding-agent work take? P50, P80 and P90 ranges measured from real agent runs, with the human part stated separately. Open data, a standard-library CLI and an agent skill.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="agentpace: how long coding agents really take">
+<meta property="og:description" content="P50, P80 and P90 ranges measured from real agent runs, with the human part stated separately. Open data, a standard-library CLI and an agent skill.">
+<meta property="og:url" content="https://mohamedzhioua.github.io/agentpace/">
+<meta property="og:image" content="https://mohamedzhioua.github.io/agentpace/assets/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
     color-scheme: light dark;
@@ -129,6 +135,7 @@
     border: 1px solid var(--rule);
     border-radius: 6px;
   }
+  .try { margin: 0 0 72px; }
   .reproduce pre { margin: 12px 0 0; font: 14px/1.7 var(--mono); overflow-x: auto; }
   footer { margin: 48px 0; font-size: 14px; color: var(--muted); }
   @media (max-width: 720px) {
@@ -144,6 +151,8 @@
   <header class="top">
     <span>agentpace</span>
     <nav>
+      <a href="#try">Try it</a>
+      <a href="#reproduce-title">Install</a>
       <a href="https://github.com/mohamedzhioua/agentpace">GitHub</a>
       <a href="https://github.com/mohamedzhioua/agentpace/blob/main/docs/backtest.md">Backtest</a>
     </nav>
@@ -151,14 +160,32 @@
 
   <main>
     <h1>How long coding agents really take</h1>
-    <p class="lede" id="lede"></p>
-    <p class="lede">The <a href="https://github.com/mohamedzhioua/agentpace#quickstart">agentpace CLI</a> turns these runs into P50/P80/P90 ranges for your own plan of tasks. Logging your runs works with Claude Code subagents today.</p>
+    <p class="lede" id="lede">Measured from 3,206 completed subagent runs, not from anyone's opinion. Half finished within 2 min. One in ten took more than 19 min.</p>
+    <p class="lede">Ask an assistant how long a feature will take and it answers in human-team time. agentpace answers from measured agent runs instead: P50, P80 and P90 for your own plan of tasks, with the human part stated on its own line. Logging your own runs works with Claude Code subagents today.</p>
+
+    <section class="reproduce try" id="try" aria-labelledby="try-title">
+      <h2 id="try-title">Try it, with no install</h2>
+      <p class="section-note">Needs <a href="https://docs.astral.sh/uv/">uv</a>. Each task is one agent run. The seed data ships inside the package.</p>
+      <pre><code>uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate - &lt;&lt;'EOF'
+{
+  "agent_cap": 3,
+  "model": "claude-opus-5-5",
+  "tasks": [
+    { "id": "schema", "kind": "feature", "risk": "normal" },
+    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "ui", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "docs", "kind": "docs", "risk": "normal", "depends_on": ["api"] },
+    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api", "ui"] }
+  ]
+}
+EOF</code></pre>
+    </section>
 
     <figure style="margin:0">
       <svg class="trace" id="trace" role="img" aria-labelledby="trace-title">
         <title id="trace-title">Number of runs by duration, on a log scale</title>
       </svg>
-      <figcaption class="trace-note" id="trace-note"></figcaption>
+      <figcaption class="trace-note" id="trace-note">Every completed run from 2026-W40 to 2026-W45. Time runs left to right on a log scale.</figcaption>
     </figure>
 
     <section aria-labelledby="board-title">
@@ -187,11 +214,11 @@
       </div>
       <div>
         <h3>This is one person's workflow, so far</h3>
-        <p id="reading-scope"></p>
+        <p id="reading-scope">3,219 runs in 82 sessions from 1 contributor, with heavy automated fan-out. It will not match your setup until more people contribute.</p>
       </div>
       <div>
         <h3>How well the forecasts hold up</h3>
-        <p id="reading-backtest"></p>
+        <p id="reading-backtest">On 56 held-out sessions, the P80 for the whole session covered 80% and the P90 covered 91%. For a single task the median miss is 78%, so read a range, never one number.</p>
       </div>
     </section>
 
@@ -199,7 +226,7 @@
       <h2 id="reproduce-title">Check it yourself</h2>
       <pre><code>uv tool install git+https://github.com/mohamedzhioua/agentpace
 agentpace ingest                    # your own runs, stored locally
-agentpace estimate plan.json        # P50, P80 and P90 for a plan; the README has one to paste
+agentpace estimate plan.json        # P50, P80 and P90 for a plan, like the one above
 agentpace share --dry-run           # the exact rows you would contribute</code></pre>
     </section>
   </main>
@@ -229,21 +256,8 @@ agentpace share --dry-run           # the exact rows you would contribute</code>
     return node;
   }
 
-  document.getElementById("lede").textContent =
-    "Measured from " + count(data.completed) + " completed subagent runs, not from anyone's opinion. " +
-    "Half finished within " + duration(data.overall.p50) + ". One in ten took more than " +
-    duration(data.overall.p90) + ".";
-  document.getElementById("trace-note").textContent =
-    "Every completed run from " + data.first_week + " to " + data.last_week +
-    ". Time runs left to right on a log scale.";
-  document.getElementById("reading-scope").textContent =
-    count(data.runs) + " runs in " + data.sessions + " sessions from " + data.contributors +
-    (data.contributors === 1 ? " contributor" : " contributors") + ", with heavy automated fan-out. It will not match your setup until more people contribute.";
-  var b = data.backtest;
-  document.getElementById("reading-backtest").textContent =
-    "On " + b.sessions + " held-out sessions, the P80 for the whole session covered " + b.plan_p80_coverage +
-    "% and the P90 covered " + b.plan_p90_coverage + "%. For a single task the median miss is " +
-    b.task_mdape + "%, so read a range, never one number.";
+  // The lede, trace note and reading notes are filled in by `agentpace site`, so they show
+  // without JavaScript.
 
   function drawTrace() {
     var svg = document.getElementById("trace");
@@ -386,6 +400,6 @@ agentpace share --dry-run           # the exact rows you would contribute</code>
   render();
 }());
 </script>
-<noscript><p style="max-width:60ch;margin:24px auto">This table needs JavaScript to draw. The same numbers are in <code>docs/backtest.md</code> and <code>data/runs</code>.</p></noscript>
+<noscript><p style="max-width:60ch;margin:24px auto">The chart and the table need JavaScript to draw. The same numbers are in <code>docs/backtest.md</code> and <code>data/runs</code>.</p></noscript>
 </body>
 </html>

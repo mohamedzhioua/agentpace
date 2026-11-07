@@ -1,11 +1,15 @@
 ---
 name: pace-log
-description: Records recent coding-agent runs in the local agentpace store and corrects a run's kind or risk label. Use when the user runs /pace-log or asks to log agent runs or relabel one. Everything stays on this machine.
+description: Records recent coding-agent runs in the local agentpace store and corrects a run's kind or risk label. Use when the user runs /pace-log or asks to log, record or track their agent runs, or to relabel one. Everything stays on this machine.
 license: MIT
 compatibility: Requires Python 3.10+ and the agentpace CLI.
 ---
 
 # Log runs
+
+**Use when** the user runs `/pace-log`, or asks to log, record or track their agent runs, or to relabel one.
+
+**Produces** fresh rows in `~/.agentpace` from local Claude Code history, the latest runs listed with their references, corrected labels, and the opt-in hook snippet when asked.
 
 Input, if any: $ARGUMENTS
 

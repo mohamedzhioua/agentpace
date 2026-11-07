@@ -262,7 +262,7 @@ def cmd_site(args: argparse.Namespace) -> int:
         raise ValueError("run `agentpace backtest` first: the page quotes its results")
     results = json.loads(stored.read_text(encoding="utf-8"))
     current = page.read_text(encoding="utf-8")
-    updated = site.embed(current, site.payload(rows, results))
+    updated = site.build(current, site.payload(rows, results))
     if args.check:
         if updated == current:
             print("the page's data is current")

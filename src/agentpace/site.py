@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections import defaultdict
 from collections.abc import Sequence
+from html import escape
 from typing import Any
 
 from agentpace import estimate as est
+from agentpace import render
 from agentpace.schema import Row
 
 START = '<script id="leaderboard-data" type="application/json">'
@@ -78,8 +81,53 @@ def payload(rows: Sequence[Row], backtest_report: dict[str, Any]) -> dict[str, A
     }
 
 
+def texts(data: dict[str, Any]) -> dict[str, str]:
+    """Sentences the page shows before any script runs, so link previews, readers without
+    JavaScript and crawlers all see the same numbers as everyone else."""
+    overall, scores = data["overall"], data["backtest"]
+    people = "contributor" if data["contributors"] == 1 else "contributors"
+    return {
+        "lede": (
+            f"Measured from {data['completed']:,} completed subagent runs, not from anyone's "
+            f"opinion. Half finished within {render.duration(overall['p50'])}. One in ten took "
+            f"more than {render.duration(overall['p90'])}."
+        ),
+        "trace-note": (
+            f"Every completed run from {data['first_week']} to {data['last_week']}. "
+            "Time runs left to right on a log scale."
+        ),
+        "reading-scope": (
+            f"{data['runs']:,} runs in {data['sessions']} sessions from {data['contributors']} "
+            f"{people}, with heavy automated fan-out. It will not match your setup until more "
+            "people contribute."
+        ),
+        "reading-backtest": (
+            f"On {scores['sessions']} held-out sessions, the P80 for the whole session covered "
+            f"{scores['plan_p80_coverage']}% and the P90 covered {scores['plan_p90_coverage']}%. "
+            f"For a single task the median miss is {scores['task_mdape']}%, so read a range, "
+            "never one number."
+        ),
+    }
+
+
+def _fill(html: str, element_id: str, text: str) -> str:
+    pattern = re.compile(rf'(id="{element_id}"[^>]*>)(.*?)(</(?:p|figcaption)>)', re.DOTALL)
+    filled, count = pattern.subn(lambda m: m[1] + escape(text, quote=False) + m[3], html, count=1)
+    if count != 1:
+        raise ValueError(f"the page has no element with id {element_id}")
+    return filled
+
+
 def embed(html: str, data: dict[str, Any]) -> str:
     start = html.index(START) + len(START)
     end = html.index(END, start)
     block = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
     return f"{html[:start]}{block}{html[end:]}"
+
+
+def build(html: str, data: dict[str, Any]) -> str:
+    """The data block plus the sentences drawn from it."""
+    page = embed(html, data)
+    for element_id, text in texts(data).items():
+        page = _fill(page, element_id, text)
+    return page

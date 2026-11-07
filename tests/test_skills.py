@@ -26,6 +26,23 @@ class Quickstart(unittest.TestCase):
         example = (REPO / "examples" / "plan.json").read_text(encoding="utf-8")
         self.assertEqual(match.group(1), example.strip())
 
+    def test_a_command_is_on_the_first_screen(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any(line.startswith("uvx --from") for line in readme[:25]))
+
+    def test_every_skill_is_in_the_readme_table(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        self.assertIn("| Skill | Say this | You get |", readme)
+        for name in EXPECTED:
+            self.assertIn(f"(skills/{name}/SKILL.md)", readme)
+
+    def test_every_skill_says_when_to_use_it_and_what_it_produces(self):
+        for path in sorted(SKILLS.glob("*/SKILL.md")):
+            with self.subTest(skill=path.parent.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn("**Use when**", text)
+                self.assertIn("**Produces**", text)
+
     def test_the_quickstart_needs_no_clone(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertIn("agentpace estimate - <<'EOF'", readme)

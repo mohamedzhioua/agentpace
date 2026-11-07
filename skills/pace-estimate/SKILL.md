@@ -7,6 +7,10 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 # Estimate a plan
 
+**Use when** the user runs `/pace-estimate`, the explicit command, with a plan file or a task list. Natural-language questions belong to the `agentpace` skill.
+
+**Produces** P50/P80/P90 for the whole plan and each task, the critical path, effective parallelism, the human part line and every warning.
+
 The plan to estimate: $ARGUMENTS
 
 1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`

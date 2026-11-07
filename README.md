@@ -7,17 +7,11 @@
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![Data: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-blue)](data/LICENSE)
 
-Give agentpace a list of agent tasks, and it answers with P50/P80/P90 wall-clock ranges and a critical path, fitted to real run history instead of a guess. It publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 wall-clock ranges and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
-![How long subagent runs took, by task kind](docs/assets/run-ranges.svg)
+## Try it
 
-These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->19 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
-
-**Does it fit your setup?** Estimating works anywhere, because the seed data ships inside the package. Logging your own runs works with Claude Code today, and only for subagent runs: work Claude Code hands to a subagent, not the main conversation. A task in a plan is one such run. Once you have ingested, `agentpace estimate` pools your rows with the seed. Pass `--data ~/.agentpace/runs.jsonl` to use only yours. A Codex adapter is tracked in [#3](https://github.com/mohamedzhioua/agentpace/issues/3).
-
-## Quickstart
-
-Describe the work as tasks and pass them in. Each task is one agent run. With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own:
+With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own. Each task is one agent run:
 
 ```bash
 uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate - <<'EOF'
@@ -56,27 +50,19 @@ Warnings:
 <!-- /claim -->
 ```
 
-On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. After the install below, drop the `uvx --from ...` prefix.
+On PowerShell, which has no heredoc, save the JSON as `plan.json` and run the same command with `plan.json` in place of `- <<'EOF'`. The same plan is in [examples/plan.json](examples/plan.json). In a plan, `depends_on`, `risk` and `model` are optional. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
 
-Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
+![How long subagent runs took, by task kind](docs/assets/run-ranges.svg)
 
-To add your own history to the seed data, run `agentpace ingest`. It reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine. A second run reads only what changed. To log every run as it finishes, add the opt-in hook that [`/pace-log`](skills/pace-log/SKILL.md) shows.
+These are <!-- claim:completed -->3,206<!-- /claim --> completed subagent runs. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->19 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
 
-In a plan, `depends_on`, `risk` and `model` are optional. The same plan is in [examples/plan.json](examples/plan.json), so `agentpace estimate examples/plan.json` works from a clone.
+## Does it fit your setup?
 
-| Command | What it does |
+| You want to | Works with today |
 |---|---|
-| `agentpace ingest [path]` | Read local agent history into rows |
-| `agentpace runs` | List recent runs and their references |
-| `agentpace label <ref>` | Correct the kind or risk of a run |
-| `agentpace estimate <plan>` | P50, P80 and P90 for a plan |
-| `agentpace backtest` | Regenerate the published evaluation |
-| `agentpace share` | Preview exact rows, or write a file to contribute |
-| `agentpace validate` | Check data files |
-| `agentpace site` | Refresh the data inside the static page |
-| `agentpace claims` | Check every number in this README against the data |
-
-There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of median, P75 and P90 by model, kind and risk.
+| Estimate a plan | Anywhere. The seed data ships inside the package, so no history of your own is needed |
+| Log your own runs | Claude Code, subagent runs only: work Claude Code hands to a subagent, not the main conversation. Your rows pool with the seed, and `--data ~/.agentpace/runs.jsonl` uses only yours |
+| Another harness | Not yet. A Codex adapter is tracked in [#3](https://github.com/mohamedzhioua/agentpace/issues/3) |
 
 ## Install
 
@@ -84,21 +70,58 @@ There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of med
 uv tool install git+https://github.com/mohamedzhioua/agentpace
 ```
 
-`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. The seed data ships inside the package, so estimates work straight away.
+`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. After installing, drop the `uvx --from ...` prefix from the command above.
 
-To add the agent skills, which give you `/pace-estimate`, `/pace-log` and `/pace-share`:
+Then add the agent skills:
 
 ```bash
 npx skills add mohamedzhioua/agentpace
 ```
 
-No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+Without Node, copy the four folders under [skills/](skills/) into your agent's skills folder, for example `~/.claude/skills/` for Claude Code. No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+
+## Skills
+
+| Skill | Say this | You get |
+|---|---|---|
+| [`agentpace`](skills/agentpace/SKILL.md) | "How long will the billing feature take?", or "my manager says this is a 3-month project" | The work split into agent tasks, a measured P50/P80/P90 range with its critical path, the human part on its own line, and any quoted timeline shown beside it as unverified |
+| [`/pace-estimate`](skills/pace-estimate/SKILL.md) | `/pace-estimate plan.json`, or a task list | The same estimate for a plan you hand it |
+| [`/pace-log`](skills/pace-log/SKILL.md) | `/pace-log`, "log my agent runs", "that run was a bug fix" | Your runs ingested into `~/.agentpace`, labels corrected, and the opt-in hook that logs each run as it finishes |
+| [`/pace-share`](skills/pace-share/SKILL.md) | `/pace-share`, only when you ask | The exact rows you could contribute, previewed first. It writes a file only after you say yes, and sends nothing |
+
+`agentpace` triggers by itself on questions about how long software work will take. The three `/pace-*` skills run when you call them. The [portable prompt](skills/agentpace/assets/portable-prompt.md) gives a rule-of-thumb version of the same answer in assistants without skills.
+
+## Commands
+
+| Use | What it does |
+|---|---|
+| `agentpace estimate <plan>` | P50, P80 and P90 for a plan, and the human part on its own line |
+| `agentpace ingest [path]` | Read local agent history into rows |
+| `agentpace runs` | List recent runs and their references |
+| `agentpace label <ref>` | Correct the kind or risk of a run |
+| `agentpace share` | Preview exact rows, or write a file to contribute |
+
+| Maintain | What it does |
+|---|---|
+| `agentpace backtest` | Regenerate the published evaluation |
+| `agentpace validate` | Check data files |
+| `agentpace site` | Refresh the data inside the static page |
+| `agentpace claims` | Check every number in this README against the data |
+
+`agentpace ingest` reads Claude Code subagent transcripts from `~/.claude/projects` and keeps rows in `~/.agentpace`, on your machine. A second run reads only what changed. To log every run as it finishes, add the opt-in hook that [`/pace-log`](skills/pace-log/SKILL.md) shows.
+
+There is also a [leaderboard](https://mohamedzhioua.github.io/agentpace/) of median, P75 and P90 by model, kind and risk.
 
 ## Backtest: how often it is wrong
+
+**Bottom line.** On <!-- claim:plan_sessions -->56<!-- /claim --> held-out sessions, the whole-session P80 covered <!-- claim:plan_p80 -->80% (CI 70% to 91%)<!-- /claim --> and the P90 covered <!-- claim:plan_p90 -->91% (CI 84% to 98%)<!-- /claim -->. For a single task, the P80 covered <!-- claim:task_p80 -->78.5% (CI 72.7% to 84.2%)<!-- /claim -->, but the median miss of its P50 is <!-- claim:task_mdape -->78%<!-- /claim -->, so plan on the range, never the middle. Calibration drifts from week to week: per-session P80 coverage ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim -->.
 
 Every number here comes from the published rows. `agentpace backtest` regenerates them, and CI fails if they drift. The [full report](docs/backtest.md) has every split, every baseline and every loss.
 
 Forecasts use only what is known before a run: model, kind and risk. Whole sessions are held out, so no run can leak into its own forecast. These headline numbers come from the same time folds that chose the method, so treat them as slightly optimistic. Weeks after <!-- claim:selection_last_week -->2026-W45<!-- /claim --> form a locked holdout that never takes part in selection. Its status: <!-- claim:locked_status -->not enough data (no weeks after 2026-W45 yet)<!-- /claim -->. Every interval below is a 95% bootstrap interval that resamples whole sessions.
+
+<details>
+<summary>Every number, with intervals and baselines</summary>
 
 **Whole sessions.** Each of <!-- claim:plan_sessions -->56<!-- /claim --> later sessions with at least 5 completed runs was predicted from earlier weeks only. This is the only direct test of plan totals.
 
@@ -123,6 +146,10 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 
 **Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->67% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->72%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
 
+![P80 coverage by method](docs/assets/backtest-coverage.svg)
+
+</details>
+
 **Where it falls short.**
 
 - The median error on a single task is <!-- claim:task_mdape -->78%<!-- /claim -->. Use the range, not the middle.
@@ -131,8 +158,6 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 - The report lists <!-- claim:loss_count -->9<!-- /claim --> places where a baseline won. That list is generated, so it cannot be edited out.
 - On the project split, P80 coverage is <!-- claim:project_p80 -->77.8%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.
 - The session-weighted design this project started with did not beat the simpler unweighted one, so the simpler one shipped. The selection rule was fixed before the first result.
-
-![P80 coverage by method](docs/assets/backtest-coverage.svg)
 
 ## Privacy
 
@@ -151,6 +176,7 @@ Sharing is opt-in, and your rows join a public-domain dataset.
 
 ```bash
 git clone https://github.com/<your-fork>/agentpace && cd agentpace
+uv tool install .           # or pipx install .
 agentpace ingest
 agentpace share --dry-run    # prints the exact rows and writes nothing
 agentpace share --write      # writes a file to data/runs, and still sends nothing
