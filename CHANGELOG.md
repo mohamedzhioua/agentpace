@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- A hero illustration at the top of the README and the site: a Gantt chart so long it runs out the door, a crew of terminal cursors that has already stacked the finished work, and an empty chair at a separate review desk for the human part. It holds no words and no numbers, so it cannot carry an unchecked figure. Generated with Codex image generation, then resized and encoded as WebP (`docs/assets/hero.webp`).
+
+### Changed
+
+- The social preview (`docs/assets/social-preview.png`) is the same illustration with the project name. The old one showed run counts from 0.1.0 that no longer matched the dataset.
+
 ## 0.6.0 - 2026-11-07
 
 ### Added

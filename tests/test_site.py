@@ -104,7 +104,11 @@ class Page(unittest.TestCase):
         cls.html = PAGE.read_text(encoding="utf-8")
 
     def test_loads_nothing_from_anywhere(self):
-        self.assertIsNone(re.search(r"<(script|img|iframe)[^>]+src=", self.html))
+        self.assertIsNone(re.search(r"<(script|iframe)[^>]+src=", self.html))
+        # The one exception is an image beside the page, so no request leaves the site.
+        for source in re.findall(r"<img[^>]+src=\"([^\"]*)\"", self.html):
+            self.assertRegex(source, r"^assets/[\w.-]+$")
+            self.assertTrue((PAGE.parent / source).is_file(), source)
         self.assertIsNone(re.search(r"<link[^>]+href=", self.html))
         self.assertNotIn("@import", self.html)
         self.assertNotIn("url(", self.html)

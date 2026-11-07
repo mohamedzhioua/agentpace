@@ -71,6 +71,7 @@
     letter-spacing: -0.035em;
     max-width: 18ch;
   }
+  .hero { display: block; width: 100%; height: auto; margin: 0 0 32px; border-radius: 12px; }
   .lede { margin: 0 0 40px; color: var(--muted); max-width: 62ch; font-size: 18px; }
   .trace { width: 100%; height: auto; display: block; overflow: visible; }
   .trace text { font: 12px var(--mono); fill: var(--muted); }
@@ -160,6 +161,7 @@
 
   <main>
     <h1>How long coding agents really take</h1>
+    <img class="hero" src="assets/hero.webp" width="1600" height="800" decoding="async" alt="An office worker pins up a Gantt chart so long it runs out the door, while a tiny crew of terminal cursors has already stacked finished boxes; a separate review desk with an outlined empty chair waits for the human part.">
     <p class="lede" id="lede">Measured from 3,383 completed agent runs, not from anyone's opinion. Half finished within 2 min. One in ten took more than 20 min.</p>
     <p class="lede">Ask an assistant how long a feature will take and it answers in human-team time. agentpace answers from measured agent runs instead: P50, P80 and P90 for your own plan of tasks, with the human part stated on its own line. Logging your own runs works with Claude Code subagents and Codex today.</p>
 
