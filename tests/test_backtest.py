@@ -538,6 +538,26 @@ class ProjectRows(unittest.TestCase):
         text = "\n".join(report._project_lines({**split, "without_largest": same}, "shrunk"))
         self.assertIn("The lowest candidate is still `shrunk`.", text)
 
+    def test_ties_on_sessions_and_rows_go_to_the_pseudonym(self):
+        folds = [
+            backtest.Fold("zz", [], [row(project="zz", harness="codex")]),
+            backtest.Fold("aa", [], [row(project="aa")]),
+        ]
+        per_fold = {
+            name: [[Forecast(11, 11, 11, 10, f"{f.name}1", f.test[0]["harness"])] for f in folds]
+            for name in self.per_fold
+        }
+        harnesses = [r["harness"] for r in backtest.by_project(folds, per_fold, "shrunk")]
+        self.assertEqual(harnesses, ["claude-code", "codex"])
+
+    def test_one_project_with_runs_has_no_without_largest_line(self):
+        empty = {name: [[], [], [], folds[3]] for name, folds in self.per_fold.items()}
+        result = backtest.project_rows(self.folds, empty, "shrunk")
+        self.assertEqual(len(result["by_project"]), 1)
+        self.assertNotIn("without_largest", result)
+        lines = report._project_lines(result, "shrunk")
+        self.assertNotIn("Without project", "\n".join(lines))
+
     def test_a_project_with_no_completed_run_is_left_out(self):
         empty = {name: [*folds[:3], []] for name, folds in self.per_fold.items()}
         self.assertEqual(len(backtest.by_project(self.folds, empty, "shrunk")), 3)

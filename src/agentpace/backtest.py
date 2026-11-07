@@ -577,6 +577,18 @@ def without_largest(
     }
 
 
+def project_rows(
+    folds: Sequence[Fold], per_fold: dict[str, list[list[Forecast]]], winner: str
+) -> dict[str, Any]:
+    """Each project alone and, when at least two have completed runs, the split without the
+    largest. With only one, dropping it would leave nothing to score."""
+    rows = by_project(folds, per_fold, winner)
+    result: dict[str, Any] = {"by_project": rows}
+    if len(rows) >= 2:
+        result["without_largest"] = without_largest(folds, per_fold, winner)
+    return result
+
+
 def _locked_holdout(
     locked: Sequence[Fold],
     forecasts: dict[str, list[Forecast]],
@@ -739,8 +751,7 @@ def run(
             "folds": len(projects),
             "rows": len(held_out[winner]),
             "tracks": {"pre-run": project_results},
-            "by_project": by_project(projects, per_project, winner),
-            "without_largest": without_largest(projects, per_project, winner),
+            **project_rows(projects, per_project, winner),
         }
         report_losses += _losses("project", "pre-run", project_results, winner)
     else:

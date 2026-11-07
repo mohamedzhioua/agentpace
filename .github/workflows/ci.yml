@@ -61,3 +61,12 @@ jobs:
         run: python -m agentpace site --check
       - name: Check README claims
         run: python -m agentpace claims --check
+      - name: The built package runs the README example
+        # Installs from the checkout, so the example plan must come from the wheel's _bundled
+        # folder. An empty home keeps any local data out of the output.
+        env:
+          PYTHONPATH: ""
+          AGENTPACE_HOME: ${{ runner.temp }}/agentpace-home
+        run: |
+          uvx --from . agentpace estimate --example > "$RUNNER_TEMP/example.txt"
+          python -I -c "import re, sys; want = re.search(r'<!-- claim:example_output -->\n(.*?)<!-- /claim -->', open('README.md', encoding='utf-8').read(), re.S).group(1).strip(); got = open(sys.argv[1], encoding='utf-8').read().strip(); sys.exit(0 if want == got else 'the installed --example output differs from the README')" "$RUNNER_TEMP/example.txt"
