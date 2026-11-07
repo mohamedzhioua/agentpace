@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.7.1 - 2026-11-07
+
+### Fixed
+
+- The project split no longer divides by zero when only one held-out project has completed runs. It then shows that project's row and leaves out the "without the largest project" sentence, because nothing would remain to score.
+- DESIGN section 3's `Adapter` snippet now lists `version` and `default_path`, as the protocol in `adapters/base.py` does. The adapter issues point contributors at it.
+
+### Added
+
+- CI installs the package from the checkout and checks that `agentpace estimate --example` prints exactly the README's example output, so the example plan must ship inside the wheel.
+- A test pins the project ranking's last tie-break, the pseudonym.
+
+No published number moved.
+
 ## 0.7.0 - 2026-11-07
 
 ### Added

@@ -61,7 +61,9 @@ The local project folder name is an input to the `project` HMAC and is never sto
 ```python
 class Adapter(Protocol):
     name: str
+    version: int  # bumped when parsing changes, which invalidates cached runs
 
+    def default_path(self) -> Path: ...
     def discover(self, path: Path) -> Iterator[Source]: ...
     def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> list[RawRun]: ...
 ```

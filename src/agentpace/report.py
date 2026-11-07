@@ -301,6 +301,8 @@ def _project_lines(project: dict[str, Any], winner: str) -> list[str]:
             f"{m['median_pinball']:.0f} | {m['coverage80_session']:.1f}% | "
             f"{m['coverage80_row']:.1f}% | {m['width']:.1f}x |"
         )
+    if "without_largest" not in project:
+        return [*lines, ""]
     largest = project["without_largest"]
     losses = ", ".join(f"{name} {value:.0f}" for name, value in largest["loss"].items())
     if largest["lowest"] == largest["lowest_with_it"]:
