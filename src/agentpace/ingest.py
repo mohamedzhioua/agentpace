@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
 from bisect import bisect_right
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 from agentpace import classify, pseudonym, schema
-from agentpace.adapters.base import Adapter, ParseStats, RawRun
+from agentpace.adapters.base import Adapter, ParseStats, RawRun, Source
+from agentpace.cache import RunCache
 from agentpace.schema import Row
 
 DEFAULT_IDLE_CAP_S = 900
+_EFFORTS = frozenset(schema.enum("effort"))
 
 _FAMILIES = (
     re.compile(r"claude-(?:opus|sonnet|haiku|fable)-\d+(?:-\d{1,2})?(?!\d)"),
@@ -46,17 +51,22 @@ class IngestReport:
     files: int = 0
     rows: int = 0
     zero_duration: int = 0
+    still_running: int = 0
+    cached: int = 0
+    cache_rebuilt: bool = False
     parse: ParseStats = field(default_factory=ParseStats)
 
     def lines(self) -> list[str]:
         parse = self.parse
         return [
             f"files seen:       {self.files}",
+            f"read from cache:  {self.cached}" + (" (cache rebuilt)" if self.cache_rebuilt else ""),
             f"rows produced:    {self.rows}",
             f"empty runs:       {parse.empty_runs}",
             f"unreadable files: {parse.unreadable_files}",
             f"unparsed lines:   {parse.unparsed_lines}",
             f"zero-duration:    {self.zero_duration}",
+            f"still running:    {self.still_running}",
         ]
 
 
@@ -127,14 +137,25 @@ def build_rows(
     idle_cap_s: int = DEFAULT_IDLE_CAP_S,
     kind_map: Mapping[str, str] | None = None,
     labels: Mapping[str, Mapping[str, str]] | None = None,
-) -> tuple[list[Row], int]:
-    """Return schema-valid rows, plus how many runs had zero duration and were dropped."""
+    now: float | None = None,
+) -> tuple[list[Row], int, int]:
+    """Return schema-valid rows, how many runs had zero duration and were dropped, and how many
+    were withheld because they may still be running.
+
+    A run that has not completed and was active within the idle cap may still be going. Storing
+    it would leave a partial row behind for good, because its duration is part of the key, so it
+    is withheld until a later ingest finds it settled. It still feeds the session clock and the
+    overlap count, so its siblings get the same offsets they will have once it finishes. A
+    completed sibling that starts in the same second is held back too, because tie-breaking
+    between the two can only be settled once both are final.
+    """
+    now = time.time() if now is None else now
     sessions: dict[tuple[str, str], list[RawRun]] = defaultdict(list)
     for run in runs:
         sessions[(run.project, run.session)].append(run)
     contributor = pseudonym.contributor(secret)
     rows: list[Row] = []
-    dropped = 0
+    dropped = withheld = 0
     for (project, session), members in sessions.items():
         clock = SessionClock(members, idle_cap_s)
         peaks = peak_overlaps(members)
@@ -142,14 +163,26 @@ def build_rows(
         project_hash = pseudonym.project(secret, project)
         taken: set[tuple[int, int]] = set()
         order = sorted(range(len(members)), key=lambda i: (members[i].start, members[i].end))
+        base = {i: clock.at(members[i].start) for i in order}
+        running = {
+            i
+            for i in order
+            if members[i].outcome != "completed" and now - members[i].end < idle_cap_s
+        }
+        # A sibling that starts in the same second as a running run is held back with it, since
+        # the tie nudge below would give it a different key once the running one finishes.
+        blocked = {base[i] for i in running}
         for index in order:
             run = members[index]
             if run.active_s < 1:
                 dropped += 1
                 continue
+            if index in running or base[index] in blocked:
+                withheld += 1
+                continue
             # Agents launched together can tie on (start, duration) to the second. A one-second
             # nudge keeps both runs apart under the duplicate key, deterministically.
-            offset = clock.at(run.start)
+            offset = base[index]
             while (offset, run.active_s) in taken:
                 offset += 1
             taken.add((offset, run.active_s))
@@ -173,13 +206,53 @@ def build_rows(
             }
             if run.tokens is not None:
                 row["tokens"] = run.tokens
+            if run.effort in _EFFORTS:
+                row["effort"] = run.effort
             if labels:
                 apply_labels(row, labels)
             problems = schema.check_row(row)
             if problems:
                 raise ValueError(f"adapter produced an invalid row: {problems}")
             rows.append(row)
-    return rows, dropped
+    return rows, dropped, withheld
+
+
+def _stamp(path: str) -> list[int] | None:
+    try:
+        stamp = os.stat(path)
+    except OSError:
+        return None
+    return [stamp.st_size, stamp.st_mtime_ns]
+
+
+def _parse(
+    adapter: Adapter,
+    source: Source,
+    idle_cap_s: int,
+    report: IngestReport,
+    cache: RunCache | None,
+) -> RawRun | None:
+    if cache is None:
+        return adapter.parse(source, idle_cap_s, report.parse)
+    try:
+        stamp = os.stat(source.path)
+    except OSError:
+        report.parse.unreadable_files += 1
+        return None
+    stamps = [[stamp.st_size, stamp.st_mtime_ns], *map(_stamp, source.companions)]
+    hit, run = cache.lookup(source.path, stamps)
+    if hit:
+        report.cached += 1
+        if run is None:
+            report.parse.empty_runs += 1
+        return run
+    unreadable = report.parse.unreadable_files
+    run = adapter.parse(source, idle_cap_s, report.parse)
+    if report.parse.unreadable_files == unreadable:
+        # Normalize before storing, so no raw model name (an ARN, a proxy) sits on disk.
+        run = run and replace(run, model=normalize_model(run.model))
+        cache.store(source.path, stamps, run)
+    return run
 
 
 def ingest(
@@ -189,15 +262,26 @@ def ingest(
     idle_cap_s: int = DEFAULT_IDLE_CAP_S,
     kind_map: Mapping[str, str] | None = None,
     labels: Mapping[str, Mapping[str, str]] | None = None,
+    now: float | None = None,
+    cache: RunCache | None = None,
 ) -> tuple[list[Row], IngestReport]:
-    report = IngestReport()
+    """Parse every run under `path` into rows. With a cache, unchanged files are not re-read."""
+    report = IngestReport(cache_rebuilt=cache is not None and cache.rebuilt)
     runs: list[RawRun] = []
+    seen: set[str] = set()
     for source in adapter.discover(path):
         report.files += 1
-        run = adapter.parse(source, idle_cap_s, report.parse)
+        seen.add(source.path)
+        run = _parse(adapter, source, idle_cap_s, report, cache)
         if run is not None:
             runs.append(run)
-    rows, report.zero_duration = build_rows(runs, secret, idle_cap_s, kind_map, labels)
+    if cache is not None:
+        sessions = {(run.project, run.session) for run in runs}
+        runs += cache.vanished(sessions, seen)
+        cache.save()
+    rows, report.zero_duration, report.still_running = build_rows(
+        runs, secret, idle_cap_s, kind_map, labels, now
+    )
     report.rows = len(rows)
     return rows, report
 
@@ -207,3 +291,35 @@ def merge_into(path: Path, rows: Sequence[Row]) -> int:
     existing = schema.read_rows(path) if path.exists() else []
     merged = {schema.dedupe_key(row): row for row in [*existing, *rows]}
     return schema.write_rows(path, (merged[key] for key in sorted(merged)))
+
+
+class StoreBusy(Exception):
+    """Another ingest holds the store."""
+
+
+@contextmanager
+def store_lock(store: Path, wait_s: float = 5.0, stale_s: float = 900.0) -> Iterator[None]:
+    """Hold `<store>.lock` while reading, merging and writing, so a hook and a manual ingest
+    never interleave. A lock older than `stale_s` is taken to be left by a crash. That is longer
+    than a cold ingest takes, so a live holder is never mistaken for a dead one."""
+    lock = store.with_name(store.name + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + wait_s
+    while True:
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            break
+        except (FileExistsError, PermissionError):
+            # Windows reports PermissionError while another holder's lock is being deleted.
+            with suppress(OSError):
+                if time.time() - lock.stat().st_mtime > stale_s:
+                    lock.unlink()
+                    continue
+            if time.monotonic() > deadline:
+                raise StoreBusy(str(lock)) from None
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        with suppress(FileNotFoundError):
+            lock.unlink()

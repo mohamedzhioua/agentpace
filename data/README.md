@@ -27,6 +27,9 @@ agent type or from a person using `agentpace label`.
 **`risk` comes from the agent type**, unless someone labeled the run: read-only agents are `low`,
 migrations are `high`, and everything else is `normal`.
 
+**`effort` is optional.** It is the reasoning effort Claude Code recorded for the run, when it
+recorded one. Older rows do not carry it. It is not used to forecast.
+
 **`size` is measured after a run**, from the count of edit-style tool calls. It leaks the outcome,
 so forecasts ignore it unless you pass `--use-size`.
 

@@ -21,8 +21,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from agentpace import schema
 from agentpace.adapters.base import ParseStats, RawRun, Source
 
+_EFFORTS = frozenset(schema.enum("effort"))
 _EDIT_TOOLS = frozenset({"Edit", "MultiEdit", "NotebookEdit", "Write"})
 _TERMINAL_TOOLS = frozenset({"StructuredOutput", "SubagentHandback"})
 _CLEAN_STOPS = frozenset({"end_turn", "stop_sequence"})
@@ -104,17 +106,30 @@ def _project(record: Any) -> _Line | None:
     )
 
 
-def _read_meta(path: str) -> tuple[str | None, bool]:
-    """Return only `agentType` and `finished`. `description` and the rest stay unread."""
+def _meta_path(transcript: str) -> str:
+    return transcript[: -len(".jsonl")] + ".meta.json"
+
+
+def _read_meta(path: str) -> tuple[str | None, bool, str | None]:
+    """Return only `agentType`, `finished` and `effort`. `description` and the rest stay unread.
+
+    `effort` survives only as one of the schema's values. Any other string is dropped here, so it
+    never reaches a row, the cache or a message.
+    """
     try:
         with open(path, encoding="utf-8") as handle:
             meta = json.load(handle)
     except (OSError, ValueError):
-        return None, False
+        return None, False, None
     if not isinstance(meta, dict):
-        return None, False
+        return None, False, None
     agent_type = meta.get("agentType")
-    return (agent_type if isinstance(agent_type, str) else None), meta.get("finished") is True
+    effort = meta.get("effort")
+    return (
+        agent_type if isinstance(agent_type, str) else None,
+        meta.get("finished") is True,
+        effort if isinstance(effort, str) and effort in _EFFORTS else None,
+    )
 
 
 def _outcome(
@@ -152,6 +167,9 @@ def _extended(path: Path) -> str:
 
 class ClaudeCodeAdapter:
     name = "claude-code"
+    # Bump whenever `parse` would return something different for the same file, so cached
+    # runs from the old logic are discarded.
+    version = 1
 
     def default_path(self) -> Path:
         return Path.home() / ".claude" / "projects"
@@ -172,10 +190,12 @@ class ClaudeCodeAdapter:
                 continue
             for file in sorted(files):
                 if file.startswith("agent-") and file.endswith(".jsonl"):
+                    transcript = os.path.join(directory, file)
                     yield Source(
-                        path=os.path.join(directory, file),
+                        path=transcript,
                         session=parts[anchor - 1],
                         project=parts[anchor - 2],
+                        companions=(_meta_path(transcript),),
                     )
 
     def parse(self, source: Source, idle_cap_s: int, stats: ParseStats) -> RawRun | None:
@@ -224,7 +244,7 @@ class ClaudeCodeAdapter:
             return None
         times.sort()
         active_s, spans = _active(times, idle_cap_s)
-        agent_type, finished = _read_meta(source.path[: -len(".jsonl")] + ".meta.json")
+        agent_type, finished, effort = _read_meta(_meta_path(source.path))
         return RawRun(
             harness=self.name,
             model=models.most_common(1)[0][0],
@@ -237,6 +257,7 @@ class ClaudeCodeAdapter:
             tokens=sum(tokens_by_message.values()) or None,
             errors=errors,
             outcome=_outcome(last_stop, finished, last_tool, last_errored),
+            effort=effort,
             agent_type=agent_type,
             session=source.session,
             project=source.project,

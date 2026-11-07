@@ -23,6 +23,9 @@ class Source:
     path: str = field(repr=False)
     session: str = field(repr=False)
     project: str = field(repr=False)
+    # Other files the parse reads, such as a metadata sidecar. A change to any of them means
+    # the cached run is stale.
+    companions: tuple[str, ...] = field(repr=False, default=())
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,7 @@ class RawRun:
     tokens: int | None
     errors: int
     outcome: str
+    effort: str | None = None
     agent_type: str | None = field(repr=False, default=None)
     session: str = field(repr=False, default="")
     project: str = field(repr=False, default="")
@@ -56,6 +60,7 @@ class ParseStats:
 
 class Adapter(Protocol):
     name: str
+    version: int  # bumped when parsing changes, which invalidates cached runs
 
     def default_path(self) -> Path: ...
 

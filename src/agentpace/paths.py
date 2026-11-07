@@ -35,3 +35,7 @@ def local_runs() -> Path:
 
 def labels_file() -> Path:
     return home() / "labels.json"
+
+
+def cache_file(adapter: str) -> Path:
+    return home() / f"cache-{adapter}.json"

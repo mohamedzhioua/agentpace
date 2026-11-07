@@ -23,6 +23,7 @@ CANARIES = (
     "CANARY_TOOL_INPUT",
     "CANARY_RESULT",
     "CANARY_THINKING",
+    "CANARY_EFFORT",
 )
 
 BASE = datetime(2026, 3, 2, 9, 0, 0, tzinfo=timezone.utc)
@@ -91,6 +92,7 @@ def write_run(
     agent_type: str | None = "implementer",
     finished: bool | None = None,
     nested: str = "",
+    effort: Any = None,
 ) -> Path:
     directory = root / project / session / "subagents"
     if nested:
@@ -104,6 +106,8 @@ def write_run(
         meta["agentType"] = agent_type
     if finished is not None:
         meta["finished"] = finished
+    if effort is not None:
+        meta["effort"] = effort
     (directory / f"agent-{agent}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
     return path
 

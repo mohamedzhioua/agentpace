@@ -7,6 +7,7 @@ of being ignored, so the schema cannot quietly gain a rule that nothing enforces
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Iterable
 from functools import lru_cache
@@ -111,8 +112,12 @@ def read_dataset(sources: Iterable[Path]) -> list[Row]:
 
 
 def write_rows(path: Path, rows: Iterable[Row]) -> int:
+    """Write atomically. A hook can be killed at its timeout, and a half-written store would make
+    every later read fail."""
     lines = [canonical(row) for row in rows]
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("w", encoding="utf-8", newline="\n") as handle:
         handle.writelines(line + "\n" for line in lines)
+    os.replace(temporary, path)
     return len(lines)
