@@ -213,6 +213,36 @@ def _plan_rows(results: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _harness_section(harness: dict[str, Any], split: dict[str, Any], winner: str) -> list[str]:
+    lines = [
+        "## By harness",
+        "",
+        "The estimator does not use the harness. Each harness is shown on its own, from the "
+        "same selection-fold forecasts, before anyone pools them.",
+        "",
+        "| Harness | Runs | Completed | Sessions |",
+        "|---|---:|---:|---:|",
+    ]
+    for name, counts in harness["dataset"].items():
+        lines.append(
+            f"| {name} | {counts['rows']:,} | {counts['completed']:,} | {counts['sessions']} |"
+        )
+    lines += [
+        "",
+        f"| Harness | Test sessions | `{winner}` pinball | global-median pinball | "
+        "P80 coverage, per session | P80 coverage, per run | P90/P50 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for name, m in harness["selection_folds"].items():
+        lines.append(
+            f"| {name} | {m['sessions']} | {m['pinball']:.0f} | {m['median_pinball']:.0f} | "
+            f"{m['coverage80_session']:.1f}% | {m['coverage80_row']:.1f}% | {m['width']:.1f}x |"
+        )
+    if split["status"] != "ok":
+        lines += ["", f"Harness split: **{split['status']}.**"]
+    return [*lines, ""]
+
+
 def _loss_section(losses: Sequence[dict[str, Any]], winner: str) -> list[str]:
     lines = [
         "## Where agentpace loses",
@@ -301,6 +331,11 @@ def markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines += _split_section("Contributor split", splits["contributor"], "pre-run", "")
+    if splits["harness"]["status"] == "ok":
+        lines += _split_section(
+            "Harness split", splits["harness"], "pre-run", "Leave one harness out."
+        )
+    lines += _harness_section(stored["harness"], splits["harness"], winner)
     lines += _plan_section(stored["plans"])
     lines += _locked_section(stored["locked"], winner, last)
     lines += _loss_section(report["losses"], winner)

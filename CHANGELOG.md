@@ -4,7 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.5.0 - 2026-11-07
+
 ### Added
+
+- Backtest: a "By harness" section and a leave-one-harness-out split. Today the split prints "could not run (1 harness)", because the published rows are all Claude Code. Both come from forecasts already drawn, so no published number moved, and `docs/backtest.json` only gained keys.
 
 - A Codex adapter: `agentpace ingest --source codex` reads `~/.codex/sessions`, one agent turn per run and one rollout file per batch, using the same idle cap and privacy rules as Claude Code. It copies only types, timestamps, ids, model, effort, counters and fixed-set flags, never prompts, commands, patches or tool output. Forked rollouts and upkeep sessions are skipped and counted. Review sessions and `codex-auto-review` turns count as reviews. Codex rows are not in the published dataset.
 - `score --session` finds a session in any adapter's cache.

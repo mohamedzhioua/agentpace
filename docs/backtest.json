@@ -810,6 +810,9 @@
     },
     "contributor": {
       "status": "could not run (1 contributor)"
+    },
+    "harness": {
+      "status": "could not run (1 harness)"
     }
   },
   "locked": {
@@ -817,6 +820,26 @@
     "folds": [],
     "min_sessions": 20,
     "qualifying_sessions": 0
+  },
+  "harness": {
+    "dataset": {
+      "claude-code": {
+        "rows": 3219,
+        "completed": 3206,
+        "sessions": 82
+      }
+    },
+    "selection_folds": {
+      "claude-code": {
+        "sessions": 74,
+        "rows": 2595,
+        "pinball": 1047.0,
+        "median_pinball": 1719.0,
+        "coverage80_session": 78.51,
+        "coverage80_row": 89.13,
+        "width": 4.652
+      }
+    }
   },
   "plans": {
     "label": "oracle-structure",

@@ -70,6 +70,7 @@ class Forecast:
     p90: float
     actual: float
     session: str
+    harness: str = "claude-code"
 
 
 @dataclass(frozen=True)
@@ -133,7 +134,9 @@ def _candidate(method: str, use_size: bool) -> Callable[[Fold, random.Random], l
             if key not in cache:
                 cache[key] = est.cell_quantiles(model, query, CELL_DRAWS, rng)
             p50, p80, p90 = cache[key]
-            forecasts.append(Forecast(p50, p80, p90, row["duration_s"], row["batch"]))
+            forecasts.append(
+                Forecast(p50, p80, p90, row["duration_s"], row["batch"], row["harness"])
+            )
         return forecasts
 
     return predict
@@ -148,7 +151,9 @@ def _point(guess: Callable[[Row, float], float]) -> Callable[[Fold, random.Rando
         forecasts = []
         for row in _completed(fold.test):
             value = guess(row, median)
-            forecasts.append(Forecast(value, value, value, row["duration_s"], row["batch"]))
+            forecasts.append(
+                Forecast(value, value, value, row["duration_s"], row["batch"], row["harness"])
+            )
         return forecasts
 
     return predict
@@ -435,6 +440,41 @@ def dataset_summary(rows: Sequence[Row]) -> dict[str, Any]:
     }
 
 
+def harness_summary(
+    rows: Sequence[Row], forecasts: dict[str, list[Forecast]], winner: str
+) -> dict[str, Any]:
+    """Each harness on its own, from forecasts already drawn, so no random number is used.
+
+    The estimator does not use the harness. This shows how each one fares before anyone
+    pools them, which is the check a harness term would have to pass."""
+    completed = _completed(rows)
+    dataset = {
+        harness: {
+            "rows": sum(row["harness"] == harness for row in rows),
+            "completed": sum(row["harness"] == harness for row in completed),
+            "sessions": len({row["batch"] for row in rows if row["harness"] == harness}),
+        }
+        for harness in sorted({row["harness"] for row in rows})
+    }
+    selection: dict[str, Any] = {}
+    for harness in dataset:
+        ours = [f for f in forecasts[winner] if f.harness == harness]
+        median = [f for f in forecasts["global-median"] if f.harness == harness]
+        if not ours:
+            continue
+        mine, theirs = both_weightings(ours), both_weightings(median)
+        selection[harness] = {
+            "sessions": len({f.session for f in ours}),
+            "rows": len(ours),
+            "pinball": mine["session"]["pinball"],
+            "median_pinball": theirs["session"]["pinball"],
+            "coverage80_session": mine["session"]["coverage80"],
+            "coverage80_row": mine["row"]["coverage80"],
+            "width": mine["session"]["width"],
+        }
+    return {"dataset": dataset, "selection_folds": selection}
+
+
 def _locked_holdout(
     locked: Sequence[Fold],
     forecasts: dict[str, list[Forecast]],
@@ -564,6 +604,21 @@ def run(
         report_losses += _losses("contributor", "pre-run", contributor_results, winner)
     else:
         report["splits"]["contributor"] = {"status": f"could not run ({contributors} contributor)"}
+
+    harnesses = sorted({row["harness"] for row in rows})
+    if len(harnesses) >= 2:
+        groups = group_folds(usable, "harness", 1)
+        held_out, harness_results = _evaluate(groups, use_size=False, seed=seed)
+        report["splits"]["harness"] = {
+            "status": "ok",
+            "folds": len(groups),
+            "rows": len(held_out[winner]),
+            "tracks": {"pre-run": harness_results},
+        }
+        report_losses += _losses("harness", "pre-run", harness_results, winner)
+    else:
+        report["splits"]["harness"] = {"status": f"could not run ({len(harnesses)} harness)"}
+    report["harness"] = harness_summary(rows, forecasts, winner)
 
     plans = plan_forecasts(time, winner, seed)
     report["plans"] = {
