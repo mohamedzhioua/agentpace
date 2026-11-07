@@ -3,12 +3,26 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from agentpace import __version__, estimate, ingest, paths, pseudonym, render, schema
+from agentpace import (
+    __version__,
+    backtest,
+    estimate,
+    ingest,
+    paths,
+    pseudonym,
+    render,
+    report,
+    schema,
+    share,
+    validate,
+)
 from agentpace.adapters import ADAPTERS, get_adapter
 
 
@@ -108,6 +122,76 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backtest(args: argparse.Namespace) -> int:
+    rows = _dataset(args.data or [str(paths.seed_dir())])
+    results = backtest.run(rows, args.seed)
+    out = Path(args.out)
+    if args.check:
+        if report.is_current(results, out):
+            print("backtest numbers match the published report")
+            return 0
+        print("backtest numbers differ from the published report", file=sys.stderr)
+        return 1
+    report.write(results, rows, out)
+    selection = results["selection"]
+    print(f"wrote {out / 'backtest.md'}; winner: {selection['winner']}")
+    if selection["winner"] != estimate.DEFAULT_METHOD:
+        print(
+            f"note: the default method is {estimate.DEFAULT_METHOD}; update DEFAULT_METHOD",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_share(args: argparse.Namespace) -> int:
+    store = paths.local_runs()
+    rows = schema.read_rows(store) if store.exists() else []
+    if not rows:
+        raise ValueError("no local rows yet; run `agentpace ingest` first")
+    out = Path(args.out_dir)
+    published = schema.read_dataset([out]) if out.exists() else []
+    chosen, skipped = share.select(rows, args.since, args.drop_project, published)
+    print(share.NOTICE, file=sys.stderr)
+    if skipped:
+        print(f"{skipped} rows are already published and left out.", file=sys.stderr)
+    if not chosen:
+        print("nothing new to share.", file=sys.stderr)
+        return 0
+    if not args.write:
+        for row in chosen:
+            print(schema.canonical(row))
+        print(
+            f"dry run: {len(chosen)} rows shown above, nothing written. "
+            "Pass --write to create the file.",
+            file=sys.stderr,
+        )
+        return 0
+    path = out / share.file_name(chosen)
+    count = schema.write_rows(path, chosen)
+    print(f"wrote {count} rows to {path}. Nothing has been sent. To submit:", file=sys.stderr)
+    for command in share.git_commands(path):
+        print(f"  {command}", file=sys.stderr)
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    sources = [Path(path) for path in args.paths] or [paths.seed_dir()]
+    if not all(source.exists() for source in sources):
+        raise ValueError("a path does not exist")
+    findings = validate.validate(sources)
+    for finding in findings:
+        print(finding)
+    if findings:
+        print(f"{len(findings)} problems", file=sys.stderr)
+        return 1
+    print("all rows valid")
+    return 0
+
+
+def _reader_went_away(error: OSError) -> bool:
+    return isinstance(error, BrokenPipeError) or (os.name == "nt" and error.errno == errno.EINVAL)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentpace",
@@ -160,6 +244,30 @@ def build_parser() -> argparse.ArgumentParser:
     estimate_cmd.add_argument("--seed", type=int, default=estimate.DEFAULT_SEED)
     estimate_cmd.add_argument("--json", action="store_true", help="machine-readable output")
     estimate_cmd.set_defaults(handler=cmd_estimate)
+
+    backtest_cmd = commands.add_parser("backtest", help="evaluate on held-out runs")
+    backtest_cmd.add_argument("--data", action="append", default=[], help="rows file or folder")
+    backtest_cmd.add_argument("--out", default="docs", help="report folder (default: %(default)s)")
+    backtest_cmd.add_argument("--seed", type=int, default=backtest.SEED)
+    backtest_cmd.add_argument(
+        "--check", action="store_true", help="fail if results differ from the published report"
+    )
+    backtest_cmd.set_defaults(handler=cmd_backtest)
+
+    share_cmd = commands.add_parser(
+        "share", help="preview your rows, or write a file to contribute"
+    )
+    mode = share_cmd.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="print exact rows (the default)")
+    mode.add_argument("--write", action="store_true", help="create the contribution file")
+    share_cmd.add_argument("--out-dir", default="data/runs", help="default: %(default)s")
+    share_cmd.add_argument("--since", metavar="YYYY-Www", help="only this ISO week onward")
+    share_cmd.add_argument("--drop-project", action="store_true", help="omit the project field")
+    share_cmd.set_defaults(handler=cmd_share)
+
+    validate_cmd = commands.add_parser("validate", help="check data files")
+    validate_cmd.add_argument("paths", nargs="*", help="files or folders (default: seed data)")
+    validate_cmd.set_defaults(handler=cmd_validate)
     return parser
 
 
@@ -167,7 +275,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         result: int = args.handler(args)
+        sys.stdout.flush()
     except ValueError as error:
         print(f"agentpace: {error}", file=sys.stderr)
         return 2
+    except OSError as error:
+        if not _reader_went_away(error):
+            raise
+        # Piping into `head` is a normal way to preview rows. Stop quietly.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 0
     return result

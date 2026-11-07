@@ -1,0 +1,41 @@
+name: Validate data
+
+on:
+  pull_request:
+    paths:
+      - "data/**"
+      - "schema/**"
+
+# `pull_request` gives forks a read-only token and no secrets. Never switch this to
+# `pull_request_target`: it would run with write access against untrusted changes.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the validator from the base branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Check out the proposed data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: proposed
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      # A pull request must not be able to weaken the check that judges it, so the base branch
+      # supplies the code. Contributed files are parsed, never executed.
+      - name: Validate rows
+        run: |
+          if [ -d trusted/src/agentpace ]; then
+            PYTHONPATH=trusted/src python -m agentpace validate proposed/data/runs
+          else
+            PYTHONPATH=proposed/src python -m agentpace validate proposed/data/runs
+          fi

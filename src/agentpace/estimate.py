@@ -15,9 +15,12 @@ b       Shared by every task in one session. Same repo, same model, same day. Wi
         of many tasks concentrate and ranges come out falsely narrow.
 e       Within-session noise, resampled from real residuals so the real tail shape survives.
 
-Rows are weighted by 1/sqrt(runs in that session), because one automated session can hold hundreds
-of near-identical runs. `n_eff` is the Kish effective sample size under those weights, and it is
-what pooling thresholds use. A plan total is then simulated:
+Rows can be weighted by 1/sqrt(runs in that session), because one automated session can hold
+hundreds of near-identical runs. `n_eff` is the Kish effective sample size under those weights, and
+it is what pooling thresholds use. Without weights it equals n. The published backtest found no
+measurable gain from weighting, so the default is unweighted, and the option stays as a candidate.
+
+A plan total is then simulated:
 
     T = max(critical path, total work / P)
 
@@ -65,7 +68,7 @@ METHODS = (
 )
 METHOD_BY_NAME = {method.name: method for method in METHODS}
 # Set by the pre-registered selection in `agentpace backtest`. A test keeps them in step.
-DEFAULT_METHOD = "weighted"
+DEFAULT_METHOD = "shrunk"
 
 
 def quantile(ordered: Sequence[float], q: float) -> float:
