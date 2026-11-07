@@ -161,7 +161,7 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 - Pooled, P80 coverage is <!-- claim:task_p80_row -->88.8%<!-- /claim --> when each run counts equally rather than each session, so the ranges are too wide for the small, fast runs that dominate the row count.
 - A global median beats agentpace on MAPE (<!-- claim:median_mape -->234%<!-- /claim --> against <!-- claim:task_mape -->494%<!-- /claim -->), and a sum of medians beats it on plan MAPE (<!-- claim:naive_plan_mape -->85%<!-- /claim --> against <!-- claim:plan_mape -->249%<!-- /claim -->), though that sum covers only <!-- claim:naive_plan_p80 -->5%<!-- /claim --> of sessions at P80. MAPE punishes the long tail of over-forecasts that honest ranges need.
 - The report lists <!-- claim:loss_count -->20<!-- /claim --> places where a baseline won. That list is generated, so it cannot be edited out.
-- On the project split, P80 coverage is <!-- claim:project_p80 -->88.9%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.
+- On the project split, which runs over both harnesses and where one Codex project's one-turn sessions carry most of the vote, P80 coverage is <!-- claim:project_p80 -->88.9%<!-- /claim -->. The contributor split <!-- claim:contributor_split -->could not run (1 contributor)<!-- /claim -->.
 - The session-weighted design this project started with did not beat the simpler unweighted one, so the simpler one shipped. The selection rule was fixed before the first result. Scoring it on Claude Code sessions only was decided after a run with Codex rows pooled in had been seen, and that [pooled result](docs/backtest.md#pooled-for-the-record) is printed in the report.
 
 ## Privacy

@@ -14,9 +14,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
     - task P80 coverage, per session, 78.5% (CI 72.7% to 84.2%) to 77.7% (CI 71.4% to 83.8%); per run 89.1% to 88.8%. Pinball 1047 (CI 830 to 1318) to 1047 (CI 831 to 1316). MAPE 511% to 494%, against the global median's 232% to 234%.
     - weekly P80 per session 67% to 86%, now 66% to 86%; in 2026-W45, 72% to 66%.
     - pinball gaps: global median +375 to +992, now +373 to +991; human guess +5725 to +7440, now +5725 to +7439.
-    - the project split's P80 coverage 77.8% to 88.9%. That split runs over both harnesses, and the 8 new projects are Codex ones.
-    - places where a baseline won, 9 to 20. The new entries come from the project split and from the leave-one-harness-out split, which now runs.
-    - the example estimate: total P80 6.0 h to 5.9 h, P90 9.1 h to 9.0 h, and the docs task's P90 14 to 13 min.
+    - the project split's P80 coverage 77.8% to 88.9%. The split runs over both harnesses and gained one fold, 8 to 9 projects: the only Codex project with 30 or more rows. Its 165 one-turn sessions carry about two thirds of the session-weighted vote, and Codex rows are over-covered, so the rise is composition, not improvement.
+    - places where a baseline won, 9 to 20. The new entries come from the project split and from the leave-one-harness-out split, which now runs. Only its Codex-held-out fold runs: holding out Claude Code leaves 177 completed rows in training, under the 200-row floor. That fold forecasts Codex with no Codex row in training, and all 12 harness entries are that fold.
+    - the example estimate: total P80 6.0 h to 5.9 h, P90 9.1 h to 9.0 h; the docs task's P50 73 s to 72 s, P90 14 to 13 min and criticality 19% to 18%; the review task's criticality 81% to 82%; runs excluded as not completed 13 to 47.
     - the portable prompt's `other` row: n 268 to 445, P50 9 to 8 min, P80 33 to 24 min, P90 53 to 43 min.
   - The whole-session test is unchanged (56 sessions, P80 80%), because no Codex session has 5 runs.
   - **Why Claude Code numbers moved at all.** Codex rows train every candidate. At the `kind` and `kind` x `risk` levels they join the `other` x `normal` cell, so the parent that sparse Claude `other` cells shrink toward shifted. On the selection folds, the losses moved from global 1272, kind 1480, backoff 1370, shrunk 1047, weighted 1050 to 1276, 1496, 1364, 1047 and 1044. `weighted` is now lowest, and `shrunk` stays shipped by the tie rule, inside the interval (-17 to +24).
@@ -24,7 +24,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
-- The run chart, the site and the README say "agent runs" rather than "subagent runs", and the Limitations section says two harnesses, one person.
+- The run chart, the site and the README say "agent runs" rather than "subagent runs", and the Limitations section says two harnesses, one person. The site no longer says logging your own runs works with Claude Code subagents only.
 - Backtest: selection, the time-split tables, the week-by-week table, the whole-session test and the locked holdout's headline now score Claude Code sessions only, the population the selection rule was frozen on. Rows from every harness still train the estimator. On the published rows, which are all Claude Code, every number is unchanged and `docs/backtest.json` only gains keys.
   - **This was registered after seeing results, not before.** A local run with the maintainer's Codex rows pooled in had picked `global` over the shipped `shrunk`: 785 against 915 with every Codex turn, when the fixed-rounds baseline (774) would also have beaten the winner, and 856 against 1078 with approval checks skipped, where fixed-rounds (911) did not beat the winner. On Claude Code sessions alone `shrunk` held, at 1047 to 1050. Codex supplied most of the pooled vote because each Codex exec session is one turn, and `global` won on Codex only in the week no Codex row was in training.
   - The pooled result is printed in `docs/backtest.md` under "Pooled, for the record", from its own random stream, and is never shipped.
