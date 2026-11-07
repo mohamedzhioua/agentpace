@@ -10,7 +10,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import cli, forecasts, paths, schema
+from agentpace import cli, forecasts, paths, pseudonym, schema
+from agentpace.adapters import get_adapter
+from agentpace.adapters.base import RawRun
+from agentpace.cache import RunCache
 from tests.synthetic import dataset, row
 
 REPO = Path(__file__).resolve().parent.parent
@@ -189,6 +192,155 @@ class RecordCommand(unittest.TestCase):
         self.assertTrue(paths.forecasts_file().exists())
         _, after, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.assertEqual(before, after)
+
+
+ISSUED = "2026-11-02T09:00:00Z"  # Monday of 2026-W45
+ISSUED_EPOCH = forecasts.parse_issued(ISSUED)
+
+
+class ScoreCommand(RecordCommand):
+    """Scores appended to the ledger, with the honesty rule for sessions."""
+
+    def setUp(self):
+        super().setUp()
+        self.secret = pseudonym.load_secret(paths.home())
+        self.batch = pseudonym.batch(self.secret, "session-1")
+
+    def forecast(self, quoted=None, p50=600.0, p80=1200.0, p90=1800.0, issued_at=ISSUED):
+        result = {
+            "method": "shrunk",
+            "seed": 1,
+            "draws": 10,
+            "rows_used": 20,
+            "rows_excluded": 0,
+            "p50": p50,
+            "p80": p80,
+            "p90": p90,
+            "tasks": [],
+            "human": {"status": "not measured", "included_in_total": False},
+        }
+        record = forecasts.forecast_record(
+            issued_at=issued_at,
+            version="0.4.0",
+            plan_document=PLAN,
+            result=result,
+            quoted=quoted,
+        )
+        forecasts.append(paths.forecasts_file(), record)
+        return record["id"]
+
+    def session(self, start_offset_s=60.0, week="2026-W45", spans=((0, 300), (200, 900))):
+        """Two local rows in one batch, and the matching runs in the ingest cache."""
+        rows = [
+            row(batch=self.batch, week=week, offset_s=offset, duration_s=length)
+            for offset, length in spans
+        ]
+        schema.write_rows(paths.local_runs(), rows)
+        adapter = get_adapter("claude-code")
+        cache = RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, 900)
+        for index, (offset, length) in enumerate(spans):
+            start = ISSUED_EPOCH + start_offset_s + offset
+            run = RawRun(
+                harness="claude-code",
+                model="claude-opus-5-5",
+                start=start,
+                end=start + length,
+                spans=((start, start + length),),
+                active_s=length,
+                tool_calls=1,
+                edit_calls=0,
+                tokens=None,
+                errors=0,
+                outcome="completed",
+                session="session-1",
+            )
+            cache.store(f"/x/agent-{index}.jsonl", [[1, 1]], run)
+        cache.save()
+
+    def scores(self):
+        return forecasts.read(paths.forecasts_file()).scores
+
+    def test_a_session_started_after_the_forecast_scores_verified(self):
+        key = self.forecast(quoted="3 weeks")
+        self.session()
+        code, out, _ = self.run_cli("score", key, "--session", f"{self.batch}:0")
+        self.assertEqual(code, 0)
+        (score,) = self.scores()
+        self.assertEqual(
+            (score["actual_s"], score["source"], score["verified"]), (1100, "session", True)
+        )
+        self.assertEqual(score["session"], self.batch)
+        self.assertFalse(score["quote_closer"])
+        self.assertIn("agent active time on that session's clock", out)
+        self.assertIn("as quoted, calendar time", out)
+        self.assertNotIn("wall clock", out.lower())
+
+    def test_a_session_started_before_the_forecast_is_refused(self):
+        key = self.forecast()
+        self.session(start_offset_s=-60.0)
+        code, _, err = self.run_cli("score", key, "--session", self.batch)
+        self.assertNotEqual(code, 0)
+        self.assertIn("started before the forecast", err)
+        self.assertEqual(self.scores(), [])
+
+    def test_a_session_missing_from_the_cache_is_refused(self):
+        key = self.forecast()
+        schema.write_rows(
+            paths.local_runs(),
+            [
+                row(batch=self.batch, week="2026-W45"),
+                row(batch=self.batch, week="2026-W45", offset_s=9),
+            ],
+        )
+        code, _, err = self.run_cli("score", key, "--session", self.batch)
+        self.assertNotEqual(code, 0)
+        self.assertIn("cannot verify this session started after the forecast", err)
+
+    def test_a_session_from_an_earlier_week_is_refused(self):
+        key = self.forecast()
+        self.session(week="2026-W44")
+        code, _, err = self.run_cli("score", key, "--session", self.batch)
+        self.assertNotEqual(code, 0)
+        self.assertIn("ran before the forecast was issued", err)
+
+    def test_an_attested_actual_is_marked_unverified(self):
+        key = self.forecast()
+        code, out, _ = self.run_cli("score", key, "--actual", "2h")
+        self.assertEqual(code, 0)
+        (score,) = self.scores()
+        self.assertEqual(
+            (score["actual_s"], score["source"], score["verified"]), (7200, "actual", False)
+        )
+        self.assertIn("attested by you", out)
+
+    def test_the_summary_needs_five_scored_forecasts(self):
+        for index in range(4):
+            self.run_cli("score", self.forecast(p50=100.0 + index), "--actual", "10 min")
+        _, out, _ = self.run_cli("score")
+        self.assertIn("not enough scored forecasts (n = 4, need 5)", out.lower())
+        self.run_cli("score", self.forecast(p50=200.0), "--actual", "10 min")
+        _, out, _ = self.run_cli("score")
+        self.assertIn("n = 5, of which 5 attested", out)
+        self.assertIn("Actual within: P50 0%, P80 100%, P90 100%", out)
+
+    def test_the_latest_score_per_forecast_wins(self):
+        key = self.forecast()
+        self.run_cli("score", key, "--actual", "1h")
+        self.run_cli("score", key, "--actual", "5 min")
+        latest = forecasts.latest_scores(self.scores())
+        self.assertEqual(latest[key]["actual_s"], 300)
+        self.assertEqual(forecasts.summarize(forecasts.read(paths.forecasts_file())).scored, 1)
+
+    def test_an_unknown_id_is_a_clean_error(self):
+        code, _, err = self.run_cli("score", "deadbeef", "--actual", "1h")
+        self.assertNotEqual(code, 0)
+        self.assertIn("no recorded forecast has that id", err)
+
+    def test_the_secret_never_reaches_the_ledger(self):
+        key = self.forecast()
+        self.session()
+        self.run_cli("score", key, "--session", self.batch)
+        self.assertNotIn(self.secret.hex(), paths.forecasts_file().read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

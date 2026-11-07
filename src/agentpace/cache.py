@@ -100,6 +100,15 @@ class RunCache:
                 runs.append(run)
         return runs
 
+    def runs(self) -> list[RawRun]:
+        """Every cached run, including runs whose transcript is gone."""
+        found = []
+        for entry in self.entries.values():
+            run = _from_json(entry["run"])
+            if run is not None:
+                found.append(run)
+        return found
+
     def save(self) -> None:
         """Write atomically, so a reader never sees half a file."""
         self.path.parent.mkdir(parents=True, exist_ok=True)

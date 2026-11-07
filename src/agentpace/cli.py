@@ -210,6 +210,79 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _first_cached_start(batch: str) -> float | None:
+    """The earliest raw start of a session's runs, from the local ingest cache."""
+    adapter = get_adapter("claude-code")
+    cache = RunCache(
+        paths.cache_file(adapter.name), adapter.name, adapter.version, ingest.DEFAULT_IDLE_CAP_S
+    )
+    secret = pseudonym.load_secret(paths.home())
+    starts = [run.start for run in cache.runs() if pseudonym.batch(secret, run.session) == batch]
+    return min(starts) if starts else None
+
+
+def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
+    forecast = ledger.forecasts.get(args.id)
+    if forecast is None:
+        raise ValueError("no recorded forecast has that id; see ~/.agentpace/forecasts.jsonl")
+    if (args.session is None) == (args.actual is None):
+        raise ValueError("give --session <ref> or --actual <duration>, not both")
+    if args.actual is not None:
+        actual = forecasts.parse_duration(args.actual)
+        if actual is None:
+            raise ValueError('--actual needs "<number> <unit>", such as "2h" or "3 days"')
+        record = forecasts.score_record(
+            forecast,
+            actual_s=actual,
+            source="actual",
+            verified=False,
+            scored_at=forecasts.utc_now(),
+        )
+        source = "attested by you"
+    else:
+        batch = args.session.split(":", 1)[0]
+        rows = [r for r in _local_rows() if r["batch"] == batch and r["outcome"] == "completed"]
+        try:
+            actual = forecasts.check_session(forecast, rows, _first_cached_start(batch))
+        except forecasts.ScoreRefused as refused:
+            raise ValueError(str(refused)) from None
+        record = forecasts.score_record(
+            forecast,
+            actual_s=actual,
+            source="session",
+            verified=True,
+            scored_at=forecasts.utc_now(),
+            session=batch,
+        )
+        source = (
+            "agent active time on that session's clock, idle gaps over the idle cap clipped, "
+            "human part outside it"
+        )
+    forecasts.append(paths.forecasts_file(), record)
+    print(render.score_text(forecast, record, source))
+    human = _human_part(paths.turns_file())
+    if human.status == "measured":
+        print(render.human_text(human))
+    return 0
+
+
+def _local_rows() -> list[schema.Row]:
+    store = paths.local_runs()
+    return schema.read_rows(store) if store.exists() else []
+
+
+def cmd_score(args: argparse.Namespace) -> int:
+    ledger = forecasts.read(paths.forecasts_file())
+    if ledger.skipped:
+        print(f"skipped {ledger.skipped} damaged lines in the ledger", file=sys.stderr)
+    if args.id:
+        return _score_one(args, ledger)
+    if args.session or args.actual:
+        raise ValueError("give the forecast id to score")
+    print(render.ledger_summary_text(forecasts.summarize(ledger)))
+    return 0
+
+
 def _human_part(store: Path) -> estimate.HumanPart:
     """The user's own waits per human turn, if `agentpace turns` has measured them."""
     summary = turns.summarize(turns.read_turns(store))
@@ -444,6 +517,14 @@ def build_parser() -> argparse.ArgumentParser:
         help='a timeline someone already gave, such as "3 weeks", stored with the forecast',
     )
     estimate_cmd.set_defaults(handler=cmd_estimate)
+
+    score_cmd = commands.add_parser(
+        "score", help="score a recorded forecast, or show how your forecasts held up"
+    )
+    score_cmd.add_argument("id", nargs="?", help="forecast id from `estimate --record`")
+    score_cmd.add_argument("--session", metavar="REF", help="a session or run ref from `runs`")
+    score_cmd.add_argument("--actual", metavar="DURATION", help='your own figure, such as "2h"')
+    score_cmd.set_defaults(handler=cmd_score)
 
     turns_cmd = commands.add_parser(
         "turns", help="measure how long you wait between agent turns, kept local"
