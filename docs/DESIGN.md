@@ -285,7 +285,7 @@ The owner then made Fable 5.1 the acting maintainer. Its rulings on 2026-11-07:
 - Merge with a merge commit, so the phase commits survive. Serve Pages from `main` at `/docs`.
 - Keep Issues on, and Discussions, Wiki and Projects off. An empty forum reads as abandonment.
 - Protect `main` and `v*` tags against deletion and force-push only. Required reviews would double CI for one maintainer.
-- Tag `v0.1.0` as a full release once PyPI trusted publishing is ready. The README keeps the git install line until the first upload.
+- Release `v0.1.0` now as a full release. Git installs already work, and PyPI is additive and waits on a step only the owner can take. `publish.yml` stays manual until that step is done, so a release cannot produce a failed run. The README keeps the git install line until the first upload.
 - The Codex adapter comes after 0.1.0, because it changes the schema and the validator.
 
 ### Results after implementation
