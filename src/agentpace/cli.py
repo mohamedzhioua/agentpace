@@ -16,6 +16,7 @@ from agentpace import (
     backtest,
     claims,
     estimate,
+    forecasts,
     ingest,
     paths,
     pseudonym,
@@ -181,12 +182,31 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     except json.JSONDecodeError:
         raise ValueError("the plan is not valid JSON") from None
     tasks, cap = estimate.tasks_from_json(document)
+    if args.quoted is not None and not args.record:
+        raise ValueError("--quoted is stored with a recorded forecast; add --record")
     model = estimate.fit(_dataset(args.data), args.method, args.use_size)
     if args.turns and not Path(args.turns).exists():
         raise ValueError("the turns file does not exist")
     human = _human_part(Path(args.turns) if args.turns else paths.turns_file())
     plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
     print(render.plan_json(plan) if args.json else render.plan_text(plan))
+    if args.record:
+        record = forecasts.forecast_record(
+            issued_at=forecasts.utc_now(),
+            version=__version__,
+            plan_document=document,
+            result=render.plan_dict(plan),
+            quoted=args.quoted,
+        )
+        forecasts.append(paths.forecasts_file(), record)
+        note = f"recorded forecast {record['id']} in {paths.forecasts_file()}"
+        if args.quoted is not None:
+            note += (
+                "; quote stored as calendar time, as quoted"
+                if "quoted_s" in record
+                else "; quote not parseable, stored as text"
+            )
+        print(note, file=sys.stderr)
     return 0
 
 
@@ -412,6 +432,16 @@ def build_parser() -> argparse.ArgumentParser:
     estimate_cmd.add_argument("--json", action="store_true", help="machine-readable output")
     estimate_cmd.add_argument(
         "--turns", help="waits measured by `agentpace turns` (default: ~/.agentpace/turns.jsonl)"
+    )
+    estimate_cmd.add_argument(
+        "--record",
+        action="store_true",
+        help="keep this forecast in ~/.agentpace/forecasts.jsonl to score later",
+    )
+    estimate_cmd.add_argument(
+        "--quoted",
+        metavar="TEXT",
+        help='a timeline someone already gave, such as "3 weeks", stored with the forecast',
     )
     estimate_cmd.set_defaults(handler=cmd_estimate)
 

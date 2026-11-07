@@ -43,6 +43,11 @@ def turns_file() -> Path:
     return home() / "turns.jsonl"
 
 
+def forecasts_file() -> Path:
+    """Recorded forecasts and their scores. Local only, never shared."""
+    return home() / "forecasts.jsonl"
+
+
 def labels_file() -> Path:
     return home() / "labels.json"
 

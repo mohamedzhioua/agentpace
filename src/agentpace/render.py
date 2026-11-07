@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from typing import Any
 
 from agentpace.estimate import HumanPart, PlanRange
 
@@ -77,7 +78,11 @@ def plan_text(plan: PlanRange) -> str:
     return "\n".join(lines)
 
 
-def plan_json(plan: PlanRange) -> str:
+def plan_dict(plan: PlanRange) -> dict[str, Any]:
     data = dataclasses.asdict(plan)
     data["human"] = {key: value for key, value in data["human"].items() if value is not None}
-    return json.dumps(data, indent=2)
+    return data
+
+
+def plan_json(plan: PlanRange) -> str:
+    return json.dumps(plan_dict(plan), indent=2)
