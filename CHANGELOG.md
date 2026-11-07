@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Changed
+
+- Codex: turns run by `codex-auto-review`, Codex's automatic approval check on a command, are skipped and counted under `skipped runs`, instead of being stored as reviews. They take seconds, call no tool and are not work anyone plans. The adapter version moves to 2, so the next `ingest --source codex` reads Codex history again once. Claude Code rows and the published dataset are unchanged.
+
 ## 0.5.0 - 2026-11-07
 
 ### Added

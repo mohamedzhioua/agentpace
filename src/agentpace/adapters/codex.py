@@ -35,7 +35,9 @@ _SKIPPED_SOURCES = frozenset({"compact", "memory_consolidation"})  # upkeep, not
 _ABORT_REASONS = frozenset({"interrupted", "replaced", "review_ended", "budget_limited"})
 _TOOL_ITEMS = frozenset({"function_call", "custom_tool_call", "local_shell_call"})
 _STATUS_ITEMS = frozenset({"CommandExecution", "FileChange", "McpToolCall", "Extension"})
-_REVIEW_MODEL = "codex-auto-review"
+# Codex's automatic approval check on a command: seconds long, no tool call, not a task
+# anyone plans. Its turns are skipped and counted, never rows.
+_APPROVAL_MODEL = "codex-auto-review"
 
 
 @dataclass(frozen=True)
@@ -203,7 +205,7 @@ class CodexAdapter:
     name = "codex"
     # Bump whenever `parse` would return something different for the same file, so cached
     # runs from the old logic are discarded.
-    version = 1
+    version = 2
 
     def default_path(self) -> Path:
         return Path.home() / ".codex" / "sessions"
@@ -259,13 +261,16 @@ class CodexAdapter:
         for turn in _turns(lines):
             context = contexts.get(turn.turn_id)
             model = (context.model if context else None) or last_model
+            if model == _APPROVAL_MODEL:
+                stats.skipped_runs += 1
+                continue
             times = sorted(t for t in (turn.start, *turn.times, turn.end) if t is not None)
             if model is None or len(times) < 2:
                 stats.empty_runs += 1
                 continue
             active_s, spans = _active(times, idle_cap_s)
             tokens = max(turn.tokens, tokens_by_turn.get(turn.turn_id or "", 0))
-            review = first.source == "review" or model == _REVIEW_MODEL
+            review = first.source == "review"
             runs.append(
                 RawRun(
                     harness=self.name,

@@ -70,6 +70,8 @@ class IngestReport:
         ]
         if parse.skipped_files:
             lines.append(f"skipped files:    {parse.skipped_files}")
+        if parse.skipped_runs:
+            lines.append(f"skipped runs:     {parse.skipped_runs}")
         return lines
 
 
