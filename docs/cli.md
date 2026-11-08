@@ -28,9 +28,9 @@ agentpace [--version] <command> [options]
 |---|---|
 | 0 | Success. `ingest --hook` always exits 0, whatever happened. |
 | 1 | A check found a problem: `validate` found invalid rows, or `backtest --check`, `site --check` or `claims --check` found published files out of date. |
-| 2 | The command refused its input. Either the arguments are wrong (an unknown command, flag or choice; argparse prints the usage), or the input is (a missing path, an invalid plan, an unknown run reference). The message is one line on stderr, starting `agentpace:`. |
+| 2 | The command refused its input. Either the arguments are wrong (an unknown command, flag or choice; argparse prints the usage), or the input is (a missing path, a plan path that is not a file, an invalid plan, an unknown run reference). The message is one line on stderr, starting `agentpace:`. |
 
-Any other failure ends with a Python traceback and exit code 1. One known case: a plan file path that does not exist. Please report any other in an [issue](https://github.com/mohamedzhioua/agentpace/issues).
+Any other failure ends with a Python traceback and exit code 1. None is known; please report one in an [issue](https://github.com/mohamedzhioua/agentpace/issues).
 
 ## Files: `AGENTPACE_HOME`
 
@@ -77,7 +77,7 @@ Lists local runs in order, ending with the most recent. `--last` sets how many (
 
 stdout: one line per run: its reference (`<batch>:<offset_s>`), week, model, kind, risk, size, duration in seconds and outcome. The reference is what `label` and `score --session` take.
 
-**Chronology.** A row carries its ISO week but no clock time, so the order within a week comes from your local ingest caches, never from the row. Runs are sorted by week, then by their session's earliest cached start. A session with no cached start sorts first within its week, so `--last` prefers sessions whose time is known, and one line on stderr says how many sessions have no local chronology. Sessions have no cached start when their rows came from an `ingest --idle-cap` run (a non-default cap never feeds the cache), when the cache was rebuilt after the transcripts were deleted, or when the secret was replaced. `agentpace ingest` refreshes the cache for transcripts that still exist.
+**Chronology.** A row carries its ISO week but no clock time, so the order within a week comes from your local ingest caches, never from the row. Runs are sorted by week, then by their session's earliest cached start. A session with no cached start sorts first within its week, so `--last` prefers sessions whose time is known, and one line on stderr says how many of the listed runs' sessions have no local chronology. Sessions have no cached start when their rows came from an `ingest --idle-cap` run (a non-default cap never feeds the cache), when the cache was rebuilt after the transcripts were deleted, or when the secret was replaced. `agentpace ingest` refreshes the cache for transcripts that still exist.
 
 ## label
 
@@ -93,7 +93,7 @@ Corrects one run's kind or risk, in `labels.json` and in the store. Give `--kind
 | `--kind` | One of `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. |
 | `--risk` | One of `low`, `normal`, `high`. |
 
-`last` is the latest run of the session with the latest cached start. It refuses, with exit 2, rather than guess: when no session has a cached start, or when a session without one has rows in that session's latest week or later. Then run `agentpace ingest`, or give a reference from `agentpace runs`. `label` holds the store's lock while it writes, and says so if another ingest is writing.
+`last` is the latest run of the session with the latest cached start. It refuses, with exit 2, rather than guess: when no session has a cached start, or when a session without one has rows in that session's latest week or later. The message counts the sessions without a cached start that could be the later one; when no session has one, that is all of them. Then run `agentpace ingest`, or give a reference from `agentpace runs`. `label` holds the store's lock while it writes, and says so if another ingest is writing.
 
 stdout: `labeled <ref>: <kind>, <risk> risk`.
 
@@ -148,7 +148,7 @@ Each task:
 | `kind` | string | required | One of `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. |
 | `risk` | string | `normal` | One of `low`, `normal`, `high`. |
 | `size` | string or `null` | `null` | One of `S`, `M`, `L`, `XL`, `na`. Ignored, with a warning, unless `--use-size` is given. |
-| `model` | string or `null` | the plan's `model` | Overrides the plan's model for this task. An explicit `null` means no model for this task. |
+| `model` | string or `null` | the plan's `model` | Overrides the plan's model for this task. An explicit `null` means no model for this task; it does not inherit the plan's `model`. |
 | `depends_on` | list of task ids | `[]` | Tasks that must finish before this one starts. Each must be in the plan, and the graph must have no cycle. |
 
 The plan holds no durations: every number comes from the data. A task with a model draws from the model × kind × risk cell, and one without from kind × risk. A model name the data has never seen falls back to the broader cell with a wider interval and a warning, so use the model family as it appears in `agentpace runs`, such as `claude-opus-5-5`.
