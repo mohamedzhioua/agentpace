@@ -160,6 +160,67 @@ class ThroughputBucket:
         return statistics.median(self.values)
 
 
+OUTCOMES = ("completed", "failed", "unknown")
+
+
+@dataclass(frozen=True)
+class HarnessOutcomes:
+    """One harness's recorded outcomes among the loaded rows."""
+
+    harness: str
+    rows: int
+    completed: int
+    failed: int
+    unknown: int
+
+
+@dataclass(frozen=True)
+class OutcomeSummary:
+    """Recorded harness outcomes of every row an estimate loaded, never per cell. They describe
+    how a run ended in its harness, not whether the task was accepted. Only completed runs with a
+    duration train the fit; the counts are shown, never used to widen a range."""
+
+    rows: int = 0
+    completed: int = 0
+    failed: int = 0
+    unknown: int = 0
+    completed_without_duration: int = 0
+    by_harness: tuple[HarnessOutcomes, ...] = ()
+
+
+def outcome_summary(rows: Iterable[Row]) -> OutcomeSummary:
+    """Count outcomes by harness. Pure counting: no random draw, and no row is changed."""
+    counts: dict[str, Counter[str]] = defaultdict(Counter)
+    without_duration = 0
+    for row in rows:
+        harness, outcome = row["harness"], row["outcome"]
+        if outcome not in OUTCOMES:
+            raise ValueError("a row has an outcome other than completed, failed or unknown")
+        if not isinstance(harness, str):
+            raise ValueError("a row has a harness that is not a name")
+        counts[harness][outcome] += 1
+        if outcome == "completed" and row["duration_s"] <= 0:
+            without_duration += 1
+    by_harness = tuple(
+        HarnessOutcomes(
+            harness=harness,
+            rows=sum(counts[harness].values()),
+            completed=counts[harness]["completed"],
+            failed=counts[harness]["failed"],
+            unknown=counts[harness]["unknown"],
+        )
+        for harness in sorted(counts)
+    )
+    return OutcomeSummary(
+        rows=sum(h.rows for h in by_harness),
+        completed=sum(h.completed for h in by_harness),
+        failed=sum(h.failed for h in by_harness),
+        unknown=sum(h.unknown for h in by_harness),
+        completed_without_duration=without_duration,
+        by_harness=by_harness,
+    )
+
+
 @dataclass
 class Model:
     """A fitted estimator."""
@@ -173,6 +234,7 @@ class Model:
     buckets: list[ThroughputBucket]
     rows_used: int
     rows_excluded: int
+    outcomes: OutcomeSummary
 
     def locate(self, query: Mapping[str, str | None]) -> Located:
         """Walk down the hierarchy as far as the query and the data allow."""
@@ -365,6 +427,7 @@ def _usable(rows: Iterable[Row]) -> list[Row]:
 
 def fit(rows: Sequence[Row], method: str = DEFAULT_METHOD, use_size: bool = False) -> Model:
     chosen = METHOD_BY_NAME[method]
+    outcomes = outcome_summary(rows)
     usable = _usable(rows)
     if len(usable) < MIN_ROWS:
         raise ValueError(f"need at least {MIN_ROWS} completed runs, found {len(usable)}")
@@ -395,6 +458,7 @@ def fit(rows: Sequence[Row], method: str = DEFAULT_METHOD, use_size: bool = Fals
         buckets=_throughput(usable),
         rows_used=len(usable),
         rows_excluded=len(rows) - len(usable),
+        outcomes=outcomes,
     )
 
 
@@ -458,6 +522,7 @@ class PlanRange:
     seed: int
     warnings: tuple[str, ...]
     human: HumanPart = HumanPart()
+    outcomes: OutcomeSummary = OutcomeSummary()
 
 
 def topological_order(tasks: Sequence[Task]) -> list[Task]:
@@ -629,6 +694,7 @@ def estimate(
         seed=seed,
         warnings=tuple(notes),
         human=human or HumanPart(),
+        outcomes=model.outcomes,
     )
 
 

@@ -4,6 +4,25 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.10.0 - 2026-11-08
+
+### Added
+
+- Every estimate now prints the recorded runs that did not complete, by harness, on one line after the Method line. The Method line is unchanged. For example: `Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.`
+  - The counts cover every row the estimate loaded, after duplicates are dropped, and never a single cell.
+  - `unknown` is never counted as a failure.
+  - The counts never widen or change the range, and counting draws no random numbers.
+- `--json` gains `outcomes`: `rows`, `completed`, `failed`, `unknown`, `completed_without_duration` and `by_harness`.
+- `estimate --record` stores `outcomes` with the forecast. Records from earlier versions still read and score.
+  - A record's id hashes its content, so the ids of new forecasts differ from what the same forecast would have received before.
+- The README's Limitations bullet on failed runs carries the per-harness counts as a generated claim (`not_completed_by_harness`). A test keeps those shares out of unmarked text.
+
+### Changed
+
+- `docs/cli.md` documents `rows_excluded` as failed plus unknown plus completed rows with no duration. Its value and meaning (rows not used) are unchanged.
+
+No published number moved. New generated numbers: the per-harness not-completed counts in the two README examples and in Limitations (claude-code 13 of 3,219, codex 34 of 211).
+
 ## 0.9.2 - 2026-11-08
 
 ### Fixed

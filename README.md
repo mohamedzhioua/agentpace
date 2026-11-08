@@ -33,6 +33,7 @@ review      3 min      8 min     13 min      82%  review x low x claude-opus-5-5
 Critical path: schema -> ui -> review (longest in 47% of simulations)
 Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 76% of simulations.
 Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
+Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
   - cell docs x normal x claude-opus-5-5: n=0, effective n=0.0, below 30. Pooled with all and interval widened.
@@ -140,6 +141,7 @@ review           3 min      8 min     13 min     100%  review x low x claude-opu
 Critical path: schema -> importer -> tests -> review (longest in 40% of simulations)
 Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 78% of simulations.
 Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
+Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
   - cell tests x normal x claude-opus-5-5: n=2, effective n=2.0, below 30. Pooled with all and interval widened.
@@ -279,7 +281,7 @@ Each of these does something better than agentpace:
 - **Pooled by kind, risk and model only.** A cell with fewer than 30 runs leans on broader cells, with a warning. Repository size is not recorded, and `size` is an edit count measured after the run, so neither can segment the published runs. Long integration work has no cell of its own.
 - **Two harnesses, still one person.** The published rows hold Claude Code subagent runs and, since 0.6.0, Codex turns, all from the same contributor. Codex is scored on its own, never in the headline. Each Codex exec session is a single turn, so the session effect and the parallelism factor learn nothing from Codex, and a Codex plan borrows Claude Code's session structure. Gemini CLI, OpenCode and Cline have experimental adapters: built from each tool's source, not yet verified on real sessions, with no published rows (`validate` rejects them until each adapter is verified; [how to verify one](docs/verify-adapter.md)), and problems go in an [issue](https://github.com/mohamedzhioua/agentpace/issues). Other harnesses have no adapter.
 - **No human allowance, and short waits sit inside the clock.** The plan total is a forecast on the session clock, which counts agent runs and the gaps between them, each gap up to the idle cap (900 s in the published rows). So a wait on you shorter than that sits inside the total, a longer one is clipped at the cap, and no allowance for review, testing or decisions is added. Every estimate says so on its own lines and never derives the human part from agent time. `agentpace turns` measures your own wait per human turn from your main-session timestamps and keeps it on your machine. That is elapsed time, not effort, shown beside the range and never added to it.
-- **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low.
+- **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low. Recorded runs that did not complete (failed or unknown), by harness: <!-- claim:not_completed_by_harness -->claude-code 13 of 3,219 (0.4%), codex 34 of 211 (16.1%)<!-- /claim -->. Those are harness outcomes, not task acceptance, and every estimate prints the counts for the rows it loaded.
 - **Size is not used by default.** Stored size is measured after a run, so it would leak the answer into the forecast.
 - **The transcript format is undocumented.** It may change, and Claude Code removes old transcripts, so run `agentpace ingest` regularly.
 - **Dependencies are untested.** The whole-session test cannot see real dependencies.

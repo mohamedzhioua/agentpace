@@ -53,6 +53,33 @@ def quote_text(quoted: str) -> str:
     return f'Quoted: "{quoted}" (calendar time, as quoted; unverified, not converted)'
 
 
+def outcomes_text(plan: PlanRange) -> str | None:
+    """The loaded runs that did not complete, by harness, counted from every loaded row and never
+    per cell. A recorded harness outcome is not task acceptance, and `unknown` is not a failure,
+    so both are named apart. None when nothing was counted."""
+    summary = plan.outcomes
+    if not summary.by_harness:
+        return None
+    parts = []
+    for harness in summary.by_harness:
+        missing = harness.failed + harness.unknown
+        share = missing / harness.rows if harness.rows else 0.0
+        parts.append(
+            f"{harness.harness} {missing} of {harness.rows} ({share:.1%}; "
+            f"{harness.failed} failed, {harness.unknown} unknown)"
+        )
+    line = (
+        f"Not completed, by harness: {', '.join(parts)}. These are recorded harness outcomes, "
+        "not task acceptance, and they are left out of the fit."
+    )
+    if summary.completed_without_duration:
+        line += (
+            f" {summary.completed_without_duration} completed rows with no duration are left out "
+            "too."
+        )
+    return line
+
+
 def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
     lines = [
@@ -88,6 +115,9 @@ def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
         f"Method: {plan.method}. {plan.rows_used} runs{excluded}. "
         f"{plan.draws} simulations, seed {plan.seed}."
     )
+    outcomes = outcomes_text(plan)
+    if outcomes is not None:
+        lines.append(outcomes)
     if plan.size_used:
         lines.append("Size used: oracle track, stored size is measured after a run.")
     if plan.warnings:

@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -149,6 +150,41 @@ class Command(unittest.TestCase):
                 self.assertEqual(cli.main(args), 0)
                 self.assertEqual(cli.main([*args, "--check"]), 0)
             self.assertNotIn(">1<", path.read_text(encoding="utf-8"))
+
+
+class NotCompletedByHarness(unittest.TestCase):
+    """The README states the not-completed runs by harness only through a generated claim."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.readme = (REPO / "README.md").read_text(encoding="utf-8")
+        cls.value = claims.values(
+            schema.read_dataset([paths.seed_dir()]),
+            json.loads((REPO / "docs" / "backtest.json").read_text(encoding="utf-8")),
+        )["not_completed_by_harness"]
+
+    def test_the_limitations_bullet_carries_the_marker(self):
+        bullet = next(
+            line
+            for line in self.readme.splitlines()
+            if line.startswith("- **Failed runs are under-counted.**")
+        )
+        self.assertIn("<!-- claim:not_completed_by_harness -->", bullet)
+        self.assertIn("not task acceptance", bullet)
+
+    def test_the_value_names_each_harness_with_counts_and_shares(self):
+        self.assertRegex(
+            self.value,
+            r"^[a-z-]+ [\d,]+ of [\d,]+ \(\d+\.\d%\)(, [a-z-]+ [\d,]+ of [\d,]+ \(\d+\.\d%\))*$",
+        )
+
+    def test_its_shares_appear_only_inside_markers(self):
+        unmarked = claims._MARKER.sub("", self.readme)
+        shares = re.findall(r"\d+\.\d%", self.value)
+        self.assertTrue(shares)
+        for share in shares:
+            with self.subTest(share=share):
+                self.assertNotRegex(unmarked, rf"(?<![\d.]){re.escape(share)}")
 
 
 if __name__ == "__main__":

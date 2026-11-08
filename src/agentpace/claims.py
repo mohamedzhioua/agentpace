@@ -39,6 +39,17 @@ def _kind_table(rows: Sequence[Row]) -> str:
     return "\n" + "\n".join(lines) + "\n"
 
 
+def _not_completed_by_harness(rows: Sequence[Row]) -> str:
+    """Recorded runs that did not complete (failed or unknown), by harness, from the loaded rows."""
+    parts = []
+    for harness in est.outcome_summary(rows).by_harness:
+        missing = harness.failed + harness.unknown
+        parts.append(
+            f"{harness.harness} {missing:,} of {harness.rows:,} ({missing / harness.rows:.1%})"
+        )
+    return ", ".join(parts)
+
+
 # The timeline the README's quote example re-answers, passed as `--quoted` exactly as given.
 QUOTE_EXAMPLE = "3 months"
 
@@ -148,6 +159,7 @@ def values(
         "project_top_sessions": project_top_sessions,
         "contributor_split": contributor,
         "loss_count": str(len(report["losses"])),
+        "not_completed_by_harness": _not_completed_by_harness(rows),
         "kind_table": _kind_table(rows),
         "example_output": _example_output(rows, plan_path),
         "quote_example_output": _example_output(rows, quote_plan_path, QUOTE_EXAMPLE),
