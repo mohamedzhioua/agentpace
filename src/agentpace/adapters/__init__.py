@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from agentpace.adapters.base import Adapter
 from agentpace.adapters.claude_code import ClaudeCodeAdapter
+from agentpace.adapters.cline import ClineAdapter
 from agentpace.adapters.codex import CodexAdapter
 from agentpace.adapters.gemini_cli import GeminiCliAdapter
 from agentpace.adapters.opencode import OpenCodeAdapter
@@ -13,6 +14,7 @@ ADAPTERS: dict[str, Adapter] = {
     CodexAdapter.name: CodexAdapter(),
     GeminiCliAdapter.name: GeminiCliAdapter(),
     OpenCodeAdapter.name: OpenCodeAdapter(),
+    ClineAdapter.name: ClineAdapter(),
 }
 
 

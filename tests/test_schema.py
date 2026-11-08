@@ -23,8 +23,12 @@ class CheckRow(unittest.TestCase):
 
     def test_the_harness_enum_is_pinned(self):
         # Additive only: removing or renaming a value would invalidate shared rows.
-        self.assertEqual(schema.enum("harness"), ("claude-code", "codex", "gemini-cli", "opencode"))
+        self.assertEqual(
+            schema.enum("harness"),
+            ("claude-code", "codex", "gemini-cli", "opencode", "cline"),
+        )
         self.assertEqual(schema.check_row(row(harness="codex")), [])
+        self.assertEqual(schema.check_row(row(harness="cline")), [])
 
     def test_each_rule_fires(self):
         cases = {
