@@ -19,8 +19,9 @@ uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --e
 
 ```text
 <!-- claim:example_output -->
-Total agent time, on the session clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
-Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
+Plan total on the session clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
+The session clock counts agent runs and the gaps between them, each gap up to the idle cap (900 s by default), so waiting on you between runs sits inside the total up to that cap.
+Human part (review, testing, decisions, waiting between agent turns): not measured. No allowance for it is added to the total above. State it separately; do not derive it from the agent time.
 
 task          P50        P80        P90  critical  cell (n)
 schema     30 min     85 min      2.5 h     100%  feature x normal x claude-opus-5-5 (n=205)
@@ -123,9 +124,10 @@ agentpace estimate examples/quote-plan.json --quoted "3 months"
 
 ```text
 <!-- claim:quote_example_output -->
-Total agent time, on the session clock: P50 4.3 h, P80 10.3 h, P90 15.7 h
+Plan total on the session clock: P50 4.3 h, P80 10.3 h, P90 15.7 h
 Quoted: "3 months" (calendar time, as quoted; unverified, not converted)
-Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
+The session clock counts agent runs and the gaps between them, each gap up to the idle cap (900 s by default), so waiting on you between runs sits inside the total up to that cap.
+Human part (review, testing, decisions, waiting between agent turns): not measured. No allowance for it is added to the total above. State it separately; do not derive it from the agent time.
 
 task               P50        P80        P90  critical  cell (n)
 schema          30 min     85 min      2.5 h     100%  feature x normal x claude-opus-5-5 (n=205)
