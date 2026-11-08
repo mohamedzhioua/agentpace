@@ -45,7 +45,7 @@ class Quickstart(unittest.TestCase):
 
     def test_a_command_is_on_the_first_screen(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8").splitlines()
-        self.assertTrue(any(line.startswith("uvx --from") for line in readme[:25]))
+        self.assertTrue(any(line.startswith("uvx agentpace") for line in readme[:25]))
 
     def test_every_skill_is_in_the_readme_table(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
@@ -62,7 +62,7 @@ class Quickstart(unittest.TestCase):
 
     def test_the_quickstart_needs_no_clone(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        command = "uvx --from git+https://github.com/mohamedzhioua/agentpace"
+        command = "uvx"
         self.assertIn(f"{command} agentpace estimate --example", readme)
 
     def test_the_example_plan_ships_in_the_package(self):

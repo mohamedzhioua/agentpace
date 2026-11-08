@@ -1,6 +1,6 @@
 # Releasing agentpace
 
-This is the maintainer's runbook. agentpace is not on PyPI yet: every install line installs from git, and `publish.yml` runs only when dispatched by hand. Part 1 is the release every version gets today. Parts 2 to 4 are the one-time PyPI setup, first upload and check, which need the owner's PyPI and GitHub accounts; part 5 is the pull request that follows. Line numbers below are as of v0.8.4; later releases may move them, so search for the quoted text.
+This is the maintainer's runbook. agentpace is on PyPI since 0.9.2: every install line installs from PyPI, and publishing a GitHub release page runs `publish.yml`, which uploads that version. Part 1 is the release every version gets. Parts 2 to 4 are the one-time PyPI setup, first upload and check, which needed the owner's PyPI and GitHub accounts and were done for 0.9.2; part 5 is the switch that followed, done in 0.11.1. They stay as the record. Line numbers below are as of v0.8.4; later releases have moved them, so search for the quoted text.
 
 ## 1. Every release
 
@@ -16,7 +16,7 @@ This is the maintainer's runbook. agentpace is not on PyPI yet: every install li
 
 5. Publish a GitHub release page for the tag (`gh release create vX.Y.Z`).
 
-While `publish.yml` is manual, a release page uploads nothing.
+Publishing the release page runs `publish.yml`, which uploads the version to PyPI. Check that run (`gh run list --workflow publish.yml`, then `gh run watch <id>`) and confirm it passes. A run that failed before `uv publish` uploaded anything can be re-run by hand: `gh workflow run publish.yml --ref vX.Y.Z`.
 
 ## 2. The PyPI pending publisher (once)
 
@@ -46,13 +46,13 @@ agentpace uses trusted publishing: PyPI accepts the identity of the `publish.yml
    Dispatching needs write access to the repository, so the owner runs it; nothing in a pull request can.
 4. Watch the run (`gh run list --workflow publish.yml`, then `gh run watch <id>`) and confirm it passes.
 
-**A published version is final.** PyPI never accepts a second upload of the same version, even after you delete it, so never re-dispatch a version that uploaded. If anything about it needs fixing, bump the patch version, release it as in part 1, and dispatch the new tag. A run that failed before `uv publish` uploaded anything can be dispatched again.
+**A published version is final.** PyPI never accepts a second upload of the same version, even after you delete it, so never re-dispatch a version that uploaded. If anything about it needs fixing, bump the patch version and release it as in part 1; its release page uploads it. A run that failed before `uv publish` uploaded anything can be dispatched again.
 
-The PyPI page shows the README as it was at the tag. That README still carries the git install lines and the "not on PyPI yet" sentence, so the first version's page says so. The page is right from the next release after the switch in part 5.
+The PyPI page shows the README as it was at the tag. The 0.9.2 README still carried the git install lines and the "not on PyPI yet" sentence, so that version's page says so. The page is right from 0.11.1, the release that made the switch in part 5. 0.10.0 and 0.11.0 were released on GitHub only, before the switch, so PyPI lists 0.9.2 and then 0.11.1.
 
 ## 4. The clean-venv check
 
-Before any install line changes, prove the upload works from a fresh environment, away from the checkout and with an empty agentpace home so no local data reaches the output:
+After every upload (and before the first install line changed, for 0.9.2), prove the upload works from a fresh environment, away from the checkout and with an empty agentpace home so no local data reaches the output:
 
 ```bash
 scratch=$(mktemp -d)
@@ -69,7 +69,7 @@ The last command exits 0 only when the installed `estimate --example` output equ
 
 ## 5. After the upload: the switch
 
-Only once part 4 passes, one pull request makes every change below, with a CHANGELOG entry and a version bump. Each item quotes the current text.
+Done in 0.11.1. Once part 4 passed for 0.9.2, one pull request made every change below, with a CHANGELOG entry and a version bump. Each item quotes the text as it was before the switch.
 
 1. **README "Try it" line** (`README.md:17`):
 
@@ -131,9 +131,9 @@ Two more places hold the git URL or depend on it, beyond the list above:
 7. **`tests/test_skills.py::test_a_command_is_on_the_first_screen`** (`tests/test_skills.py:31`) looks for a line starting with `uvx --from` in the README's first 25 lines, so it fails once item 1 changes. Its prefix becomes `uvx agentpace`.
 8. **The site's "Check it yourself" block** (`docs/index.html:265`) starts with `uv tool install git+https://github.com/mohamedzhioua/agentpace`, which becomes `uv tool install agentpace`.
 
-In the same pull request, add `release: types: [published]` under `on:` in `publish.yml` and update its comment, so from then on a release page uploads its version. Keeping `workflow_dispatch` beside it is harmless.
+The same pull request added `release: types: [published]` under `on:` in `publish.yml` and updated its comment, so a release page now uploads its version. `workflow_dispatch` stays beside it, for re-running a version that did not upload.
 
-When the switch is done, `git grep -n "git+https://github.com/mohamedzhioua/agentpace" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` and `git grep -n -i "not on PyPI" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` both print nothing. `CHANGELOG.md` keeps the phrase as history and this file keeps it in the quotes above; rewrite this file's first paragraph in the same pull request.
+Since the switch, `git grep -n "git+https://github.com/mohamedzhioua/agentpace" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` and `git grep -n -i "not on PyPI" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` both print nothing. `CHANGELOG.md` keeps the phrase as history, and this file keeps it in the quotes above and in part 3's note on the 0.9.2 page.
 
 ## The README on PyPI
 

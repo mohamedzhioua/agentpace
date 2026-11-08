@@ -13,7 +13,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 The plan to estimate: $ARGUMENTS
 
-1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`
+1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install agentpace`
 2. If the input is a JSON plan file, use it. Otherwise break the work into tasks and write a plan file with this shape:
 
    ```json

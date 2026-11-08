@@ -13,7 +13,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 Input, if any: $ARGUMENTS
 
-1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`
+1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install agentpace`
 2. Pick the source, and tell the user which one you are ingesting. `agentpace ingest` reads Claude Code subagent runs, the default. For another harness, add `--source` with one of `claude-code`, `codex`, `gemini-cli`, `opencode` or `cline`. It reads timestamps, model ids, token and tool counts only, and keeps rows in `~/.agentpace`. Nothing leaves this machine.
    - `gemini-cli`, `opencode` and `cline` are experimental: each adapter was built from the tool's source and is not yet verified on real sessions, and `agentpace validate` rejects their rows, so a data pull request with them stays red until the adapter is verified. Say so when you use one, and pass on the note `ingest` prints. Anyone who wants to verify one can follow [docs/verify-adapter.md](https://github.com/mohamedzhioua/agentpace/blob/main/docs/verify-adapter.md).
 3. Run `agentpace runs --last 10` and show the list.

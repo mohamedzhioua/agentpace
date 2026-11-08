@@ -14,7 +14,7 @@
 With [uv](https://docs.astral.sh/uv/), this needs no install, no clone and no history of your own:
 
 ```bash
-uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --example
+uvx agentpace estimate --example
 ```
 
 ```text
@@ -91,10 +91,10 @@ These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Cla
 ## Install
 
 ```bash
-uv tool install git+https://github.com/mohamedzhioua/agentpace
+uv tool install agentpace
 ```
 
-`pipx install git+https://github.com/mohamedzhioua/agentpace` works too. It needs Python 3.10 or later and has no dependencies. agentpace is not on PyPI yet, which is why both commands install from git. After installing, drop the `uvx --from ...` prefix from the command above.
+`pipx install agentpace` works too. It needs Python 3.10 or later and has no dependencies. After installing, drop `uvx` from the command above.
 
 Then add the agent skills:
 

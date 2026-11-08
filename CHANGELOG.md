@@ -4,6 +4,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.11.1 - 2026-11-08
+
+### Changed
+
+- agentpace installs from PyPI, where it has been since 0.9.2.
+  - The README and the site now show `uvx agentpace estimate --example` and `uv tool install agentpace` (the README also `pipx install agentpace`), and all four skills show `uv tool install agentpace`, instead of the git install lines.
+  - The README no longer says agentpace is not on PyPI, and DESIGN section 8 says the install is from PyPI since 0.9.2.
+- `publish.yml` runs when a GitHub release page is published, so each release uploads its version to PyPI. Manual dispatch remains for re-running a version that did not upload.
+- `docs/releasing.md` describes releasing after the switch: publishing the release page uploads the version, so check the publish run. The one-time PyPI setup and the switch stay as the record.
+- The quickstart tests expect `uvx agentpace estimate --example`.
+
+No published number moved.
+
 ## 0.11.0 - 2026-11-08
 
 ### Added

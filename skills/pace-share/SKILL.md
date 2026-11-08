@@ -13,7 +13,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 Sharing is opt-in. Do nothing here unless the user asked for it.
 
-1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`
+1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install agentpace`
 2. Run `agentpace share --dry-run`. It prints the exact rows and what they reveal, and writes nothing.
 3. Tell the user how many rows there are, and pass on the notice in full. Offer to show the rows.
 4. Stop and ask. Run `agentpace share --write` only after the user says yes to writing the file. It needs a clone of the agentpace repo, because the file goes in `data/runs`.
