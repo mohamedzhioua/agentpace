@@ -7,7 +7,7 @@ This is the most useful contribution, because the contributor split cannot run u
 1. Fork and clone the repo, and install it with `uv tool install .`
 2. Run `agentpace ingest`. It reads your local history and keeps rows on your machine.
 3. Run `agentpace share --dry-run` and read the rows. Stop here if you are not comfortable with them.
-4. Run `agentpace share --write`. It adds or extends one file under `data/runs/`, named after your contributor pseudonym and the weeks it covers. Add `--drop-project` to leave out the project field.
+4. Run `agentpace share --write`. It adds or extends one file under `data/runs/`, named after your contributor pseudonym and the weeks it covers. Add `--drop-project` to leave out the project field, and `--drop-session <ref>` (repeatable, a session or any run reference from `agentpace runs`) to withhold a whole session from both the preview and the file.
 5. Run `agentpace validate data/runs`, then commit that one file and open a pull request. Plain `agentpace validate` checks the seed data shipped with agentpace, not the folder you just wrote to.
 
 **By opening a data pull request, you dedicate those rows to the public domain under [CC0-1.0](data/LICENSE).** Once merged, public data cannot be fully recalled, so read the rows first.

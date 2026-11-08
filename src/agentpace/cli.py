@@ -330,6 +330,11 @@ def _first_cached_start(batch: str) -> float | None:
     return _cached_starts().get(batch)
 
 
+def _session_of(ref: str) -> str:
+    """The session a reference names: a bare batch, or the batch of a `<batch>:<offset_s>` ref."""
+    return ref.split(":", 1)[0]
+
+
 def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
     forecast = ledger.forecasts.get(args.id)
     if forecast is None:
@@ -349,7 +354,7 @@ def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
         )
         source = "attested by you"
     else:
-        batch = args.session.split(":", 1)[0]
+        batch = _session_of(args.session)
         rows = [r for r in _local_rows() if r["batch"] == batch and r["outcome"] == "completed"]
         try:
             actual = forecasts.check_session(forecast, rows, _first_cached_start(batch))
@@ -470,8 +475,16 @@ def cmd_share(args: argparse.Namespace) -> int:
         raise ValueError("no local rows yet; run `agentpace ingest` first")
     out = Path(args.out_dir)
     published = schema.read_dataset([out]) if out.exists() else []
-    chosen, skipped = share.select(rows, args.since, args.drop_project, published)
+    sessions = [_session_of(ref) for ref in args.drop_session]
+    chosen, skipped, dropped = share.select(
+        rows, args.since, args.drop_project, published, sessions
+    )
     print(share.NOTICE, file=sys.stderr)
+    if dropped:
+        print(
+            f"{sum(dropped.values())} rows from {len(dropped)} dropped sessions left out.",
+            file=sys.stderr,
+        )
     if skipped:
         print(f"{skipped} rows are already published and left out.", file=sys.stderr)
     if not chosen:
@@ -689,6 +702,13 @@ def build_parser() -> argparse.ArgumentParser:
     share_cmd.add_argument("--out-dir", default="data/runs", help="default: %(default)s")
     share_cmd.add_argument("--since", metavar="YYYY-Www", help="only this ISO week onward")
     share_cmd.add_argument("--drop-project", action="store_true", help="omit the project field")
+    share_cmd.add_argument(
+        "--drop-session",
+        action="append",
+        default=[],
+        metavar="REF",
+        help="leave out a whole session: a session, or any run ref from `runs`. Repeatable",
+    )
     share_cmd.set_defaults(handler=cmd_share)
 
     validate_cmd = commands.add_parser("validate", help="check data files")
