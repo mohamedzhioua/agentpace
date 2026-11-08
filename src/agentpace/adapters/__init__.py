@@ -17,6 +17,12 @@ ADAPTERS: dict[str, Adapter] = {
     ClineAdapter.name: ClineAdapter(),
 }
 
+# Built from each tool's source and shipped without a check against real sessions, by the owner's
+# decision for 0.8.0. `agentpace ingest` says so on stderr when one of these is the source.
+EXPERIMENTAL: frozenset[str] = frozenset(
+    {GeminiCliAdapter.name, OpenCodeAdapter.name, ClineAdapter.name}
+)
+
 
 def get_adapter(name: str) -> Adapter:
     try:

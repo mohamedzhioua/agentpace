@@ -1,8 +1,8 @@
 """The Gemini CLI adapter: one agent turn is one run, and one session file is one batch.
 
-DRAFT. Built from the Gemini CLI source at commit
+EXPERIMENTAL. Built from the Gemini CLI source at commit
 google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7, cited below as `file:line`
-under `packages/core/src/`, and not yet checked against real session files.
+under `packages/core/src/`, and shipped unverified against real session files.
 
 Layout: `~/.gemini/tmp/<project>/chats/session-<time>-<id>.jsonl` for a main session, and
 `chats/<parent session id>/<session id>.jsonl` for a subagent

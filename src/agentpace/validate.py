@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agentpace import ingest, schema
+from agentpace.adapters import EXPERIMENTAL
 
 MAX_DURATION_S = 86_400
 MAX_CALLS_PER_SECOND = 5
@@ -48,6 +49,10 @@ def scan_for_pii(text: str) -> list[str]:
 def check_values(row: schema.Row) -> list[str]:
     """Rules a schema cannot express."""
     problems: list[str] = []
+    if row["harness"] in EXPERIMENTAL:
+        problems.append(
+            "harness adapter is experimental: rows are not published until it is verified"
+        )
     if ingest.normalize_model(row["model"]) != row["model"]:
         problems.append("model is not a known public family or 'other'")
     if row["duration_s"] > MAX_DURATION_S:

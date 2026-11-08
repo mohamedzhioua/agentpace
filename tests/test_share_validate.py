@@ -55,6 +55,10 @@ class Validation(Temp):
             self.rules(row(duration_s=10, tool_calls=1000)),
         )
 
+    def test_experimental_harness_rows_are_rejected(self):
+        problems = validate.check_values(row(harness="gemini-cli"))
+        self.assertTrue(any("experimental" in p for p in problems))
+
     def test_unknown_field_is_rejected(self):
         path = self.write([json.dumps({**row(), "prompt": "hello"})])
         self.assertTrue(validate.validate([path]))

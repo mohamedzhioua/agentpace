@@ -1,6 +1,6 @@
-"""The Cline adapter: one agent turn is one run, and one task is one batch. DRAFT.
+"""The Cline adapter: one agent turn is one run, and one task is one batch. EXPERIMENTAL.
 
-Built from the upstream source, not from real history, so every rule here waits on real tasks.
+Built from the upstream source, not from real history, and shipped unverified as experimental.
 Pinned commits of `cline/cline`: `94eecbbe1a2f899c66b118d13656651b0a884e1f` (main) and
 `7761370240ffce9e3890cb56f6c51655f3f5b0a7` (the `legacy-extension` branch, whose writer the
 stable VSIX still runs for most users, per `apps/vscode-rollout/README.md:6` and

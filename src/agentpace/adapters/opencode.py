@@ -1,8 +1,8 @@
 """The OpenCode adapter: one user message and the agent's replies to it is one run, and one
 session is one batch.
 
-DRAFT. Built from the upstream source of `opencode-ai` 1.19.5, tag `v1.19.5` of
-`anomalyco/opencode` at commit 810c0eba1a7348036f8bdf61e6632d0c36c6876c, and not yet checked
+EXPERIMENTAL. Built from the upstream source of `opencode-ai` 1.19.5, tag `v1.19.5` of
+`anomalyco/opencode` at commit 810c0eba1a7348036f8bdf61e6632d0c36c6876c, and shipped unverified
 against real session history. Citations below are `file:line` at that commit.
 
 Layout. OpenCode keeps history in one SQLite database, `opencode.db`, or `opencode-<channel>.db`
