@@ -20,7 +20,7 @@ This skill triggers on natural-language questions. `/pace-estimate` is the expli
 Run `agentpace --version`. If that fails, tell the user the install command and stop. Do not install anything without being asked:
 
 ```text
-uv tool install git+https://github.com/mohamedzhioua/agentpace
+uv tool install agentpace
 ```
 
 If they do not want to install anything, use [assets/portable-prompt.md](assets/portable-prompt.md) instead.
