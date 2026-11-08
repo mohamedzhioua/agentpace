@@ -1,9 +1,11 @@
 name: Publish
 
-# Manual until the PyPI pending publisher exists, so a release cannot produce a failed run.
-# Once it does: dispatch this on the latest tested tag, `gh workflow run publish.yml --ref vX.Y.Z`,
-# confirm it passes, then restore `release: types: [published]`. docs/releasing.md has the steps.
+# Publishing is live: agentpace is on PyPI since 0.9.2. Publishing a GitHub release page uploads
+# its version. Dispatch remains for re-running a version that did not upload:
+# `gh workflow run publish.yml --ref vX.Y.Z`. docs/releasing.md has the steps.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
