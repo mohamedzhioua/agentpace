@@ -266,7 +266,12 @@ def _plan_text(args: argparse.Namespace) -> str:
         return paths.example_plan().read_text(encoding="utf-8")
     if args.plan is None:
         raise ValueError("give a plan file, - for stdin, or --example")
-    return sys.stdin.read() if args.plan == "-" else Path(args.plan).read_text(encoding="utf-8")
+    if args.plan == "-":
+        return sys.stdin.read()
+    plan = Path(args.plan)
+    if not plan.is_file():
+        raise ValueError("no plan file at that path")
+    return plan.read_text(encoding="utf-8")
 
 
 def cmd_estimate(args: argparse.Namespace) -> int:

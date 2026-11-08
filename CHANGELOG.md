@@ -10,7 +10,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 - `agentpace runs` and `agentpace label last` ordered the sessions of a week by `batch`, which is a keyed hash, so "last" could be any session in that week. They now take each session's earliest start from the local ingest caches, read in memory at the default idle cap. No row gains a field. `runs` lists sessions without a cached start first within their week and says on stderr how many it could not place. `label last` labels the last run of the session with the latest cached start. It exits 2 rather than guessing when no session has a cached start, or when a session it cannot place has a row in that session's latest week or later.
 - `agentpace label` holds the store lock while it reads the store, writes the labels file and rewrites the store, so a `SubagentStop` hook ingest can no longer lose a label or lose its own write. If another ingest holds the lock for 5 s, it exits 2: "another ingest is writing the store; try again".
-- A plan or task `model` that is neither a string nor `null` (an object, a list, `true`, a number) is a clean error with exit 2, "model must be a string" or "task #N: model must be a string", instead of a Python traceback. `null` still means what it meant before.
+- A plan or task `model` that is neither a string nor `null` (an object, a list, `true`, a number) is a clean error with exit 2, "model must be a string" or "task #N: model must be a string", instead of a Python traceback. `null` still means no model, at either level, as before: a task's `null` does not inherit the plan's `model`.
+- `agentpace estimate <path>` with a path that is not a file exits 2 with "no plan file at that path" instead of a Python traceback.
 
 ### Changed
 

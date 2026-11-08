@@ -112,6 +112,14 @@ class EstimateCommand(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("does not exist", err)
 
+    def test_missing_plan_file_is_a_clean_error(self):
+        for missing in (self.root / "no-such.json", self.root):
+            with self.subTest(plan=missing.name):
+                code, out, err = self.run_cli("estimate", str(missing))
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertEqual(err, "agentpace: no plan file at that path\n")
+
     def test_no_data_at_all_explains_what_to_do(self):
         empty = self.root / "empty"
         empty.mkdir()
