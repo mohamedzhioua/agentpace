@@ -100,7 +100,7 @@ stdout: `labeled <ref>: <kind>, <risk> risk`.
 ## estimate
 
 ```text
-agentpace estimate (PLAN | - | --example) [--data PATH]... [--method NAME] [--use-size] [--draws N] [--seed N] [--json] [--turns FILE] [--record] [--quoted TEXT]
+agentpace estimate (PLAN | - | --example) [--data PATH]... [--method NAME] [--use-size] [--draws N] [--seed N] [--json] [--turns FILE] [--record] [--quoted TEXT] [--review-capacity TEXT]
 ```
 
 Simulates a plan of tasks and prints P50, P80 and P90 per task (agent run time) and for the plan (its span on the session clock).
@@ -118,6 +118,7 @@ Simulates a plan of tasks and prints P50, P80 and P90 per task (agent run time) 
 | `--turns FILE` | `~/.agentpace/turns.jsonl` | Waits measured by `agentpace turns`, for the human part line. The file must exist when given. |
 | `--record` | off | Keep this forecast in `~/.agentpace/forecasts.jsonl`, to score later. |
 | `--quoted TEXT` | none | A timeline someone already gave, such as `"3 weeks"`. Shown beside the range as quoted, and stored with the forecast when `--record` is given. |
+| `--review-capacity TEXT` | none | Your own review capacity, such as `"4 PRs a day"`. Shown verbatim on its own line under the human part line, as stated by you: not measured and never applied to the range. Nothing is parsed or computed from it. It must be one line of at most 80 characters once stripped; otherwise the command exits 2. Stored with the forecast when `--record` is given. |
 
 stdout: the result, as text or JSON. stderr, with `--record`: `recorded forecast <id> in <path>`, and with `--quoted`, whether the quote was parsed as calendar time or stored as text.
 
@@ -200,7 +201,7 @@ One JSON object. Every duration is in seconds, as a number.
 | `draws` | integer | Simulations run. |
 | `seed` | integer | The random seed. |
 | `warnings` | list of strings | Thin or unseen cells, ignored sizes, an assumed parallelism. Pass them on. |
-| `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`: no allowance for the human part is added to the total (waits shorter than the idle cap sit inside the session clock already). When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. Keys without a value are left out. |
+| `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`: no allowance for the human part is added to the total (waits shorter than the idle cap sit inside the session clock already). When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. With `--review-capacity`, it holds `review_capacity_stated`, your text as given, stripped. Keys without a value are left out. |
 
 The JSON output does not change with `--record` or `--quoted`.
 

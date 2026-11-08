@@ -27,5 +27,5 @@ The plan to estimate: $ARGUMENTS
    ```
 
    Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`.
-3. Run `agentpace estimate <file>`.
-4. Report the total as P50, P80 and P90, then the session-clock line and the human part line exactly as the CLI prints them, then the critical path, the effective parallelism and every warning. Do not derive a number for the human part from the agent time. Never reduce the result to one number.
+3. Run `agentpace estimate <file>`. If the conversation already holds a timeline in days, weeks or months, add `--quoted "<quote>"` in the words it was given. Only if the user stated their own review capacity, such as "4 PRs a day", add `--review-capacity "<figure>"` with their words verbatim.
+4. Report the total as P50, P80 and P90, then the `Quoted:` line as printed when there is one, then the session-clock line and the human part line exactly as the CLI prints them, and the `Review capacity:` line as printed when there is one, never turned into a timeline, then the critical path, the effective parallelism and every warning. Do not derive a number for the human part from the agent time. Never convert the quote, compare it with the range, say what the difference between them is, or say what the quote counts: it is calendar time, as quoted, and nothing has checked it. Never reduce the result to one number.

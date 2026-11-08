@@ -4,6 +4,26 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-08
+
+### Added
+
+- `agentpace estimate --review-capacity TEXT` takes your own review capacity, such as "4 PRs a day", verbatim. It prints on its own line under the human part line: `Review capacity: "4 PRs a day" (stated by you; not measured, not applied to the total: a plan task is an agent run, not a pull request)`.
+  - Nothing is parsed or computed from it: no number is extracted, no unit converted and no human timeline derived. The range never changes.
+  - The text must be one line of at most 80 characters once stripped. Otherwise the command exits 2 with a one-line message, before anything is read or written.
+- `--json` gains `human.review_capacity_stated`, present only when the flag is given.
+  - With `--record`, the ledger keeps it inside `human`; without `--record`, nothing is written.
+  - `score` and `share` never see it.
+  - A forecast recorded with a stated capacity gets a different id from the same plan without one, because the id hashes `human`.
+- The `agentpace` and `pace-estimate` skills pass the figure only when you state one, and relay its line as printed.
+
+### Changed
+
+- `/pace-estimate` now passes a timeline someone already quoted to the CLI with `--quoted`, and relays the `Quoted:` line as printed.
+- Both skills now say never to state what a quoted timeline counts, because nothing has checked it. A smoke prompt had speculated about it.
+
+No published number moved.
+
 ## 0.10.0 - 2026-11-08
 
 ### Added

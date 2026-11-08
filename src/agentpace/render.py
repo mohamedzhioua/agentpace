@@ -36,6 +36,17 @@ def human_text(human: HumanPart) -> str:
     )
 
 
+def review_capacity_text(human: HumanPart) -> str | None:
+    """A review capacity the user stated, verbatim and labelled as theirs. Nothing is parsed or
+    computed from it: a plan task is an agent run, not a pull request, so no timeline follows."""
+    if human.review_capacity_stated is None:
+        return None
+    return (
+        f'Review capacity: "{human.review_capacity_stated}" (stated by you; not measured, not '
+        "applied to the total: a plan task is an agent run, not a pull request)"
+    )
+
+
 def duration(seconds: float) -> str:
     """Two significant figures: anything finer would suggest precision the data lacks."""
     minutes = seconds / 60
@@ -82,6 +93,7 @@ def outcomes_text(plan: PlanRange) -> str | None:
 
 def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
+    capacity = review_capacity_text(plan.human)
     lines = [
         f"Plan total on the session clock: P50 {duration(plan.p50)}, "
         f"P80 {duration(plan.p80)}, "
@@ -89,6 +101,7 @@ def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
         *([quote_text(quoted)] if quoted is not None else []),
         CLOCK_NOTE,
         human_text(plan.human),
+        *([capacity] if capacity is not None else []),
         "",
         f"{'task':<{width}}  {'P50':>9}  {'P80':>9}  {'P90':>9}  {'critical':>8}  cell (n)",
     ]
