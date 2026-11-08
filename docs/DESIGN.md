@@ -240,7 +240,7 @@ for each draw:
 **`share`**
 
 - Defaults to `--dry-run` and prints the exact rows, byte for byte, as they would be written.
-- `--write` creates `data/runs/<contributor>-<from>-<to>.jsonl` and prints the git commands to submit it.
+- `--write` adds or extends one file, `data/runs/<contributor>-<from>-<to>.jsonl`, and prints the commands to check and submit it, `agentpace validate` first. Rows already anywhere in the folder are left out. When the name exists, its old bytes are kept exactly and the new rows go after them, so a second share of the same span never removes a published row; a file holding another contributor's rows is refused. Rows from experimental adapters stay in the share, and `share` warns on stderr that `validate` rejects them until the adapter is verified.
 - No network code at all in v1 (D5). A test parses every module under `src/` and fails on any import of `socket`, `urllib`, `http` or `subprocess`. A `gh` submit path is a v2 item with its own grant.
 - `share` is a local file writer, so the DONE WHEN line is met as a ceiling: zero network calls anywhere.
 - Submitting a data pull request is a CC0-1.0 dedication, stated in `CONTRIBUTING.md`.

@@ -190,7 +190,7 @@ class ExperimentalNote(unittest.TestCase):
                 self.assertNotIn("experimental", err)
                 self.assertTrue(err.startswith("files seen:"))
 
-    def test_share_output_carries_no_note(self):
+    def test_share_keeps_the_rows_and_warns_only_on_stderr(self):
         rows = [
             row(harness=harness, week="2026-W45", offset_s=index)
             for index, harness in enumerate(("gemini-cli", "opencode", "cline", "claude-code"))
@@ -198,8 +198,9 @@ class ExperimentalNote(unittest.TestCase):
         schema.write_rows(paths.local_runs(), rows)
         code, out, err = self.run_cli("share", "--out-dir", str(self.root / "runs"), "--dry-run")
         self.assertEqual(code, 0, err)
-        for text in (out, err):
-            self.assertNotIn("experimental", text)
+        self.assertNotIn("experimental", out)
+        self.assertNotIn("adapter is experimental", err)
+        self.assertIn("3 rows come from experimental adapters (cline, gemini-cli, opencode).", err)
         for harness in ("gemini-cli", "opencode", "cline"):
             self.assertIn(f'"{harness}"', out)
 

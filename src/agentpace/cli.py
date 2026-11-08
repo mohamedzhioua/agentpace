@@ -386,18 +386,33 @@ def cmd_share(args: argparse.Namespace) -> int:
     if not chosen:
         print("nothing new to share.", file=sys.stderr)
         return 0
+    note = share.experimental_note(chosen)
+    if note:
+        print(note, file=sys.stderr)
+    path = out / share.file_name(chosen)
     if not args.write:
+        held = share.held_rows(path, chosen)
         for row in chosen:
             print(schema.canonical(row))
+        target = (
+            f"--write would create {path}."
+            if held is None
+            else f"--write would add them to {path}, which holds {held} rows."
+        )
         print(
-            f"dry run: {len(chosen)} rows shown above, nothing written. "
-            "Pass --write to create the file.",
+            f"dry run: {len(chosen)} rows shown above, nothing written. {target}",
             file=sys.stderr,
         )
         return 0
-    path = out / share.file_name(chosen)
-    count = schema.write_rows(path, chosen)
-    print(f"wrote {count} rows to {path}. Nothing has been sent. To submit:", file=sys.stderr)
+    added, existing = share.write_contribution(path, chosen)
+    if existing:
+        print(
+            f"added {added} rows to {path}, which already held {existing}. "
+            "Nothing has been sent. To submit:",
+            file=sys.stderr,
+        )
+    else:
+        print(f"wrote {added} rows to {path}. Nothing has been sent. To submit:", file=sys.stderr)
     for command in share.git_commands(path):
         print(f"  {command}", file=sys.stderr)
     return 0

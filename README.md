@@ -205,8 +205,8 @@ git clone https://github.com/<your-fork>/agentpace && cd agentpace
 uv tool install .           # or pipx install .
 agentpace ingest
 agentpace share --dry-run    # prints the exact rows and writes nothing
-agentpace share --write      # writes a file to data/runs, and still sends nothing
-agentpace validate           # the same checks CI runs
+agentpace share --write      # adds or extends one file under data/runs, and still sends nothing
+agentpace validate data/runs # the same checks CI runs
 ```
 
 Then open a pull request with that one file. A data pull request dedicates your rows to the public domain under CC0-1.0. See [CONTRIBUTING.md](CONTRIBUTING.md).
