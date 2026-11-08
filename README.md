@@ -19,7 +19,7 @@ uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --e
 
 ```text
 <!-- claim:example_output -->
-Total wall clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
+Total agent time, on the session clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
 Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
 
 task          P50        P80        P90  critical  cell (n)

@@ -4,6 +4,22 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.8.2 - 2026-11-08
+
+### Fixed
+
+- `agentpace runs` and `agentpace label last` ordered the sessions of a week by `batch`, which is a keyed hash, so "last" could be any session in that week. They now take each session's earliest start from the local ingest caches, read in memory at the default idle cap. No row gains a field. `runs` lists sessions without a cached start first within their week and says on stderr how many it could not place. `label last` labels the last run of the session with the latest cached start. It exits 2 rather than guessing when no session has a cached start, or when a session it cannot place has a row in that session's latest week or later.
+- `agentpace label` holds the store lock while it reads the store, writes the labels file and rewrites the store, so a `SubagentStop` hook ingest can no longer lose a label or lose its own write. If another ingest holds the lock for 5 s, it exits 2: "another ingest is writing the store; try again".
+- A plan or task `model` that is neither a string nor `null` (an object, a list, `true`, a number) is a clean error with exit 2, "model must be a string" or "task #N: model must be a string", instead of a Python traceback. `null` still means what it meant before.
+
+### Changed
+
+- The first line of `agentpace estimate` reads "Total agent time, on the session clock" instead of "Total wall clock". The total was always agent time on the idle-capped session clock (DESIGN sections 3 and 5); only its name changes. The README example is regenerated, and the README and the `/pace-estimate` description say "ranges of agent time" and "agent-time ranges".
+- `agentpace backtest` no longer says to update `DEFAULT_METHOD` when the winner differs. It says that selection is frozen at 2026-W45, that a pin test fails CI on a flip, and that a flip needs re-registration in CHANGELOG (DESIGN section 6).
+- `agentpace validate --help` says the default is the seed data shipped with agentpace, and that contributors pass `data/runs`.
+
+No published number moved.
+
 ## 0.8.1 - 2026-11-08
 
 The first release from the ruling for 0.9 (DESIGN section 11).
