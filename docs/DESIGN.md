@@ -467,7 +467,7 @@ The owner ruled on 2026-11-08.
 
 ### Ruling for 0.9
 
-Fable 5.1 ruled on 2026-11-08, with an independent opinion from Codex (gpt-6-astra) on the same brief, both at the highest effort. The master verified each defect the opinion reported before the ruling.
+Fable 5.1 ruled on 2026-11-08, with an independent opinion from Codex (gpt-6-astra) on the same brief, both at the highest effort. The master checked the defects the opinion reported before the ruling; Fable reproduced the share overwrite and the plan-model errors itself.
 
 - **Order.** Safe repeated sharing first, then truthful CLI output, the contributor path and PyPI preparation (0.8.1 to 0.8.4). The quote beside the range is 0.9.0, `share --drop-session` 0.9.1, and the 2026-W46 data change follows once that week has ended.
 - **A second share appends.** `share --write` for a span whose file already exists adds the new rows to that file and leaves its old bytes untouched. A file holding another contributor's rows is refused. Distinct suffixed file names were rejected, because the dataset keeps one file per contributor and span. Rows from experimental adapters stay in a share, with a warning on stderr, because the red data pull request is how they get reconciled.
