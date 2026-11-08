@@ -127,16 +127,29 @@ class Validation(Temp):
 class Selection(unittest.TestCase):
     def test_since_filters_by_week(self):
         rows = [row(week="2026-W10"), row(week="2026-W20", offset_s=1)]
-        chosen, _ = share.select(rows, since="2026-W15")
+        chosen, _, _ = share.select(rows, since="2026-W15")
         self.assertEqual([r["week"] for r in chosen], ["2026-W20"])
 
     def test_drop_project_removes_the_field(self):
-        chosen, _ = share.select([row()], drop_project=True)
+        chosen, _, _ = share.select([row()], drop_project=True)
         self.assertNotIn("project", chosen[0])
 
     def test_published_rows_are_skipped(self):
-        chosen, skipped = share.select([row(), row(offset_s=9)], already_published=[row()])
+        chosen, skipped, _ = share.select([row(), row(offset_s=9)], already_published=[row()])
         self.assertEqual((len(chosen), skipped), (1, 1))
+
+    def test_dropped_sessions_are_left_out_before_the_published_count(self):
+        rows = [row(), row(offset_s=9), row(batch="d" * 12), row(batch="c" * 12)]
+        chosen, skipped, dropped = share.select(
+            rows, already_published=[row()], drop_sessions=["a" * 12, "c" * 12, "a" * 12]
+        )
+        self.assertEqual([r["batch"] for r in chosen], ["d" * 12])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(dropped, {"a" * 12: 2, "c" * 12: 1})
+
+    def test_a_dropped_session_with_no_local_row_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "names 1 sessions with no local run"):
+            share.select([row()], drop_sessions=["a" * 12, "f" * 12])
 
     def test_invalid_rows_are_refused(self):
         with self.assertRaisesRegex(ValueError, "invalid"):
@@ -279,6 +292,53 @@ class ShareCommand(Temp):
         self.assertEqual(share.git_commands(path)[0], f'agentpace validate "{self.out}"')
         err = self.run_cli("--write")[2]
         self.assertIn(f'  agentpace validate "{self.out}"\n  git add "{path}"', err)
+
+    def test_a_dropped_session_is_absent_and_counted_in_both_modes(self):
+        self.add_local_run(batch="d" * 12, offset_s=7)
+        self.add_local_run(batch="d" * 12, offset_s=8)
+        counted = "2 rows from 1 dropped sessions left out."
+        _, printed, err = self.run_cli("--drop-session", "d" * 12)
+        self.assertIn(counted, err)
+        self.assertNotIn("d" * 12, printed)
+        self.assertEqual(len(printed.splitlines()), 2)
+        _, out, err = self.run_cli("--write", "--drop-session", "d" * 12)
+        self.assertIn(counted, err)
+        self.assertEqual(out, "")
+        written = (self.out / NAME).read_text(encoding="utf-8")
+        self.assertEqual(printed, written)
+        self.assertNotIn("d" * 12, written)
+        self.assertEqual(validate.validate([self.out]), [])
+
+    def test_a_run_ref_and_a_bare_batch_both_drop_their_session(self):
+        self.add_local_run(batch="d" * 12, offset_s=7)
+        self.add_local_run(batch="c" * 12, offset_s=9)
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                _, _, err = self.run_cli(
+                    *flags, "--drop-session", f"{'a' * 12}:5", "--drop-session", "d" * 12
+                )
+                self.assertIn("3 rows from 2 dropped sessions left out.", err)
+        self.assertEqual([r["batch"] for r in schema.read_rows(self.out / NAME)], ["c" * 12])
+
+    def test_the_file_name_spans_only_the_rows_shared(self):
+        self.add_local_run(batch="d" * 12, week="2026-W20", offset_s=7)
+        self.run_cli("--write", "--drop-session", "d" * 12)
+        self.assertEqual([p.name for p in self.out.iterdir()], [NAME])
+
+    def test_a_dropped_session_with_no_local_row_is_refused(self):
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                code, out, err = self.run_cli(*flags, "--drop-session", "f" * 12 + ":3")
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                refused = f"--drop-session names 1 sessions with no local run ({'f' * 12})"
+                self.assertIn(refused, err)
+                self.assertFalse(self.out.exists())
+
+    def test_no_dropped_count_without_drop_session(self):
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                self.assertNotIn("dropped sessions", self.run_cli(*flags)[2])
 
     def test_dry_run_and_write_conflict(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

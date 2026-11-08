@@ -4,6 +4,18 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.9.1 - 2026-11-08
+
+### Added
+
+- `agentpace share --drop-session REF`, repeatable, leaves a whole session out of both the dry run and the written file. `REF` is a session or any run reference from `agentpace runs`; its session is used, as `score --session` does. Dropped rows are left out before the published-row check and the file name, so the name spans only the rows shared. stderr says `N rows from M dropped sessions left out.` in both modes. A `REF` whose session has no local row is refused with exit 2 and nothing is written, so a mistyped reference cannot share the session it meant to withhold. This is how the 2026-W46 data change will exclude named sessions.
+
+### Changed
+
+- CONTRIBUTING and `docs/cli.md` say a contributor can withhold a session with `--drop-session`.
+
+No published number moved.
+
 ## 0.9.0 - 2026-11-08
 
 ### Added

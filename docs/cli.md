@@ -251,6 +251,7 @@ stdout: what was written and the winning method, or that the numbers match. stde
 
 ```text
 agentpace share [--dry-run | --write] [--out-dir FOLDER] [--since YYYY-Www] [--drop-project]
+                [--drop-session REF]...
 ```
 
 Prepares your local rows for a data pull request. It never sends anything.
@@ -262,10 +263,11 @@ Prepares your local rows for a data pull request. It never sends anything.
 | `--out-dir` | `data/runs` | The dataset folder. Rows already present anywhere in it are left out. |
 | `--since YYYY-Www` | none | Only rows from this ISO week onward. |
 | `--drop-project` | off | Leave out the `project` field. |
+| `--drop-session REF` | none | Leave out a whole session, in the dry run and in the file. A session, or any run reference from `runs` (its session is used). Repeatable. Its rows are left out before anything else, so they count neither as published nor in the file name's weeks. A `REF` whose session has no local row is refused with exit 2, and nothing is written. |
 
 `--write` adds or extends one file, `<contributor>-<first week>-<last week>.jsonl`, in `--out-dir`. If that file exists, the new rows are appended and its existing bytes are left as they are. A file holding another contributor's rows is refused with exit 2. The dry run says which of the two `--write` would do.
 
-stdout, in a dry run: the rows, one canonical JSON object per line. stderr: what the rows reveal, how many were already published, a warning when any come from an experimental adapter (`validate` rejects those, so a pull request with them stays red until they are reconciled), and after `--write`, what was written and the commands to submit it, starting with `agentpace validate`. See [CONTRIBUTING.md](../CONTRIBUTING.md#contribute-your-runs).
+stdout, in a dry run: the rows, one canonical JSON object per line. stderr: what the rows reveal, how many rows the dropped sessions held (`N rows from M dropped sessions left out.`), how many were already published, a warning when any come from an experimental adapter (`validate` rejects those, so a pull request with them stays red until they are reconciled), and after `--write`, what was written and the commands to submit it, starting with `agentpace validate`. See [CONTRIBUTING.md](../CONTRIBUTING.md#contribute-your-runs).
 
 ## validate
 

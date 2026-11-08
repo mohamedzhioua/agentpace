@@ -30,12 +30,23 @@ def select(
     since: str | None = None,
     drop_project: bool = False,
     already_published: Iterable[Row] = (),
-) -> tuple[list[Row], int]:
-    """Choose what to share. Returns the rows and how many were already published."""
+    drop_sessions: Iterable[str] = (),
+) -> tuple[list[Row], int, dict[str, int]]:
+    """Choose what to share. Returns the rows, how many were already published, and the rows
+    left out per dropped session.
+
+    A dropped session is withheld whole, before anything else is decided, so the file name and
+    the published count see only the rows actually shared. Every dropped session must match a
+    local row: a mistyped one would otherwise share the session it meant to withhold.
+    """
     known = {schema.dedupe_key(row) for row in already_published}
+    dropped = dict.fromkeys(drop_sessions, 0)
     chosen: list[Row] = []
     skipped = 0
     for row in rows:
+        if row["batch"] in dropped:
+            dropped[row["batch"]] += 1
+            continue
         if since and row["week"] < since:
             continue
         if schema.dedupe_key(row) in known:
@@ -46,7 +57,13 @@ def select(
         if problems:
             raise ValueError(f"refusing to share an invalid row: {problems}")
         chosen.append(kept)
-    return sorted(chosen, key=schema.dedupe_key), skipped
+    unmatched = sorted(batch for batch, count in dropped.items() if not count)
+    if unmatched:
+        raise ValueError(
+            f"--drop-session names {len(unmatched)} sessions with no local run "
+            f"({', '.join(unmatched)}); nothing was written. See `agentpace runs`"
+        )
+    return sorted(chosen, key=schema.dedupe_key), skipped, dropped
 
 
 def file_name(rows: Sequence[Row]) -> str:
