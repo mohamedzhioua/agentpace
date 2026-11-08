@@ -4,6 +4,23 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.8.4 - 2026-11-08
+
+### Added
+
+- `docs/releasing.md`, the maintainer's release runbook: the steps every release follows, the PyPI pending-publisher settings (project `agentpace`, owner `mohamedzhioua`, repository `agentpace`, workflow `publish.yml`, environment `pypi`), the first manual dispatch, a clean-venv check that the installed `agentpace estimate --example` matches the README, and the exact list of install lines, files and tests to switch after the first upload. agentpace is still not on PyPI.
+- A `Changelog` URL in `pyproject.toml`'s project URLs.
+
+### Changed
+
+- The three README images use absolute `raw.githubusercontent.com` URLs, so they render on the PyPI project page as well as on GitHub. Alt text is unchanged.
+
+### Fixed
+
+- The comment in `publish.yml` pointed the first dispatch at the v0.1.0 tag. It now says to dispatch on the latest tested tag with `gh workflow run publish.yml --ref vX.Y.Z`. The workflow still runs only when dispatched by hand, and its tag check is unchanged.
+
+No published number moved.
+
 ## 0.8.3 - 2026-11-08
 
 ### Added
