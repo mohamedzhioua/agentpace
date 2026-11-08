@@ -100,6 +100,10 @@ def forecast_record(
         ],
         "human": result["human"],
     }
+    # Counted from the loaded rows. Records from before 0.10 lack it and still read and score.
+    # Kept in its JSON form, so the record equals what the ledger reads back.
+    if "outcomes" in result:
+        record["outcomes"] = json.loads(json.dumps(result["outcomes"]))
     if quoted is not None:
         record["quoted"] = quoted
         seconds = parse_duration(quoted)
