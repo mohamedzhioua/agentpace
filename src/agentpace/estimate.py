@@ -657,6 +657,8 @@ def tasks_from_json(document: Any) -> tuple[list[Task], int]:
     if not isinstance(cap, int) or isinstance(cap, bool) or cap < 1:
         raise ValueError("agent_cap must be a positive integer")
     plan_model = document.get("model")
+    if plan_model is not None and not isinstance(plan_model, str):
+        raise ValueError("model must be a string")
     tasks = []
     for position, item in enumerate(document["tasks"]):
         where = f"task #{position + 1}"
@@ -674,6 +676,9 @@ def tasks_from_json(document: Any) -> tuple[list[Task], int]:
         dependencies = item.get("depends_on", [])
         if not isinstance(dependencies, list):
             raise ValueError(f"{where}: depends_on must be a list")
+        model = item.get("model")
+        if model is not None and not isinstance(model, str):
+            raise ValueError(f"{where}: model must be a string")
         tasks.append(
             Task(
                 id=str(item["id"]),

@@ -381,6 +381,9 @@ class Validation(unittest.TestCase):
             est.estimate(model, [Task("a", "docs")], 1, draws=5)
 
 
+BAD_MODELS = ({"x": 1}, ["a"], True, 3)
+
+
 class PlanDocuments(unittest.TestCase):
     def test_a_full_document(self):
         tasks, cap = est.tasks_from_json(
@@ -410,10 +413,34 @@ class PlanDocuments(unittest.TestCase):
             {"tasks": [{"id": "a", "kind": "docs", "depends_on": "b"}]},
             {"tasks": [], "agent_cap": 0},
             {"tasks": [], "agent_cap": True},
+            *({"tasks": [], "model": bad} for bad in BAD_MODELS),
+            *({"tasks": [{"id": "a", "kind": "docs", "model": bad}]} for bad in BAD_MODELS),
         ]
         for document in cases:
             with self.subTest(document=document), self.assertRaises(ValueError):
                 est.tasks_from_json(document)
+
+    def test_a_model_that_is_not_a_string_names_the_level(self):
+        good = {"id": "a", "kind": "docs"}
+        for bad in BAD_MODELS:
+            with self.subTest(model=bad):
+                with self.assertRaisesRegex(ValueError, "^model must be a string$"):
+                    est.tasks_from_json({"model": bad, "tasks": [good]})
+                with self.assertRaisesRegex(ValueError, r"^task #2: model must be a string$"):
+                    est.tasks_from_json({"tasks": [good, {**good, "id": "b", "model": bad}]})
+
+    def test_a_null_model_means_no_model_as_before(self):
+        tasks, _ = est.tasks_from_json(
+            {
+                "model": None,
+                "tasks": [{"id": "a", "kind": "docs"}, {"id": "b", "kind": "docs", "model": None}],
+            }
+        )
+        self.assertEqual([task.model for task in tasks], [None, None])
+        tasks, _ = est.tasks_from_json(
+            {"model": "gpt-5", "tasks": [{"id": "a", "kind": "docs", "model": None}]}
+        )
+        self.assertIsNone(tasks[0].model)
 
 
 if __name__ == "__main__":

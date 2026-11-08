@@ -42,7 +42,8 @@ def duration(seconds: float) -> str:
 def plan_text(plan: PlanRange) -> str:
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
     lines = [
-        f"Total wall clock: P50 {duration(plan.p50)}, P80 {duration(plan.p80)}, "
+        f"Total agent time, on the session clock: P50 {duration(plan.p50)}, "
+        f"P80 {duration(plan.p80)}, "
         f"P90 {duration(plan.p90)}",
         human_text(plan.human),
         "",

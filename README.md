@@ -19,7 +19,7 @@ uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --e
 
 ```text
 <!-- claim:example_output -->
-Total wall clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
+Total agent time, on the session clock: P50 2.4 h, P80 5.9 h, P90 9.0 h
 Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
 
 task          P50        P80        P90  critical  cell (n)
@@ -68,7 +68,7 @@ Then ask your agent: "How long will the billing feature take?" The skill calls t
 
 ## Why agentpace
 
-Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 wall-clock ranges and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 ranges of agent time and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
 ![How long agent runs took, by task kind](docs/assets/run-ranges.svg)
 
