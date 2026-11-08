@@ -48,11 +48,11 @@ agentpace uses trusted publishing: PyPI accepts the identity of the `publish.yml
 
 **A published version is final.** PyPI never accepts a second upload of the same version, even after you delete it, so never re-dispatch a version that uploaded. If anything about it needs fixing, bump the patch version and release it as in part 1; its release page uploads it. A run that failed before `uv publish` uploaded anything can be dispatched again.
 
-The PyPI page shows the README as it was at the tag. The 0.9.2 README still carried the git install lines and the "not on PyPI yet" sentence, so that version's page says so. The page is right from 0.11.1, the first release after the switch in part 5.
+The PyPI page shows the README as it was at the tag. The 0.9.2 README still carried the git install lines and the "not on PyPI yet" sentence, so that version's page says so. The page is right from 0.11.1, the release that made the switch in part 5. 0.10.0 and 0.11.0 were released on GitHub only, before the switch, so PyPI lists 0.9.2 and then 0.11.1.
 
 ## 4. The clean-venv check
 
-Before any install line changes, prove the upload works from a fresh environment, away from the checkout and with an empty agentpace home so no local data reaches the output:
+After every upload (and before the first install line changed, for 0.9.2), prove the upload works from a fresh environment, away from the checkout and with an empty agentpace home so no local data reaches the output:
 
 ```bash
 scratch=$(mktemp -d)
