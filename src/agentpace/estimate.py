@@ -423,7 +423,9 @@ class TaskRange:
 @dataclass(frozen=True)
 class HumanPart:
     """Review, testing, decisions and waiting between agent turns. Never derived from agent time:
-    until it is measured, it is reported as not measured and kept out of the total."""
+    until it is measured, it is reported as not measured. No allowance for it is added to the
+    total; `included_in_total` stays False for that reason, and waits shorter than the idle cap sit
+    inside the session clock regardless."""
 
     status: str = "not measured"
     included_in_total: bool = False

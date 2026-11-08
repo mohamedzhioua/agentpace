@@ -369,8 +369,8 @@ def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
             session=batch,
         )
         source = (
-            "agent active time on that session's clock, idle gaps over the idle cap clipped, "
-            "human part outside it"
+            "that session's span on its own clock: agent runs plus the gaps between them, "
+            "each gap up to the idle cap"
         )
     forecasts.append(paths.forecasts_file(), record)
     print(render.score_text(forecast, record, source))

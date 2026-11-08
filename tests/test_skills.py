@@ -1,3 +1,4 @@
+import hashlib
 import re
 import unittest
 from pathlib import Path
@@ -6,6 +7,22 @@ REPO = Path(__file__).resolve().parent.parent
 SKILLS = REPO / "skills"
 STANDARD_FIELDS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 EXPECTED = {"agentpace", "pace-estimate", "pace-log", "pace-share"}
+# The session clock counts the gaps between runs up to the idle cap, so these claims are false.
+BANNED_PHRASES = (
+    "Not included in the total",
+    "not in the total",
+    "stay out of the total",
+    "human part outside",
+    "agent active time",
+    "agent time, on the session clock",
+)
+# SHA-256 of lines 1-6 of each SKILL.md at v0.9.1 (6e3e433). Wording changes never touch them.
+FRONTMATTER_SHA256 = {
+    "agentpace": "3f02102b892709e3efe2c3fff82a667c7260aad4f90a9303935f347b498a4a78",
+    "pace-estimate": "2a4b537c5bc641c361d5e5a28adfb9b012271f55648f75ae9ee209c6aa9659c1",
+    "pace-log": "54ce957cb94429ad5e5231de7518cc78d4c6366d918781930ee56fa865292c36",
+    "pace-share": "88e3a79cf3c323e431ddcc46d4aa848332b6e72cc2e9660d7eafb15e8ac4abc4",
+}
 
 
 def frontmatter(path):
@@ -60,6 +77,21 @@ class Repository(unittest.TestCase):
         width = int.from_bytes(data[16:20], "big")
         height = int.from_bytes(data[20:24], "big")
         self.assertEqual((width, height), (1280, 640))
+
+    def test_current_docs_and_source_carry_no_banned_phrase(self):
+        # Claim blocks are generated from the CLI, whose output is checked in test_cli.
+        claim = re.compile(r"<!-- claim:([a-z0-9_]+) -->(.*?)<!-- /claim -->", re.DOTALL)
+        paths = [
+            REPO / "README.md",
+            REPO / "data" / "README.md",
+            REPO / "docs" / "cli.md",
+            *sorted((REPO / "src" / "agentpace").rglob("*.py")),
+        ]
+        for path in paths:
+            text = claim.sub("", path.read_text(encoding="utf-8")).lower()
+            for phrase in BANNED_PHRASES:
+                with self.subTest(path=str(path.relative_to(REPO)), phrase=phrase):
+                    self.assertNotIn(phrase.lower(), text)
 
     def test_the_citation_version_matches_the_package(self):
         from agentpace import __version__
@@ -144,6 +176,28 @@ class Skills(unittest.TestCase):
                 text = path.read_text(encoding="utf-8")
                 self.assertIn("Human part" if "prompt" in path.name else "human part", text)
                 self.assertRegex(text, r"[Dd]o not derive")
+
+    def test_frontmatter_is_unchanged_from_main(self):
+        for path in self.skill_files():
+            with self.subTest(skill=path.parent.name):
+                head = "".join(path.read_text(encoding="utf-8").splitlines(keepends=True)[:6])
+                digest = hashlib.sha256(head.encode("utf-8")).hexdigest()
+                self.assertEqual(digest, FRONTMATTER_SHA256[path.parent.name])
+
+    def test_skill_texts_carry_no_banned_phrase(self):
+        paths = sorted(path for path in SKILLS.rglob("*") if path.is_file())
+        self.assertTrue(paths)
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            for phrase in BANNED_PHRASES:
+                with self.subTest(path=str(path.relative_to(SKILLS)), phrase=phrase):
+                    self.assertNotIn(phrase.lower(), text.lower())
+
+    def test_the_skills_relay_the_session_clock_line(self):
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("the session-clock line and the human part line", text)
 
     def test_portable_prompt_does_not_sum_quantiles(self):
         text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")

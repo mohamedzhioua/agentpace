@@ -98,7 +98,7 @@ class QuoteExample(unittest.TestCase):
         self.assertIn(f'--quoted "{claims.QUOTE_EXAMPLE}"', self.section.replace("\n", " "))
         self.assertIn("(examples/quote-plan.json)", self.section)
         block = claims._MARKER.search(self.section).group(2).splitlines()
-        self.assertTrue(block[1].startswith("Total agent time, on the session clock: "))
+        self.assertTrue(block[1].startswith("Plan total on the session clock: "))
         self.assertEqual(
             block[2],
             f'Quoted: "{claims.QUOTE_EXAMPLE}" (calendar time, as quoted; unverified, not '

@@ -162,10 +162,11 @@ def latest_scores(scores: Sequence[Record]) -> dict[str, Record]:
     return latest
 
 
-# Scoring. A score compares a forecast with what happened. With a session, the actual is agent
-# active time on that session's own clock (idle gaps over the idle cap clipped), the same quantity
-# the forecast predicts and the backtest scores. It is not wall clock, and the human part is
-# outside it. With `--actual`, the user attests the figure themselves.
+# Scoring. A score compares a forecast with what happened. With a session, the actual is that
+# session's span on its own clock: agent runs plus the gaps between them, each gap up to the idle
+# cap. That is the same quantity the forecast predicts and the backtest scores. It is not wall
+# clock, and no allowance for the human part is added to it. With `--actual`, the user attests the
+# figure themselves.
 
 MIN_RATED = 5
 QUANTILE_KEYS = (("p50", 0.5), ("p80", 0.8), ("p90", 0.9))

@@ -232,7 +232,8 @@ class Estimate(Temp):
         line = next(line for line in text.splitlines() if line.startswith("Human part"))
         self.assertIn("measured from your history, local", line)
         self.assertIn("per human turn", line)
-        self.assertIn("Not included in the total above", line)
+        self.assertIn("No allowance for it is added to the total above", line)
+        self.assertIn("sit inside the session clock", line)
 
 
 class Isolation(Temp):
