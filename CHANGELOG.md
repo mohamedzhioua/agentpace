@@ -4,6 +4,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.11.2 - 2026-11-09
+
+### Changed
+
+- A cell warning now says which level had no recorded run (kind, risk or model), which of the task's levels were therefore not used, where the mean and the residuals came from, and which values are recorded under the parent. For example, a `feature` task marked `high` on `claude-opus-5-5` now reads: `cell feature x high: n=0. No recorded run has kind feature at risk high, so model claude-opus-5-5 was not used. Mean and residuals from feature (n=1353); interval widened by the spread between risk levels. Recorded risk levels under feature: normal (1353).`
+- Thin cells say the mean is shrunk toward broader cells and name the residual pool.
+
+### Added
+
+- A regression fixture, `tests/test_frozen_method.py`, pins the shipped method's numbers on synthetic rows, not only its name. Its values were generated with 0.11.1's code, and it passes on 0.11.1 unchanged.
+
+No published number moved; the warning line in the two README examples changed.
+
 ## 0.11.1 - 2026-11-08
 
 ### Changed
