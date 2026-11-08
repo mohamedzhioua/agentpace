@@ -204,7 +204,7 @@
     <section class="reproduce try" id="try" aria-labelledby="try-title">
       <h2 id="try-title">Try it, with no install</h2>
       <p class="section-note">Needs <a href="https://docs.astral.sh/uv/">uv</a>. The seed data and the example plan ship inside the package.</p>
-      <pre><code>uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --example</code></pre>
+      <pre><code>uvx agentpace estimate --example</code></pre>
       <p class="section-note">It estimates this plan, where each task is one agent run:</p>
       <pre><code id="example-plan">{
   "agent_cap": 3,
@@ -262,7 +262,7 @@
 
     <section class="reproduce" aria-labelledby="reproduce-title">
       <h2 id="reproduce-title">Check it yourself</h2>
-      <pre><code>uv tool install git+https://github.com/mohamedzhioua/agentpace
+      <pre><code>uv tool install agentpace
 agentpace ingest                    # your own runs, stored locally
 agentpace estimate plan.json        # P50, P80 and P90 for a plan, like the one above
 agentpace share --dry-run           # the exact rows you would contribute</code></pre>
