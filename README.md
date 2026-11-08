@@ -113,6 +113,39 @@ Without Node, copy the four folders under [skills/](skills/) into your agent's s
 
 `agentpace` triggers by itself on questions about how long software work will take. The three `/pace-*` skills run when you call them. The [portable prompt](skills/agentpace/assets/portable-prompt.md) gives a rule-of-thumb version of the same answer in assistants without skills.
 
+### Re-answer a quoted timeline
+
+Someone has called a customer-import feature "a 3-month project". The skill splits it into agent tasks, as in [examples/quote-plan.json](examples/quote-plan.json), and passes the quote on exactly as it was given:
+
+```bash
+agentpace estimate examples/quote-plan.json --quoted "3 months"
+```
+
+```text
+<!-- claim:quote_example_output -->
+Total agent time, on the session clock: P50 4.3 h, P80 10.3 h, P90 15.7 h
+Quoted: "3 months" (calendar time, as quoted; unverified, not converted)
+Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
+
+task               P50        P80        P90  critical  cell (n)
+schema          30 min     85 min      2.5 h     100%  feature x normal x claude-opus-5-5 (n=205)
+importer        30 min     86 min      2.6 h      40%  feature x normal x claude-opus-5-5 (n=205)
+api             30 min     87 min      2.5 h      60%  feature x normal x claude-opus-5-5 (n=205)
+settings-ui     31 min     86 min      2.5 h      32%  feature x normal x claude-opus-5-5 (n=205)
+tests           38 min      2.1 h      3.8 h      68%  tests x normal x claude-opus-5-5 (n=2)
+review           3 min      8 min     13 min     100%  review x low x claude-opus-5-5 (n=1255)
+
+Critical path: schema -> importer -> tests -> review (longest in 40% of simulations)
+Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 78% of simulations.
+Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
+
+Warnings:
+  - cell tests x normal x claude-opus-5-5: n=2, effective n=2.0, below 30. Pooled with all and interval widened.
+<!-- /claim -->
+```
+
+The quote is calendar time, as quoted, and nothing has checked it. The range is measured agent time on the session clock. The human part is stated apart, on its own line, and is in neither. The quote is shown beside the range, never converted into agent time or set against it.
+
 ## Commands
 
 | Use | What it does |

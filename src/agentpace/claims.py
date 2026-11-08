@@ -39,16 +39,23 @@ def _kind_table(rows: Sequence[Row]) -> str:
     return "\n" + "\n".join(lines) + "\n"
 
 
-def _example_output(rows: Sequence[Row], plan_path: Path | None) -> str:
+# The timeline the README's quote example re-answers, passed as `--quoted` exactly as given.
+QUOTE_EXAMPLE = "3 months"
+
+
+def _example_output(rows: Sequence[Row], plan_path: Path | None, quoted: str | None = None) -> str:
     """The quickstart's real output, so the README cannot show a result the tool would not give."""
     if plan_path is None or not plan_path.exists():
         return ""
     tasks, cap = est.tasks_from_json(json.loads(plan_path.read_text(encoding="utf-8")))
-    return "\n" + render.plan_text(est.estimate(est.fit(rows), tasks, cap)) + "\n"
+    return "\n" + render.plan_text(est.estimate(est.fit(rows), tasks, cap), quoted) + "\n"
 
 
 def values(
-    rows: Sequence[Row], report: dict[str, Any], plan_path: Path | None = None
+    rows: Sequence[Row],
+    report: dict[str, Any],
+    plan_path: Path | None = None,
+    quote_plan_path: Path | None = None,
 ) -> dict[str, str]:
     data = report["dataset"]
     selection = report["selection"]
@@ -143,6 +150,7 @@ def values(
         "loss_count": str(len(report["losses"])),
         "kind_table": _kind_table(rows),
         "example_output": _example_output(rows, plan_path),
+        "quote_example_output": _example_output(rows, quote_plan_path, QUOTE_EXAMPLE),
     }
 
 

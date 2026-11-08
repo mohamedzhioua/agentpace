@@ -125,6 +125,15 @@ class Skills(unittest.TestCase):
         self.assertNotIn("without agents", description)
         self.assertIn("Re-answer a human quote", text)
 
+    def test_the_skill_passes_a_quote_through_and_relays_the_quoted_line(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        section = text.split("## Re-answer a human quote", 1)[1].split("\n## ", 1)[0]
+        self.assertIn('agentpace estimate plan.json --quoted "3 months"', section)
+        self.assertIn("verbatim", section)
+        self.assertIn("Relay that line as printed", section)
+        self.assertIn("`Quoted:`", section)
+        self.assertIn("never compare it with the range", section)
+
     def test_skills_and_prompt_never_derive_the_human_part(self):
         for path in (
             SKILLS / "agentpace" / "SKILL.md",

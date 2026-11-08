@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import cli, forecasts, paths, pseudonym, schema
+from agentpace import cli, forecasts, paths, pseudonym, render, schema
 from agentpace.adapters import get_adapter
 from agentpace.adapters.base import RawRun
 from agentpace.cache import RunCache
@@ -179,10 +179,42 @@ class RecordCommand(unittest.TestCase):
         self.assertNotIn("quoted_s", record)
         self.assertIn("not parseable, stored as text", err)
 
-    def test_a_quote_needs_a_record(self):
-        code, _, err = self.estimate("--quoted", "3 weeks")
-        self.assertNotEqual(code, 0)
-        self.assertIn("--record", err)
+    def test_a_quote_alone_is_shown_and_writes_no_ledger(self):
+        code, out, err = self.estimate("--quoted", "3 weeks")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
+        lines = out.splitlines()
+        self.assertTrue(lines[0].startswith("Total agent time, on the session clock: P50 "))
+        self.assertEqual(
+            lines[1], 'Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)'
+        )
+        self.assertTrue(lines[2].startswith("Human part"))
+        self.assertFalse(paths.forecasts_file().exists())
+        self.assertEqual(list(self.root.rglob("forecasts.jsonl")), [])
+
+    def test_the_quote_line_is_the_only_text_change(self):
+        _, plain, _ = self.estimate()
+        _, quoted, _ = self.estimate("--quoted", "about 3 weeks")
+        lines = quoted.splitlines()
+        self.assertEqual(lines[1], render.quote_text("about 3 weeks"))
+        self.assertEqual(lines[:1] + lines[2:], plain.splitlines())
+        self.assertNotIn("Quoted:", plain)
+
+    def test_a_quote_leaves_the_json_unchanged(self):
+        _, plain, _ = self.estimate("--json")
+        _, quoted, err = self.estimate("--json", "--quoted", "3 weeks")
+        self.assertEqual(quoted, plain)
+        self.assertEqual(err, "")
+
+    def test_a_recorded_quote_shows_the_line_and_keeps_the_record_line(self):
+        _, out, err = self.estimate("--record", "--quoted", "3 weeks")
+        (record,) = forecasts.read(paths.forecasts_file()).forecasts.values()
+        self.assertIn(render.quote_text("3 weeks"), out.splitlines())
+        self.assertEqual(
+            err,
+            f"recorded forecast {record['id']} in {paths.forecasts_file()}"
+            "; quote stored as calendar time, as quoted\n",
+        )
 
     def test_share_is_unchanged_by_a_ledger(self):
         schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
