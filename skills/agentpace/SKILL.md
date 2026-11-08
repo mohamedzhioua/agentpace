@@ -52,9 +52,15 @@ Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, 
 
 ## Re-answer a human quote
 
-When the conversation already holds a timeline in days, weeks or months, from the user, a document or an earlier answer, estimate the plan anyway. Then show the quote beside the measured range and label it unverified. Never divide or multiply it by a constant to get agent time: the only agent time is the measured range.
+When the conversation already holds a timeline in days, weeks or months, from the user, a document or an earlier answer, estimate the plan anyway, and pass the quote verbatim, in the words it was given:
 
-If the user wants to see later which number held, offer `agentpace estimate plan.json --record --quoted "3 weeks"`. Once the work is done, `agentpace score <id> --session <ref>` compares both with what the agents actually took.
+```text
+agentpace estimate plan.json --quoted "3 months"
+```
+
+The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line.
+
+If the user wants to see later which number held, offer the same command with `--record` added. Once the work is done, `agentpace score <id> --session <ref>` compares both with what the agents actually took.
 
 ## Report the result
 

@@ -1,0 +1,12 @@
+{
+  "agent_cap": 3,
+  "model": "claude-opus-5-5",
+  "tasks": [
+    { "id": "schema", "kind": "feature", "risk": "normal" },
+    { "id": "importer", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
+    { "id": "settings-ui", "kind": "feature", "risk": "normal", "depends_on": ["api"] },
+    { "id": "tests", "kind": "tests", "risk": "normal", "depends_on": ["importer", "api"] },
+    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["tests", "settings-ui"] }
+  ]
+}

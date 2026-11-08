@@ -274,6 +274,19 @@ def _plan_text(args: argparse.Namespace) -> str:
     return plan.read_text(encoding="utf-8")
 
 
+def _experimental_rows_note(rows: Sequence[schema.Row]) -> str | None:
+    """Rows from unverified adapters in the estimate's data. They stay in; the user is told."""
+    harnesses = [row["harness"] for row in rows if row["harness"] in EXPERIMENTAL]
+    if not harnesses:
+        return None
+    names = ", ".join(sorted(set(harnesses)))
+    return (
+        f"note: {len(harnesses)} of {len(rows)} rows come from experimental adapters ({names}); "
+        "they take part in this estimate because they are in your local store. "
+        "Pass --data to choose the rows."
+    )
+
+
 def cmd_estimate(args: argparse.Namespace) -> int:
     text = _plan_text(args)
     try:
@@ -281,14 +294,17 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     except json.JSONDecodeError:
         raise ValueError("the plan is not valid JSON") from None
     tasks, cap = estimate.tasks_from_json(document)
-    if args.quoted is not None and not args.record:
-        raise ValueError("--quoted is stored with a recorded forecast; add --record")
-    model = estimate.fit(_dataset(args.data), args.method, args.use_size)
+    rows = _dataset(args.data)
+    # Only the default pool takes in rows unasked; rows passed with --data were chosen.
+    experimental = None if args.data else _experimental_rows_note(rows)
+    if experimental:
+        print(experimental, file=sys.stderr)
+    model = estimate.fit(rows, args.method, args.use_size)
     if args.turns and not Path(args.turns).exists():
         raise ValueError("the turns file does not exist")
     human = _human_part(Path(args.turns) if args.turns else paths.turns_file())
     plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
-    print(render.plan_json(plan) if args.json else render.plan_text(plan))
+    print(render.plan_json(plan) if args.json else render.plan_text(plan, args.quoted))
     if args.record:
         record = forecasts.forecast_record(
             issued_at=forecasts.utc_now(),
@@ -535,7 +551,9 @@ def cmd_claims(args: argparse.Namespace) -> int:
         raise ValueError("run `agentpace backtest` first: claims come from its report")
     rows = _dataset(args.data or [str(paths.seed_dir())])
     report_data = json.loads(stored.read_text(encoding="utf-8"))
-    known = claims.values(rows, report_data, Path("examples/plan.json"))
+    known = claims.values(
+        rows, report_data, Path("examples/plan.json"), Path("examples/quote-plan.json")
+    )
     stale = []
     for name in args.files:
         path = Path(name)
@@ -629,7 +647,8 @@ def build_parser() -> argparse.ArgumentParser:
     estimate_cmd.add_argument(
         "--quoted",
         metavar="TEXT",
-        help='a timeline someone already gave, such as "3 weeks", stored with the forecast',
+        help='a timeline someone already gave, such as "3 weeks": shown beside the range as '
+        "quoted, and stored with the forecast when --record is given",
     )
     estimate_cmd.set_defaults(handler=cmd_estimate)
 

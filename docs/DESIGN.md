@@ -476,6 +476,7 @@ Fable 5.1 ruled on 2026-11-08, with an independent opinion from Codex (gpt-6-ast
 - **Contributors validate `data/runs`.** The `validate` default stays the bundled seed, and every contributor instruction passes `data/runs`. A default that depends on the working directory was rejected as a second trap.
 - **PyPI stays manual.** A runbook, a corrected workflow comment and absolute README image links. No install line changes until a clean install of a real upload passes.
 - **A quote is shown, never converted.** `--quoted` no longer needs `--record`. The quote appears verbatim on its own stdout line, marked as calendar time, as quoted and unverified, with no ratio. `--json` output is unchanged.
+- **One model across the README's examples.** `examples/quote-plan.json` names `claude-opus-5-5` because `examples/plan.json` and the skill's template already do, and a test keeps them equal. A model chosen after seeing the numbers was rejected as the reason; so was a model-free plan, which would put two README blocks drawing from different cells side by side with nothing to explain why. The cell column shows the model and its n, and the numbers change with the model.
 - **Out:** a browser estimator, leaderboard views, method reselection or a drift sentence, `--since` and `--weeks`, `score` matching the last session by itself, a second plan format, `doctor`, shell completion, `llms.txt`, Discussions, new adapters, lifting an experimental label without real sessions, and path-filtered CI that would make data pull requests look green.
 
 ## 12. Sources

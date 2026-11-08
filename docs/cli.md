@@ -117,15 +117,23 @@ Simulates a plan of tasks and prints P50, P80 and P90 of the total agent time, p
 | `--json` | off | Print the result as JSON instead of text. |
 | `--turns FILE` | `~/.agentpace/turns.jsonl` | Waits measured by `agentpace turns`, for the human part line. The file must exist when given. |
 | `--record` | off | Keep this forecast in `~/.agentpace/forecasts.jsonl`, to score later. |
-| `--quoted TEXT` | none | A timeline someone already gave, such as `"3 weeks"`, stored with the recorded forecast. It needs `--record`. |
+| `--quoted TEXT` | none | A timeline someone already gave, such as `"3 weeks"`. Shown beside the range as quoted, and stored with the forecast when `--record` is given. |
 
 stdout: the result, as text or JSON. stderr, with `--record`: `recorded forecast <id> in <path>`, and with `--quoted`, whether the quote was parsed as calendar time or stored as text.
+
+**Experimental rows.** Without `--data`, the estimate pools the seed data with your local store, so rows you ingested from an experimental adapter (`gemini-cli`, `opencode`, `cline`) take part in it. When any do, one line on stderr says so: `note: N of M rows come from experimental adapters (<names>); they take part in this estimate because they are in your local store. Pass --data to choose the rows.` stdout, the JSON and any recorded forecast are the same with or without it. The seed data holds no experimental rows.
 
 The text form starts with the total and the human part:
 
 ```text
 Total agent time, on the session clock: P50 …, P80 …, P90 …
 Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
+```
+
+With `--quoted`, one line sits between them. It holds the quote verbatim and is never converted into agent time or compared with the range:
+
+```text
+Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)
 ```
 
 Then a table of tasks with their P50, P80, P90, how often each was on the critical path and the data cell it drew from, then the critical path, the effective parallelism, the method and the number of runs used, and any warnings. Durations print to two significant figures: seconds under 90 s, minutes under 90 min, hours under 48 h, days beyond.
@@ -293,7 +301,7 @@ Refreshes the data and the sentences inside the static page from the rows and `b
 agentpace claims [FILE]... [--data PATH]... [--report FILE] [--check]
 ```
 
-Rewrites every number between claim markers (`<!-- claim:name -->...<!-- /claim -->`) from the data and the backtest report. Run it from the repository root, because it estimates `examples/plan.json` for the README's example output.
+Rewrites every number between claim markers (`<!-- claim:name -->...<!-- /claim -->`) from the data and the backtest report. Run it from the repository root, because it estimates `examples/plan.json` for the README's example output and `examples/quote-plan.json`, with `--quoted "3 months"`, for its quoted-timeline example.
 
 | Option | Default | Meaning |
 |---|---|---|

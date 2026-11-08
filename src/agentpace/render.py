@@ -39,12 +39,19 @@ def duration(seconds: float) -> str:
     return f"{hours:.1f} h" if hours < 48 else f"{hours / 24:.1f} days"
 
 
-def plan_text(plan: PlanRange) -> str:
+def quote_text(quoted: str) -> str:
+    """A timeline someone already gave, verbatim. It is calendar time from an unknown source, so
+    it is never converted into agent time, compared with the range or turned into a ratio."""
+    return f'Quoted: "{quoted}" (calendar time, as quoted; unverified, not converted)'
+
+
+def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
     lines = [
         f"Total agent time, on the session clock: P50 {duration(plan.p50)}, "
         f"P80 {duration(plan.p80)}, "
         f"P90 {duration(plan.p90)}",
+        *([quote_text(quoted)] if quoted is not None else []),
         human_text(plan.human),
         "",
         f"{'task':<{width}}  {'P50':>9}  {'P80':>9}  {'P90':>9}  {'critical':>8}  cell (n)",

@@ -229,6 +229,28 @@ class Durations(unittest.TestCase):
                     )
                     self.assertNotRegex(text, r"(?i)wall[ -]?clock")
 
+    def test_a_quote_is_shown_verbatim_and_never_converted(self):
+        for quoted in ("3 months", "about 3 weeks", "2-3 sprints", ""):
+            with self.subTest(quoted=quoted):
+                line = render.quote_text(quoted)
+                self.assertTrue(line.startswith(f'Quoted: "{quoted}" ('))
+                for phrase in ("calendar time", "as quoted", "unverified"):
+                    self.assertIn(phrase, line)
+                outside = line.replace(f'"{quoted}"', "", 1)
+                self.assertNotRegex(outside, r"\d")
+                self.assertNotRegex(outside, r"(?i)\bratio\b|\d\s*x\b|faster")
+
+    def test_the_quote_sits_between_the_total_and_the_human_part(self):
+        task = TaskRange("a", 1, 2, 3, "docs", 0, 0.0, 1.0)
+        plan = PlanRange(
+            1, 2, 3, (task,), ("a",), 1.0, 2, None, 0, 0.0, "shrunk", False, 10, 0, 500, 1, ()
+        )
+        plain = render.plan_text(plan).splitlines()
+        quoted = render.plan_text(plan, "3 months").splitlines()
+        self.assertEqual(quoted[1], render.quote_text("3 months"))
+        self.assertEqual(quoted[:1] + quoted[2:], plain)
+        self.assertTrue(quoted[2].startswith("Human part"))
+
 
 class CommandText(unittest.TestCase):
     def test_validate_help_names_the_seed_default_and_data_runs(self):
@@ -321,6 +343,38 @@ class ExperimentalNote(unittest.TestCase):
         self.assertIn("3 rows come from experimental adapters (cline, gemini-cli, opencode).", err)
         for harness in ("gemini-cli", "opencode", "cline"):
             self.assertIn(f'"{harness}"', out)
+
+    def estimate(self, *extra):
+        plan = self.root / "plan.json"
+        plan.write_text(json.dumps({"tasks": [{"id": "a", "kind": "docs"}]}), encoding="utf-8")
+        return self.run_cli("estimate", str(plan), "--draws", "200", "--json", *extra)
+
+    def test_an_estimate_counts_experimental_store_rows_on_stderr_only(self):
+        rows = [
+            row(harness=harness, week="2026-W45", offset_s=index)
+            for index, harness in enumerate(("opencode", "gemini-cli", "claude-code", "opencode"))
+        ]
+        schema.write_rows(paths.local_runs(), rows)
+        total = len(schema.read_dataset([paths.seed_dir(), paths.local_runs()]))
+        code, out, err = self.estimate()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(
+            err,
+            f"note: 3 of {total} rows come from experimental adapters (gemini-cli, opencode); "
+            "they take part in this estimate because they are in your local store. "
+            "Pass --data to choose the rows.\n",
+        )
+        self.assertNotIn("experimental", out)
+        self.assertEqual(set(json.loads(out)), set(PlanRange.__dataclass_fields__))
+
+    def test_no_note_without_experimental_rows_or_with_chosen_data(self):
+        schema.write_rows(paths.local_runs(), [row(harness="claude-code", week="2026-W45")])
+        self.assertEqual(self.estimate()[2], "")
+        schema.write_rows(paths.local_runs(), [row(harness="gemini-cli", week="2026-W45")])
+        data = ("--data", str(paths.local_runs()), "--data", str(paths.seed_dir()))
+        code, _, err = self.estimate(*data)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, "")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from agentpace import claims, cli, paths, schema
+from agentpace.adapters import EXPERIMENTAL
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -44,6 +45,7 @@ class Published(unittest.TestCase):
             schema.read_dataset([paths.seed_dir()]),
             json.loads((REPO / "docs" / "backtest.json").read_text(encoding="utf-8")),
             REPO / "examples" / "plan.json",
+            REPO / "examples" / "quote-plan.json",
         )
 
     def test_documents_match_the_data(self):
@@ -80,6 +82,52 @@ class Published(unittest.TestCase):
                 continue
             with self.subTest(claim=name):
                 self.assertNotIn(value, unmarked)
+
+
+class QuoteExample(unittest.TestCase):
+    """The README re-answers a quoted timeline with the tool's real output, never a ratio."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.readme = (REPO / "README.md").read_text(encoding="utf-8")
+        start = cls.readme.index("### Re-answer a quoted timeline")
+        cls.section = cls.readme[start : cls.readme.index("\n## ", start)]
+
+    def test_the_block_is_claim_marked_and_quotes_the_example(self):
+        self.assertIn("<!-- claim:quote_example_output -->", self.section)
+        self.assertIn(f'--quoted "{claims.QUOTE_EXAMPLE}"', self.section.replace("\n", " "))
+        self.assertIn("(examples/quote-plan.json)", self.section)
+        block = claims._MARKER.search(self.section).group(2).splitlines()
+        self.assertTrue(block[1].startswith("Total agent time, on the session clock: "))
+        self.assertEqual(
+            block[2],
+            f'Quoted: "{claims.QUOTE_EXAMPLE}" (calendar time, as quoted; unverified, not '
+            "converted)",
+        )
+
+    def test_the_prose_never_compares_the_two(self):
+        prose = claims._MARKER.sub("", self.section)
+        self.assertNotRegex(prose, r"(?i)faster|slower|ratio|\d\s*x\b|times (as|faster)")
+        for phrase in ("calendar time, as quoted", "measured agent time", "human part"):
+            self.assertIn(phrase, prose)
+
+    def test_the_quote_plan_has_about_six_tasks_and_is_not_bundled(self):
+        plan = json.loads((REPO / "examples" / "quote-plan.json").read_text(encoding="utf-8"))
+        self.assertTrue(5 <= len(plan["tasks"]) <= 7)
+        self.assertTrue(any(task.get("depends_on") for task in plan["tasks"]))
+        pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertNotIn("quote-plan.json", pyproject)
+
+    def test_the_quote_plan_uses_the_quickstart_model(self):
+        """The README's examples share the quickstart's model, so none is picked for effect."""
+        quickstart = json.loads((REPO / "examples" / "plan.json").read_text(encoding="utf-8"))
+        plan = json.loads((REPO / "examples" / "quote-plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(plan["model"], quickstart["model"])
+        self.assertFalse(any("model" in task for task in plan["tasks"]))
+
+    def test_the_seed_has_no_experimental_rows(self):
+        rows = schema.read_dataset([paths.seed_dir()])
+        self.assertFalse([row for row in rows if row["harness"] in EXPERIMENTAL])
 
 
 class Command(unittest.TestCase):

@@ -4,6 +4,22 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-08
+
+### Added
+
+- `agentpace estimate --quoted TEXT` shows a timeline someone already gave on its own line, directly under the total: `Quoted: "3 months" (calendar time, as quoted; unverified, not converted)`. The quote is printed verbatim. It is never converted into agent time, compared with the range or turned into a ratio. `--json` output is unchanged.
+- `estimate` says on stderr when rows from experimental adapters (Gemini CLI, OpenCode, Cline) in your local store take part in an estimate: `note: N of M rows come from experimental adapters (...); they take part in this estimate because they are in your local store. Pass --data to choose the rows.` It says nothing when `--data` chooses the rows. Nothing else in the output or a recorded forecast changes. The seed data holds no experimental rows.
+- A worked example in the README Skills section, "Re-answer a quoted timeline", estimates `examples/quote-plan.json` (six agent tasks) with `--quoted "3 months"`. Its output sits between claim markers, so `agentpace claims --check` fails if it drifts from the data.
+
+### Changed
+
+- `--quoted` no longer needs `--record`. With `--record` the quote is still stored with the forecast as before, and the stderr record line is unchanged.
+- The `agentpace` skill passes a quoted timeline to the CLI verbatim with `--quoted` and relays the `Quoted:` line as printed, beside the range. Its description is unchanged.
+- `docs/cli.md` documents the `Quoted:` line, the new `--quoted` behaviour and the experimental-rows note.
+
+No published number moved.
+
 ## 0.8.4 - 2026-11-08
 
 ### Added

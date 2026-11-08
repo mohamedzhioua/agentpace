@@ -142,7 +142,7 @@ PyPI renders the README as the project description. The three images use absolut
 The README's other relative links do not resolve on PyPI, because PyPI has no repository to resolve them against. That is accepted: the page links the repository, and these targets are one click away there. As of v0.8.4 they are:
 
 - `LICENSE` (lines 9 and 260) and `data/LICENSE` (lines 10 and 260)
-- `examples/plan.json` (line 41)
+- `examples/plan.json` (line 41) and `examples/quote-plan.json` (line 118; added in v0.9.0, which moved every README line below it down by 33)
 - `docs/verify-adapter.md` (lines 84 to 86 and 243)
 - `skills/` and `skills/agentpace/assets/portable-prompt.md` (line 103), the portable prompt again (line 114)
 - `skills/agentpace/SKILL.md`, `skills/pace-estimate/SKILL.md`, `skills/pace-log/SKILL.md`, `skills/pace-share/SKILL.md` (lines 109 to 112), and `skills/pace-log/SKILL.md` again (line 137)
