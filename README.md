@@ -115,7 +115,7 @@ Without Node, copy the four folders under [skills/](skills/) into your agent's s
 
 ### Re-answer a quoted timeline
 
-Someone has called a customer-import feature "a 3-month project". The skill splits it into agent tasks, as in [examples/quote-plan.json](examples/quote-plan.json), and passes the quote on exactly as it was given:
+Suppose someone has called a customer-import feature "a 3-month project". The skill splits it into agent tasks, as in [examples/quote-plan.json](examples/quote-plan.json), and passes the quote on exactly as it was given:
 
 ```bash
 agentpace estimate examples/quote-plan.json --quoted "3 months"

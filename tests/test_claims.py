@@ -118,6 +118,13 @@ class QuoteExample(unittest.TestCase):
         pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
         self.assertNotIn("quote-plan.json", pyproject)
 
+    def test_the_quote_plan_uses_the_quickstart_model(self):
+        """The README's examples share the quickstart's model, so none is picked for effect."""
+        quickstart = json.loads((REPO / "examples" / "plan.json").read_text(encoding="utf-8"))
+        plan = json.loads((REPO / "examples" / "quote-plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(plan["model"], quickstart["model"])
+        self.assertFalse(any("model" in task for task in plan["tasks"]))
+
     def test_the_seed_has_no_experimental_rows(self):
         rows = schema.read_dataset([paths.seed_dir()])
         self.assertFalse([row for row in rows if row["harness"] in EXPERIMENTAL])
