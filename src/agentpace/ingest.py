@@ -29,11 +29,20 @@ _FAMILIES = (
     re.compile(r"gemini-\d(?:\.\d)?-[a-z]+(?:-lite)?"),
     re.compile(r"(?<![a-z0-9])o\d(?:-[a-z]+)?(?![a-z0-9])"),
 )
+# Some providers, such as OpenRouter or Copilot, write a dotted Claude version,
+# `claude-sonnet-4.5`, which the families above would cut to `claude-sonnet-4`. Rewrite only
+# that shape to the dashed family, for every harness.
+_DOTTED_CLAUDE = re.compile(r"(claude-(?:opus|sonnet|haiku|fable)-\d+)\.(\d{1,2})(?!\d)")
+_DOTTED_CLAUDE_OLD = re.compile(r"(claude-\d)\.(\d)-")
+
+
+def _canonical_model(model: str) -> str:
+    return _DOTTED_CLAUDE_OLD.sub(r"\1-\2-", _DOTTED_CLAUDE.sub(r"\1-\2", model))
 
 
 def normalize_model(raw: str) -> str:
     """Keep a public model family. ARNs and proxy names can leak account or customer names."""
-    lowered = raw.lower()
+    lowered = _canonical_model(raw.lower())
     for family in _FAMILIES:
         match = family.search(lowered)
         if match:

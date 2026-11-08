@@ -233,7 +233,15 @@ class NoNetwork(unittest.TestCase):
     def test_no_module_uses_dynamic_imports(self):
         for file in SOURCE.rglob("*.py"):
             text = file.read_text(encoding="utf-8")
-            for marker in ("__import__", "importlib", "os.system", "os.popen", "exec("):
+            markers = (
+                "__import__",
+                "importlib",
+                "os.system",
+                "os.popen",
+                "exec(",
+                "load_extension",
+            )
+            for marker in markers:
                 self.assertNotIn(marker, text, file.name)
 
 

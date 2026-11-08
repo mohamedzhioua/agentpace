@@ -8,10 +8,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 - A draft Gemini CLI adapter (#29): `agentpace ingest --source gemini-cli` reads `~/.gemini/tmp/<project>/chats`, one agent turn per run and one session file per batch. It was built from the Gemini CLI source at `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7` and is not yet verified on real sessions, so it stays a draft until real history is reconciled with it. DESIGN section 3 has the run definition and what is copied.
 - `gemini-cli` joins the `harness` enum in the run schema. Additive: no existing row changes.
+- A draft OpenCode adapter, `--source opencode`. It reads OpenCode's SQLite history read-only, and one user message with the agent's replies to it is one run. It was built from the OpenCode source at `anomalyco/opencode@810c0eba1a7348036f8bdf61e6632d0c36c6876c` (tag `v1.19.5`) and is not yet verified on real sessions. `opencode` joins the `harness` enum. No published number moved, and no row comes from it.
 
 ### Changed
 
 - Gemini Flash Lite models keep their own family (`gemini-3.1-flash-lite`) instead of folding into Flash.
+- Dotted Claude model ids, such as `claude-sonnet-4.5` or `anthropic/claude-sonnet-4.5`, normalize to the dashed family `claude-sonnet-4-5` for every harness, instead of being cut to `claude-sonnet-4`. No published row has a dotted id, so no published number moved.
 
 ## 0.7.2 - 2026-11-08
 
