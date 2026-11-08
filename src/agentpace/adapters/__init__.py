@@ -6,11 +6,13 @@ from agentpace.adapters.base import Adapter
 from agentpace.adapters.claude_code import ClaudeCodeAdapter
 from agentpace.adapters.codex import CodexAdapter
 from agentpace.adapters.gemini_cli import GeminiCliAdapter
+from agentpace.adapters.opencode import OpenCodeAdapter
 
 ADAPTERS: dict[str, Adapter] = {
     ClaudeCodeAdapter.name: ClaudeCodeAdapter(),
     CodexAdapter.name: CodexAdapter(),
     GeminiCliAdapter.name: GeminiCliAdapter(),
+    OpenCodeAdapter.name: OpenCodeAdapter(),
 }
 
 

@@ -210,6 +210,7 @@ class ModelNames(unittest.TestCase):
             "claude-opus-5-5-20261001": "claude-opus-5-5",
             "claude-opus-5-5[1m]": "claude-opus-5-5",
             "claude-3-5-sonnet-20241022": "claude-3-5-sonnet",
+            "claude-sonnet-4.5": "claude-sonnet-4-5",
             "gpt-6-luna": "gpt-6-luna",
             "gemini-2.5-pro": "gemini-2.5-pro",
         }
