@@ -2,7 +2,7 @@
 
 **Stop estimating agent work in human weeks. agentpace measures how long coding agents actually take: a P50/P80/P90 range from real runs, with the human part stated apart, never derived.**
 
-![A speech bubble, dashed and fading, holds a wall calendar shedding blank pages. Beside it a solid stopwatch, its hand a terminal cursor, is measured by two small cursor robots with a tape measure.](docs/assets/hero.webp)
+![A speech bubble, dashed and fading, holds a wall calendar shedding blank pages. Beside it a solid stopwatch, its hand a terminal cursor, is measured by two small cursor robots with a tape measure.](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/hero.webp)
 
 [![CI](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamedzhioua/agentpace/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -70,7 +70,7 @@ Then ask your agent: "How long will the billing feature take?" The skill calls t
 
 Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 ranges of agent time and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
-![How long agent runs took, by task kind](docs/assets/run-ranges.svg)
+![How long agent runs took, by task kind](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/run-ranges.svg)
 
 These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Claude Code subagent runs and Codex turns. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->20 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
 
@@ -172,7 +172,7 @@ The human-time guess is a hand-written table, an assumption rather than a measur
 
 **Calibration is not stable from week to week.** That P80 coverage pools <!-- claim:weeks_tested -->4<!-- /claim --> test weeks, and the pooled figure hides misses in both directions. Week by week it ran from <!-- claim:weekly_p80 -->66% to 86%<!-- /claim --> with each session counting equally, and from <!-- claim:weekly_p80_row -->60% to 94%<!-- /claim --> with each run counting equally. In the latest week, <!-- claim:latest_week -->2026-W45<!-- /claim -->, it was <!-- claim:latest_week_p80 -->66%<!-- /claim --> per session and <!-- claim:latest_week_p80_row -->60%<!-- /claim --> per run, from only <!-- claim:latest_week_sessions -->8<!-- /claim --> sessions. Read the pooled P80 as an average over weeks, not a promise for any one week. The [week-by-week table](docs/backtest.md#time-split-week-by-week) has every fold.
 
-![P80 coverage by method](docs/assets/backtest-coverage.svg)
+![P80 coverage by method](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/backtest-coverage.svg)
 
 </details>
 

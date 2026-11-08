@@ -1,8 +1,8 @@
 name: Publish
 
 # Manual until the PyPI pending publisher exists, so a release cannot produce a failed run.
-# Once it does: dispatch this on the v0.1.0 tag, confirm it passes, then restore
-# `release: types: [published]`.
+# Once it does: dispatch this on the latest tested tag, `gh workflow run publish.yml --ref vX.Y.Z`,
+# confirm it passes, then restore `release: types: [published]`. docs/releasing.md has the steps.
 on:
   workflow_dispatch:
 
