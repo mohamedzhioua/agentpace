@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import errno
 import json
 import os
@@ -287,7 +288,17 @@ def _experimental_rows_note(rows: Sequence[schema.Row]) -> str | None:
     )
 
 
+def _stated_figure(text: str) -> str:
+    """A review capacity the user states, kept verbatim: one short line, never parsed for a
+    number or a unit, and never used to compute anything."""
+    stated = text.strip()
+    if not stated or len(stated.splitlines()) > 1 or len(stated) > 80:
+        raise ValueError('--review-capacity needs one short line, such as "4 PRs a day"')
+    return stated
+
+
 def cmd_estimate(args: argparse.Namespace) -> int:
+    capacity = None if args.review_capacity is None else _stated_figure(args.review_capacity)
     text = _plan_text(args)
     try:
         document = json.loads(text)
@@ -303,6 +314,8 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     if args.turns and not Path(args.turns).exists():
         raise ValueError("the turns file does not exist")
     human = _human_part(Path(args.turns) if args.turns else paths.turns_file())
+    if capacity is not None:
+        human = dataclasses.replace(human, review_capacity_stated=capacity)
     plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
     print(render.plan_json(plan) if args.json else render.plan_text(plan, args.quoted))
     if args.record:
@@ -662,6 +675,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="TEXT",
         help='a timeline someone already gave, such as "3 weeks": shown beside the range as '
         "quoted, and stored with the forecast when --record is given",
+    )
+    estimate_cmd.add_argument(
+        "--review-capacity",
+        metavar="TEXT",
+        help='your own review capacity, such as "4 PRs a day": shown on its own line as stated by '
+        "you, never applied to the range, and stored with the forecast when --record is given",
     )
     estimate_cmd.set_defaults(handler=cmd_estimate)
 

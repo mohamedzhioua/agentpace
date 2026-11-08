@@ -489,7 +489,9 @@ class HumanPart:
     """Review, testing, decisions and waiting between agent turns. Never derived from agent time:
     until it is measured, it is reported as not measured. No allowance for it is added to the
     total; `included_in_total` stays False for that reason, and waits shorter than the idle cap sit
-    inside the session clock regardless."""
+    inside the session clock regardless. A review capacity the user states with `--review-capacity`
+    is carried verbatim as theirs: nothing is parsed or computed from it, and it never touches the
+    range."""
 
     status: str = "not measured"
     included_in_total: bool = False
@@ -500,6 +502,8 @@ class HumanPart:
     per_turn_p90: float | None = None
     gaps: int | None = None
     sessions: int | None = None
+    # The user's own figure, verbatim, set only by `estimate --review-capacity`; never by `score`.
+    review_capacity_stated: str | None = None
 
 
 @dataclass(frozen=True)
