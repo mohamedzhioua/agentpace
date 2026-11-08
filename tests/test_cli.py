@@ -7,9 +7,20 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import cli, ingest, paths, render, schema
+from agentpace import cli, forecasts, ingest, paths, render, schema
 from agentpace.estimate import HumanPart, PlanRange, TaskRange
 from tests.synthetic import dataset, row
+from tests.test_skills import BANNED_PHRASES
+
+MEASURED = HumanPart(
+    status="measured",
+    source="your history, local",
+    per_turn_p50=60.0,
+    per_turn_p80=120.0,
+    per_turn_p90=180.0,
+    gaps=4,
+    sessions=2,
+)
 
 
 class EstimateCommand(unittest.TestCase):
@@ -84,7 +95,7 @@ class EstimateCommand(unittest.TestCase):
         )
         line = next(line for line in out.splitlines() if line.startswith("Human part"))
         self.assertIn("review, testing, decisions, waiting between agent turns", line)
-        self.assertIn("not measured. Not included in the total above.", line)
+        self.assertIn("not measured. No allowance for it is added to the total above.", line)
         self.assertIn("do not derive it from the agent time", line)
         self.assertNotRegex(line, r"\d")
 
@@ -153,13 +164,13 @@ class EstimateCommand(unittest.TestCase):
         _, with_null, _ = self.run_cli("estimate", "-", *common, stdin=json.dumps(nulled))
         self.assertEqual(with_null, without)
 
-    def test_the_first_line_names_agent_time_on_the_session_clock(self):
+    def test_the_first_line_names_the_plan_total_on_the_session_clock(self):
         _, out, _ = self.run_cli(
             "estimate", str(self.plan), "--data", str(self.data), "--draws", "500"
         )
         self.assertRegex(
             out.splitlines()[0],
-            r"^Total agent time, on the session clock: P50 [^,]+, P80 [^,]+, P90 [^,]+$",
+            r"^Plan total on the session clock: P50 [^,]+, P80 [^,]+, P90 [^,]+$",
         )
         self.assertNotIn("wall clock", out.lower())
 
@@ -223,8 +234,7 @@ class Durations(unittest.TestCase):
                     text = render.plan_text(plan)
                     self.assertTrue(
                         text.startswith(
-                            "Total agent time, on the session clock: P50 10 min, P80 20 min, "
-                            "P90 30 min\n"
+                            "Plan total on the session clock: P50 10 min, P80 20 min, P90 30 min\n"
                         )
                     )
                     self.assertNotRegex(text, r"(?i)wall[ -]?clock")
@@ -249,7 +259,106 @@ class Durations(unittest.TestCase):
         quoted = render.plan_text(plan, "3 months").splitlines()
         self.assertEqual(quoted[1], render.quote_text("3 months"))
         self.assertEqual(quoted[:1] + quoted[2:], plain)
-        self.assertTrue(quoted[2].startswith("Human part"))
+        self.assertEqual(quoted[2], render.CLOCK_NOTE)
+        self.assertTrue(quoted[3].startswith("Human part"))
+
+
+class ClockWording(unittest.TestCase):
+    def plan(self, human=None):
+        task = TaskRange("a", 1, 2, 3, "docs", 0, 0.0, 1.0)
+        return PlanRange(
+            p50=600,
+            p80=1200,
+            p90=1800,
+            tasks=(task,),
+            critical_path=("a",),
+            critical_path_share=1.0,
+            agent_cap=2,
+            effective_parallelism=None,
+            parallelism_sessions=0,
+            throughput_bound_share=0.0,
+            method="shrunk",
+            size_used=False,
+            rows_used=10,
+            rows_excluded=0,
+            draws=500,
+            seed=1,
+            warnings=(),
+            human=human or HumanPart(),
+        )
+
+    def test_the_clock_note_is_printed_once_directly_above_the_human_line(self):
+        for human in (HumanPart(), MEASURED):
+            for quoted in (None, "3 months"):
+                with self.subTest(human=human.status, quoted=quoted):
+                    lines = render.plan_text(self.plan(human), quoted).splitlines()
+                    self.assertEqual(lines.count(render.CLOCK_NOTE), 1)
+                    note = lines.index(render.CLOCK_NOTE)
+                    self.assertEqual(note, 1 if quoted is None else 2)
+                    self.assertEqual(lines[note + 1], render.human_text(human))
+                    if quoted is not None:
+                        self.assertEqual(lines[1], render.quote_text(quoted))
+
+    def test_the_clock_note_names_the_gaps_and_the_cap(self):
+        self.assertEqual(
+            render.CLOCK_NOTE,
+            "The session clock counts agent runs and the gaps between them, each gap up to the "
+            "idle cap (900 s by default), so waiting on you between runs sits inside the total up "
+            "to that cap.",
+        )
+
+    def test_the_unmeasured_human_line_adds_no_allowance(self):
+        self.assertEqual(
+            render.human_text(HumanPart()),
+            "Human part (review, testing, decisions, waiting between agent turns): not measured. "
+            "No allowance for it is added to the total above. State it separately; do not derive "
+            "it from the agent time.",
+        )
+
+    def test_the_measured_human_line_says_short_waits_sit_inside_the_clock(self):
+        self.assertEqual(
+            render.human_text(MEASURED),
+            "Human part (review, testing, decisions, waiting between agent turns): measured from "
+            "your history, local. Waiting on you per human turn: P50 60 s, P80 2 min, P90 3 min "
+            "(4 gaps, 2 sessions); elapsed time, not effort. No allowance for it is added to the "
+            "total above, and up to the idle cap such waits already sit inside the session clock, "
+            "so do not add them to it. Do not derive it from the agent time.",
+        )
+
+    def test_the_ledger_summary_names_session_spans(self):
+        summary = forecasts.Summary(0, 0, None, None, 0, None, None)
+        last = render.ledger_summary_text(summary).splitlines()[-1]
+        self.assertEqual(
+            last,
+            "Actuals are session spans on their own clock (agent runs plus the gaps between them, "
+            "each gap up to the idle cap), or figures you attested, as given.",
+        )
+
+    def test_no_output_carries_a_banned_phrase(self):
+        summary = forecasts.Summary(5, 1, {"p50": 0.4, "p80": 0.8, "p90": 1.0}, 60.0, 0, None, None)
+        texts = [render.ledger_summary_text(summary)]
+        for human in (HumanPart(), MEASURED):
+            for quoted in (None, "3 months"):
+                texts.append(render.plan_text(self.plan(human), quoted))
+        for text in texts:
+            for phrase in BANNED_PHRASES:
+                with self.subTest(phrase=phrase):
+                    self.assertNotIn(phrase.lower(), text.lower())
+
+    def test_the_example_output_carries_no_banned_phrase(self):
+        out = io.StringIO()
+        with (
+            tempfile.TemporaryDirectory() as home,
+            mock.patch.dict(os.environ, {"AGENTPACE_HOME": home}),
+            contextlib.redirect_stdout(out),
+        ):
+            self.assertEqual(cli.main(["estimate", "--example", "--draws", "200"]), 0)
+        lines = out.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith("Plan total on the session clock: P50 "))
+        self.assertEqual(lines[1], render.CLOCK_NOTE)
+        self.assertTrue(lines[2].startswith("Human part"))
+        for phrase in BANNED_PHRASES:
+            self.assertNotIn(phrase.lower(), out.getvalue().lower())
 
 
 class CommandText(unittest.TestCase):

@@ -9,21 +9,29 @@ from typing import Any
 from agentpace.estimate import HumanPart, PlanRange
 
 HUMAN_PART = "Human part (review, testing, decisions, waiting between agent turns)"
+CLOCK_NOTE = (
+    "The session clock counts agent runs and the gaps between them, each gap up to the idle cap "
+    "(900 s by default), so waiting on you between runs sits inside the total up to that cap."
+)
 
 
 def human_text(human: HumanPart) -> str:
     """The human block. It names the quantity and its status, and never offers a number derived
-    from agent time. A measured form quotes only the user's own waits, per human turn."""
-    status = human.status
+    from agent time. A measured form quotes only the user's own waits, per human turn. No
+    allowance for the human part is added to the total, but waits up to the idle cap already sit
+    inside the session clock, so the measured form says not to add them."""
     p50, p80, p90 = human.per_turn_p50, human.per_turn_p80, human.per_turn_p90
     if p50 is not None and p80 is not None and p90 is not None:
-        status = (
-            f"{human.status} from {human.source}. Waiting on you per human turn: "
+        return (
+            f"{HUMAN_PART}: {human.status} from {human.source}. Waiting on you per human turn: "
             f"P50 {duration(p50)}, P80 {duration(p80)}, P90 {duration(p90)} "
-            f"({human.gaps} gaps, {human.sessions} sessions); elapsed time, not effort"
+            f"({human.gaps} gaps, {human.sessions} sessions); elapsed time, not effort. "
+            "No allowance for it is added to the total above, and up to the idle cap such waits "
+            "already sit inside the session clock, so do not add them to it. "
+            "Do not derive it from the agent time."
         )
     return (
-        f"{HUMAN_PART}: {status}. Not included in the total above. "
+        f"{HUMAN_PART}: {human.status}. No allowance for it is added to the total above. "
         "State it separately; do not derive it from the agent time."
     )
 
@@ -48,10 +56,11 @@ def quote_text(quoted: str) -> str:
 def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
     lines = [
-        f"Total agent time, on the session clock: P50 {duration(plan.p50)}, "
+        f"Plan total on the session clock: P50 {duration(plan.p50)}, "
         f"P80 {duration(plan.p80)}, "
         f"P90 {duration(plan.p90)}",
         *([quote_text(quoted)] if quoted is not None else []),
+        CLOCK_NOTE,
         human_text(plan.human),
         "",
         f"{'task':<{width}}  {'P50':>9}  {'P80':>9}  {'P90':>9}  {'critical':>8}  cell (n)",
@@ -137,7 +146,7 @@ def ledger_summary_text(summary: Any) -> str:
                 "actual."
             )
     lines.append(
-        "Actuals are agent active time on a session's clock, or figures you attested. "
-        "The human part is outside them."
+        "Actuals are session spans on their own clock (agent runs plus the gaps between them, "
+        "each gap up to the idle cap), or figures you attested, as given."
     )
     return "\n".join(lines)

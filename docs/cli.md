@@ -61,7 +61,7 @@ Reads a harness's local history and merges the rows into the store. Only timesta
 | `path` | the harness's own history folder | Where to read from. It must exist. |
 | `--source` | `claude-code` | One of `claude-code`, `cline`, `codex`, `gemini-cli`, `opencode`. `gemini-cli`, `opencode` and `cline` are experimental: built from each tool's source, not yet verified on real sessions, and `validate` rejects their rows. See [verify-adapter.md](verify-adapter.md). |
 | `--out` | `~/.agentpace/runs.jsonl` | The rows file to merge into. |
-| `--idle-cap` | `900` | Seconds an idle gap may contribute to a run's duration. A non-default cap neither reads nor writes the cache. |
+| `--idle-cap` | `900` | Seconds an idle gap may contribute, inside a run's duration and between runs on the session clock. A non-default cap neither reads nor writes the cache. |
 | `--kind-map NAME=KIND` | none | Map one of your agent types to a task kind. Repeatable. |
 | `--hook` | off | Read a Claude Code `SubagentStop` payload on stdin and ingest that session quietly. Prints nothing and always exits 0. Gives up after 5 s if the store is busy. |
 
@@ -103,7 +103,7 @@ stdout: `labeled <ref>: <kind>, <risk> risk`.
 agentpace estimate (PLAN | - | --example) [--data PATH]... [--method NAME] [--use-size] [--draws N] [--seed N] [--json] [--turns FILE] [--record] [--quoted TEXT]
 ```
 
-Simulates a plan of tasks and prints P50, P80 and P90 of the total agent time, per task and for the plan.
+Simulates a plan of tasks and prints P50, P80 and P90 per task (agent run time) and for the plan (its span on the session clock).
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -123,14 +123,17 @@ stdout: the result, as text or JSON. stderr, with `--record`: `recorded forecast
 
 **Experimental rows.** Without `--data`, the estimate pools the seed data with your local store, so rows you ingested from an experimental adapter (`gemini-cli`, `opencode`, `cline`) take part in it. When any do, one line on stderr says so: `note: N of M rows come from experimental adapters (<names>); they take part in this estimate because they are in your local store. Pass --data to choose the rows.` stdout, the JSON and any recorded forecast are the same with or without it. The seed data holds no experimental rows.
 
-The text form starts with the total and the human part:
+The text form starts with the total, the clock note and the human part:
 
 ```text
-Total agent time, on the session clock: P50 …, P80 …, P90 …
-Human part (review, testing, decisions, waiting between agent turns): not measured. Not included in the total above. State it separately; do not derive it from the agent time.
+Plan total on the session clock: P50 …, P80 …, P90 …
+The session clock counts agent runs and the gaps between them, each gap up to the idle cap (900 s by default), so waiting on you between runs sits inside the total up to that cap.
+Human part (review, testing, decisions, waiting between agent turns): not measured. No allowance for it is added to the total above. State it separately; do not derive it from the agent time.
 ```
 
-With `--quoted`, one line sits between them. It holds the quote verbatim and is never converted into agent time or compared with the range:
+The clock note gives the default cap. In rows ingested with a non-default `--idle-cap`, each gap counts up to that cap instead.
+
+With `--quoted`, one line sits directly under the total. It holds the quote verbatim and is never converted into agent time or compared with the range:
 
 ```text
 Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)
@@ -181,7 +184,7 @@ One JSON object. Every duration is in seconds, as a number.
 
 | Key | Type | Meaning |
 |---|---|---|
-| `p50`, `p80`, `p90` | number | The plan's total agent time, on the session clock. |
+| `p50`, `p80`, `p90` | number | The plan's total on the session clock: agent runs plus the gaps between them, each gap up to the idle cap. |
 | `tasks` | list | One object per task, in plan order: `id` (string), `p50`, `p80`, `p90` (seconds), `cell` (the data cell it drew from, such as `feature x normal x claude-opus-5-5`, or `all`), `n` (runs in that cell, 0 when the cell was never seen), `n_eff` (the cell's effective size), `criticality` (share of simulations in which the task was on the longest chain, 0 to 1). |
 | `critical_path` | list of strings | Task ids of the chain that was longest most often. |
 | `critical_path_share` | number, 0 to 1 | Share of simulations in which that chain was the longest. |
@@ -196,7 +199,7 @@ One JSON object. Every duration is in seconds, as a number.
 | `draws` | integer | Simulations run. |
 | `seed` | integer | The random seed. |
 | `warnings` | list of strings | Thin or unseen cells, ignored sizes, an assumed parallelism. Pass them on. |
-| `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`. When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. Keys without a value are left out. |
+| `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`: no allowance for the human part is added to the total (waits shorter than the idle cap sit inside the session clock already). When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. Keys without a value are left out. |
 
 The JSON output does not change with `--record` or `--quoted`.
 

@@ -48,7 +48,7 @@ None of the five audited repos handles F2, F3, F6 or F9. Those are where this pr
 | `week` | pattern | ISO week in UTC, for example `2026-W44` |
 | `batch` | 12 hex | HMAC of the session id under the same secret |
 | `project` | 12 hex, optional | HMAC of `project-v1:<folder>` under the same secret. Enables the leave-one-project-out split. `share --drop-project` omits it |
-| `offset_s` | integer >= 0 | Run start on the session's own clock, measured from its first run with idle gaps over 900 s removed. It carries no clock time, and `offset_s + duration_s` gives a run's end on that same clock |
+| `offset_s` | integer >= 0 | Run start on the session's own clock, measured from its first run, where each idle gap between runs counts up to 900 s and the rest of it is removed. It carries no clock time, and `offset_s + duration_s` gives a run's end on that same clock |
 
 Size thresholds, counted from edit-style tool calls: `S` 1 to 3, `M` 4 to 10, `L` 11 to 30, `XL` 31 or more, `na` for none. These are measured after the run, which is why sections 5 and 6 keep size out of the default forecast.
 
@@ -186,7 +186,7 @@ for each draw:
 - **Codex plans (0.6.0).** Each Codex exec session is one turn, so Codex rows add nothing to `b`, which needs sessions of at least 5 runs, or to `P_eff`, where every Codex row has a peak of 1. A plan of Codex tasks uses the session effect and throughput learned from Claude Code sessions.
 - **Contention.** No slowdown term is applied, because F3 shows the available estimate is confounded. A term can be added only if it wins in Phase 4.
 
-**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and outside the total, and JSON carries it as `human`. No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
+**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and with no allowance added to the total, and JSON carries it as `human`. Since 0.9.2 the output also says that the session clock counts the gaps between runs up to the idle cap, so a wait shorter than the cap sits inside the plan total (ruling for 0.10). No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
 
 ## 6. Backtest protocol
 
@@ -395,7 +395,7 @@ Fable 5.1 ruled on 2026-11-07.
   - A quoted timeline is stored as text, and in seconds only when it is exactly "<number> <unit>", by fixed calendar units. It is labeled calendar time, as quoted.
 - **Scoring.**
   - Scores are appended, and the latest per forecast wins.
-  - A session score uses the backtest's plan-level actual, the session span on its own clock. That is agent active time, not wall clock.
+  - A session score uses the backtest's plan-level actual, the session span on its own clock. That counts agent runs and the gaps between them, each gap up to the idle cap, so it is not wall clock (corrected in the ruling for 0.10).
   - It is verified only when the ingest cache shows the session's first run started at or after the forecast's issue time. It is refused when the cache cannot show that, or when the session's week precedes the issue week.
   - `--actual` is the attested path, and is always labeled so.
   - Rates print only from 5 scored forecasts, and never enter the README.
@@ -478,6 +478,22 @@ Fable 5.1 ruled on 2026-11-08, with an independent opinion from Codex (gpt-6-ast
 - **A quote is shown, never converted.** `--quoted` no longer needs `--record`. The quote appears verbatim on its own stdout line, marked as calendar time, as quoted and unverified, with no ratio. `--json` output is unchanged.
 - **One model across the README's examples.** `examples/quote-plan.json` names `claude-opus-5-5` because `examples/plan.json` and the skill's template already do, and a test keeps them equal. A model chosen after seeing the numbers was rejected as the reason; so was a model-free plan, which would put two README blocks drawing from different cells side by side with nothing to explain why. The cell column shows the model and its n, and the numbers change with the model.
 - **Out:** a browser estimator, leaderboard views, method reselection or a drift sentence, `--since` and `--weeks`, `score` matching the last session by itself, a second plan format, `doctor`, shell completion, `llms.txt`, Discussions, new adapters, lifting an experimental label without real sessions, and path-filtered CI that would make data pull requests look green.
+
+### Ruling for 0.10
+
+Fable 5.1 ruled on 2026-11-08 on four questions users asked after the launch posts. It had an independent opinion from Codex (gpt-6-astra) on the same brief, both at the highest effort. The opinion found that the brief, and this document's `offset_s` row, said long gaps were removed from the session clock, when each gap is in fact capped at the idle cap. The master confirmed this in the code before the ruling.
+
+- **The clock was described wrongly.** The session clock counts agent runs and the gaps between them, each gap up to the idle cap. So "waiting between agent turns is not in the total" was false below the cap. The fix is wording only (0.9.2), and no number moved:
+  - the first line reads "Plan total on the session clock";
+  - a line under it states the cap rule;
+  - the human line says no allowance is added.
+
+  `included_in_total` stays false, meaning that no human allowance is added, not that the total holds no waiting. The ruling for 0.9 had kept "Total" because the human line said the opposite; both props fell together.
+- **Non-completion is disclosed, not modelled.** Every estimate prints the recorded runs that did not complete, by harness, counted from the rows it loaded and never per cell, and a generated README claim carries the same counts (0.10.0). They are harness outcomes, not task acceptance. They never inflate a quantile, and `unknown` is never treated as failure.
+- **A stated review capacity is carried, never used.** `--review-capacity TEXT` shows the user's own figure verbatim on its own line, as stated by them, not measured and not applied (0.11.0). A numeric flag was rejected: nothing may ever be computed from the figure, because a plan task is an agent run, not a pull request.
+- **Answered in Limitations, not built.** Retries are an errored-tool-result proxy, and no post-run field predicts a duration. Forecasts pool by kind, risk and model; repository size is not recorded.
+- **Declined:** retry bucketing, time to an accepted result, and new segmentation dimensions. The rows hold no attempt linkage, no acceptance event and no repository size.
+- **The 2026-W46 data change** takes the next patch number when that week has ended, and waits for none of this.
 
 ## 12. Sources
 

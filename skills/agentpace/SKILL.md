@@ -58,14 +58,14 @@ When the conversation already holds a timeline in days, weeks or months, from th
 agentpace estimate plan.json --quoted "3 months"
 ```
 
-The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line.
+The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line. Never say what the difference between the quote and the range is, and never call it the human part: that would derive the human part from the agent time.
 
 If the user wants to see later which number held, offer the same command with `--record` added. Once the work is done, `agentpace score <id> --session <ref>` compares both with what the agents actually took.
 
 ## Report the result
 
-- Lead with the agent time as a range: P50, P80 and P90. Recommend P80 for planning.
-- Pass on the human part line as the CLI prints it. Unmeasured, it says review, testing, decisions and waiting between agent turns are not in the total. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
+- Lead with the plan total as a range: P50, P80 and P90, on the session clock. Recommend P80 for planning.
+- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
 - Name the critical path and the effective parallelism.
 - Pass every warning on. A warning means a cell had too few runs, so that range leans on broader data.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.

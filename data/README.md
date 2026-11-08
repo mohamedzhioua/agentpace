@@ -37,7 +37,8 @@ so forecasts ignore it unless you pass `--use-size`.
 reading content.
 
 **`duration_s` is not wall time on a clock.** Idle gaps over 900 seconds count as 900 seconds, which
-removes sleep and resumed sessions.
+removes sleep and resumed sessions. The session clock behind `offset_s` is built the same way: each
+gap between runs counts up to 900 seconds.
 
 **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so
 P90 values may run low.

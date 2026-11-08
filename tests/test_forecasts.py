@@ -15,6 +15,7 @@ from agentpace.adapters import get_adapter
 from agentpace.adapters.base import RawRun
 from agentpace.cache import RunCache
 from tests.synthetic import dataset, row
+from tests.test_skills import BANNED_PHRASES
 
 REPO = Path(__file__).resolve().parent.parent
 PLAN = {
@@ -184,11 +185,12 @@ class RecordCommand(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(err, "")
         lines = out.splitlines()
-        self.assertTrue(lines[0].startswith("Total agent time, on the session clock: P50 "))
+        self.assertTrue(lines[0].startswith("Plan total on the session clock: P50 "))
         self.assertEqual(
             lines[1], 'Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)'
         )
-        self.assertTrue(lines[2].startswith("Human part"))
+        self.assertEqual(lines[2], render.CLOCK_NOTE)
+        self.assertTrue(lines[3].startswith("Human part"))
         self.assertFalse(paths.forecasts_file().exists())
         self.assertEqual(list(self.root.rglob("forecasts.jsonl")), [])
 
@@ -303,9 +305,11 @@ class ScoreCommand(RecordCommand):
         )
         self.assertEqual(score["session"], self.batch)
         self.assertFalse(score["quote_closer"])
-        self.assertIn("agent active time on that session's clock", out)
+        self.assertIn("span on its own clock", out)
         self.assertIn("as quoted, calendar time", out)
         self.assertNotIn("wall clock", out.lower())
+        for phrase in BANNED_PHRASES:
+            self.assertNotIn(phrase.lower(), out.lower())
 
     def test_a_session_started_before_the_forecast_is_refused(self):
         key = self.forecast()
