@@ -4,6 +4,24 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.8.3 - 2026-11-08
+
+### Added
+
+- `docs/verify-adapter.md`, the procedure for verifying an experimental adapter: throwaway sessions in a scratch folder, an ingest isolated with `AGENTPACE_HOME` and `--out`, a reconciliation of rows against hand-noted turns, what the pull request carries, how the experimental label is lifted, and why a data pull request with experimental rows stays red until the lift merges. It is the page the 0.8.1 `share` warning points to. CONTRIBUTING, the README setup rows for Gemini CLI, OpenCode and Cline, and the Limitations line link it.
+- `docs/cli.md`, a command reference: every command and flag, the plan JSON format, every `--json` key, exit codes, what goes to stdout and stderr, the files under `AGENTPACE_HOME`, and why `runs` and `label last` cannot order sessions with no cached start. `tests/test_docs.py` fails if a command, an adapter or a `--json` key is missing from it.
+- The site's navigation links the changelog and CONTRIBUTING.
+
+### Changed
+
+- CONTRIBUTING step 5 and the pull request template say `agentpace validate data/runs`. Plain `validate` checks the bundled seed, not the contributor's file.
+- CONTRIBUTING says what happens to a data pull request: `validate-data` must pass, and `quality` stays red until the maintainer adds a commit with the regenerated backtest, site and claims, a CHANGELOG entry listing every moved number, and a version bump. Contributors keep "Allow edits by maintainers" on.
+- CONTRIBUTING no longer asks for a `DEFAULT_METHOD` edit when a new method wins. Selection is frozen at 2026-W45, a test fails CI on a flip, and a flip needs re-registration in CHANGELOG (DESIGN section 6).
+- `/pace-log` names the `--source` choices and marks `gemini-cli`, `opencode` and `cline` experimental. The `agentpace` skill's limits no longer promise that results improve once a user ingests their own history, a claim nothing measured.
+- The README's `validate` row says contributors pass `data/runs`.
+
+No published number moved.
+
 ## 0.8.2 - 2026-11-08
 
 ### Fixed
