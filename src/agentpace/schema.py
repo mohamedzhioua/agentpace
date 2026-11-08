@@ -100,11 +100,19 @@ def dedupe_key(row: Row) -> tuple[str, str, int, int]:
 
 
 def read_rows(path: Path) -> list[Row]:
+    """Every row in `path`. A bad line is named by file and line number, never by its content."""
     rows: list[Row] = []
     with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                rows.append(json.loads(line))
+        for number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except ValueError:
+                raise ValueError(f"{path.name}:{number}: not valid JSON") from None
+            if not isinstance(row, dict):
+                raise ValueError(f"{path.name}:{number}: not a JSON object")
+            rows.append(row)
     return rows
 
 

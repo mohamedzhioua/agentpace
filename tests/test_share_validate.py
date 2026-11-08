@@ -361,6 +361,130 @@ class ValidateCommand(Temp):
             self.assertEqual(cli.main(["validate", str(bad)]), 1)
 
 
+class BadRowLines(Temp):
+    """A rows file with a bad line is refused by file name and line number, never content."""
+
+    SECRET = "do-not-print-this"
+
+    def setUp(self):
+        super().setUp()
+        patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def estimate(self, path):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["estimate", "--example", "--data", str(path)])
+        return code, out.getvalue(), err.getvalue()
+
+    def assert_refused(self, bad_line, message):
+        # A blank line before the bad one: the number counts every line in the file.
+        good, later = schema.canonical(row()), schema.canonical(row(offset_s=5))
+        path = self.write([good, "", bad_line, later])
+        code, out, err = self.estimate(path)
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertEqual(err, f"agentpace: {NAME}:3: {message}\n")
+        self.assertNotIn("Traceback", err)
+        self.assertNotIn(self.SECRET, err)
+
+    def test_a_line_that_is_not_json_is_refused(self):
+        self.assert_refused(f'{{"contributor": "{self.SECRET}"', "not valid JSON")
+
+    def test_a_line_that_is_not_an_object_is_refused(self):
+        self.assert_refused(json.dumps([self.SECRET]), "not a JSON object")
+
+    def test_a_json_string_line_is_not_an_object(self):
+        self.assert_refused(json.dumps(self.SECRET), "not a JSON object")
+
+    def test_the_error_does_not_carry_the_decoder_message(self):
+        path = self.write(["{broken"])
+        with self.assertRaises(ValueError) as caught:
+            schema.read_rows(path)
+        self.assertEqual(str(caught.exception), f"{NAME}:1: not valid JSON")
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertTrue(caught.exception.__suppress_context__)
+
+
+class ReplaceRefused(Temp):
+    """`share --write` when another program holds the contribution file open."""
+
+    def setUp(self):
+        super().setUp()
+        patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
+        patch.start()
+        self.addCleanup(patch.stop)
+        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        self.out = self.root / "runs"
+        self.path = self.out / NAME
+
+    def run_cli(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["share", "--out-dir", str(self.out), *args])
+        return code, out.getvalue(), err.getvalue()
+
+    def held_open(self):
+        real = os.replace
+
+        def replace(source, target):
+            if Path(target) == self.path:
+                raise PermissionError(13, "The process cannot access the file")
+            real(source, target)
+
+        return mock.patch.object(os, "replace", side_effect=replace)
+
+    def test_a_held_file_is_left_as_it_was(self):
+        self.assertEqual(self.run_cli("--write")[0], 0)
+        first = self.path.read_bytes()
+        stored = schema.read_rows(paths.local_runs())
+        schema.write_rows(paths.local_runs(), [*stored, row(offset_s=50)])
+        with self.held_open():
+            code, out, err = self.run_cli("--write")
+        self.assertEqual(code, 2)
+        self.assertEqual(self.path.read_bytes(), first)
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()), [NAME])
+        self.assertIn(
+            f"agentpace: could not replace {NAME}: it is open in another program. Nothing was"
+            " changed; close it and run share --write again\n",
+            err,
+        )
+        for said in (out, err):
+            self.assertNotIn("wrote", said)
+            self.assertNotIn("added", said)
+            self.assertNotIn("Traceback", said)
+
+    def test_a_new_file_that_cannot_be_placed_leaves_nothing(self):
+        with self.held_open():
+            code, out, err = self.run_cli("--write")
+        self.assertEqual(code, 2)
+        self.assertEqual(list(self.out.iterdir()), [])
+        self.assertIn(f"could not replace {NAME}", err)
+        self.assertNotIn("wrote", out + err)
+
+    def test_after_the_file_is_closed_the_append_keeps_the_prior_bytes(self):
+        self.run_cli("--write")
+        first = self.path.read_bytes()
+        stored = schema.read_rows(paths.local_runs())
+        schema.write_rows(paths.local_runs(), [*stored, row(offset_s=50)])
+        with self.held_open():
+            self.run_cli("--write")
+        code, _, err = self.run_cli("--write")
+        self.assertEqual(code, 0)
+        self.assertTrue(self.path.read_bytes().startswith(first))
+        self.assertEqual(len(schema.read_rows(self.path)), 3)
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()), [NAME])
+        self.assertIn("added", err)
+
+    def test_a_corrupt_contribution_file_is_named_by_line(self):
+        self.out.mkdir()
+        self.path.write_text(schema.canonical(row(offset_s=90)) + "\n{broken\n", encoding="utf-8")
+        code, _, err = self.run_cli("--write")
+        self.assertEqual(code, 2)
+        self.assertEqual(err, f"agentpace: {NAME}:2: not valid JSON\n")
+
+
 class NoNetwork(unittest.TestCase):
     """The package contains no way to send anything anywhere."""
 

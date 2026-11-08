@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Sequence
+from contextlib import suppress
 from pathlib import Path
 
 from agentpace import render, schema
@@ -103,7 +104,16 @@ def write_contribution(path: Path, rows: Sequence[Row]) -> tuple[int, int]:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_bytes(old + new)
-    os.replace(temporary, path)
+    try:
+        os.replace(temporary, path)
+    except OSError:
+        # On Windows a file another program holds open cannot be replaced.
+        with suppress(OSError):
+            temporary.unlink()
+        raise ValueError(
+            f"could not replace {path.name}: it is open in another program. Nothing was changed;"
+            " close it and run share --write again"
+        ) from None
     return len(rows), existing
 
 
