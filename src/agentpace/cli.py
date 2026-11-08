@@ -28,7 +28,7 @@ from agentpace import (
     turns,
     validate,
 )
-from agentpace.adapters import ADAPTERS, get_adapter
+from agentpace.adapters import ADAPTERS, EXPERIMENTAL, get_adapter
 from agentpace.cache import RunCache
 
 
@@ -102,6 +102,13 @@ def _ingest_hook(args: argparse.Namespace) -> int:
     return 0
 
 
+EXPERIMENTAL_NOTE = (
+    "note: the {name} adapter is experimental: built from the tool's source, not yet verified on "
+    "real sessions. Check the rows before sharing them, and report problems at "
+    "https://github.com/mohamedzhioua/agentpace/issues"
+)
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     if args.hook:
         return _ingest_hook(args)
@@ -115,6 +122,8 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         raise ValueError(
             f"another ingest is writing the store. Try again, or delete {busy} if none is running"
         ) from None
+    if adapter.name in EXPERIMENTAL:
+        print(EXPERIMENTAL_NOTE.format(name=adapter.name), file=sys.stderr)
     for line in report.lines():
         print(line, file=sys.stderr)
     print(f"store now holds:  {total} rows", file=sys.stderr)

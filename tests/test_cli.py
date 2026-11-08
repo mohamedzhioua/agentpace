@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agentpace import cli, render, schema
+from agentpace import cli, ingest, paths, render, schema
 from agentpace.estimate import PlanRange, TaskRange
-from tests.synthetic import dataset
+from tests.synthetic import dataset, row
 
 
 class EstimateCommand(unittest.TestCase):
@@ -141,6 +141,67 @@ class Durations(unittest.TestCase):
         self.assertIn("oracle track", text)
         self.assertIn("Warnings", text)
         self.assertIn("not completed", text)
+
+
+class ExperimentalNote(unittest.TestCase):
+    """The three unverified adapters say so on stderr; nothing else changes."""
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.root = Path(folder.name)
+        patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def run_cli(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(list(args))
+        return code, out.getvalue(), err.getvalue()
+
+    def ingest(self, source):
+        report = ingest.IngestReport(files=1, rows=1)
+        with mock.patch.object(cli, "_ingest_into_store", return_value=(report, 1)):
+            code, out, err = self.run_cli("ingest", str(self.root), "--source", source)
+        self.assertEqual(code, 0, err)
+        return out, err
+
+    def test_each_experimental_source_prints_the_note_first_on_stderr(self):
+        _, baseline = self.ingest("claude-code")
+        for source in ("gemini-cli", "opencode", "cline"):
+            with self.subTest(source=source):
+                out, err = self.ingest(source)
+                note, _, rest = err.partition("\n")
+                self.assertEqual(
+                    note,
+                    f"note: the {source} adapter is experimental: built from the tool's source, "
+                    "not yet verified on real sessions. Check the rows before sharing them, and "
+                    "report problems at https://github.com/mohamedzhioua/agentpace/issues",
+                )
+                self.assertEqual(out, "")
+                self.assertEqual(rest, baseline)
+
+    def test_claude_code_and_codex_print_no_note(self):
+        for source in ("claude-code", "codex"):
+            with self.subTest(source=source):
+                out, err = self.ingest(source)
+                self.assertEqual(out, "")
+                self.assertNotIn("experimental", err)
+                self.assertTrue(err.startswith("files seen:"))
+
+    def test_share_output_carries_no_note(self):
+        rows = [
+            row(harness=harness, week="2026-W45", offset_s=index)
+            for index, harness in enumerate(("gemini-cli", "opencode", "cline", "claude-code"))
+        ]
+        schema.write_rows(paths.local_runs(), rows)
+        code, out, err = self.run_cli("share", "--out-dir", str(self.root / "runs"), "--dry-run")
+        self.assertEqual(code, 0, err)
+        for text in (out, err):
+            self.assertNotIn("experimental", text)
+        for harness in ("gemini-cli", "opencode", "cline"):
+            self.assertIn(f'"{harness}"', out)
 
 
 if __name__ == "__main__":

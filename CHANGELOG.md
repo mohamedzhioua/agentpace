@@ -4,17 +4,26 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.8.0 - 2026-11-08
+
+The Gemini CLI, OpenCode and Cline adapters ship as experimental, by the owner's decision. Each was built from the tool's source and is unverified on real sessions. No published row comes from any of them. Problems go in an issue (DESIGN section 11, ruling for 0.8.0).
+
 ### Added
 
-- A draft Gemini CLI adapter (#29): `agentpace ingest --source gemini-cli` reads `~/.gemini/tmp/<project>/chats`, one agent turn per run and one session file per batch. It was built from the Gemini CLI source at `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7` and is not yet verified on real sessions, so it stays a draft until real history is reconciled with it. DESIGN section 3 has the run definition and what is copied.
-- `gemini-cli` joins the `harness` enum in the run schema. Additive: no existing row changes.
-- A draft OpenCode adapter, `--source opencode`. It reads OpenCode's SQLite history read-only, and one user message with the agent's replies to it is one run. It was built from the OpenCode source at `anomalyco/opencode@810c0eba1a7348036f8bdf61e6632d0c36c6876c` (tag `v1.19.5`) and is not yet verified on real sessions. `opencode` joins the `harness` enum. No published number moved, and no row comes from it.
-- A draft Cline adapter, `agentpace ingest --source cline` (#31). It reads the task folders Cline keeps in VS Code's global storage (`saoudrizwan.claude-dev/tasks/<id>/ui_messages.json`). One agent turn is one run, from the message after the previous hand-back to the next `completion_result`, `followup` or `plan_mode_respond` ask. One task is one batch. Waits on a human approval are dropped from agent time. It was built from the upstream source at `cline/cline@94eecbb` (main) and `@7761370` (`legacy-extension`), because Cline could not be installed where it was written. It is not yet verified on real tasks, and its fixtures are synthetic. Tasks made by Cline's SDK bundle (`~/.cline/data/sessions`) are not read yet. `cline` joins the `harness` enum, which is additive.
+- An experimental Gemini CLI adapter (#29): `agentpace ingest --source gemini-cli` reads `~/.gemini/tmp/<project>/chats`, one agent turn per run and one session file per batch. It was built from the Gemini CLI source at `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7` and is unverified on real sessions. DESIGN section 3 has the run definition and what is copied.
+- An experimental OpenCode adapter, `--source opencode`. It reads OpenCode's SQLite history read-only, and one user message with the agent's replies to it is one run. It was built from the OpenCode source at `anomalyco/opencode@810c0eba1a7348036f8bdf61e6632d0c36c6876c` (tag `v1.19.5`) and is unverified on real sessions.
+- An experimental Cline adapter, `agentpace ingest --source cline` (#31). It reads the task folders Cline keeps in VS Code's global storage (`saoudrizwan.claude-dev/tasks/<id>/ui_messages.json`). One agent turn is one run, from the message after the previous hand-back to the next `completion_result`, `followup` or `plan_mode_respond` ask. One task is one batch. Waits on a human approval are dropped from agent time. It was built from the upstream source at `cline/cline@94eecbb` (main) and `@7761370` (`legacy-extension`), because Cline could not be installed where it was written. It is unverified on real sessions, and its fixtures are synthetic. Tasks made by Cline's SDK bundle (`~/.cline/data/sessions`) are not read yet.
+- `gemini-cli`, `opencode` and `cline` join the `harness` enum in the run schema. Additive: no existing row changes.
+- `agentpace ingest` with one of these three sources prints a one-line note on stderr before its report, saying the adapter is experimental and where to report problems. The list is `agentpace.adapters.EXPERIMENTAL`. Claude Code and Codex print nothing new, and `share` output is unchanged.
+- `agentpace validate` rejects rows from the experimental harnesses, so they cannot reach the published data unreviewed.
 
 ### Changed
 
 - Gemini Flash Lite models keep their own family (`gemini-3.1-flash-lite`) instead of folding into Flash.
-- Dotted Claude model ids, such as `claude-sonnet-4.5` or `anthropic/claude-sonnet-4.5`, normalize to the dashed family `claude-sonnet-4-5` for every harness, instead of being cut to `claude-sonnet-4`. No published row has a dotted id, so no published number moved.
+- Dotted Claude model ids, such as `claude-sonnet-4.5` or `anthropic/claude-sonnet-4.5`, normalize to the dashed family `claude-sonnet-4-5` for every harness, instead of being cut to `claude-sonnet-4`. No published row has a dotted id.
+- README and DESIGN label the three adapters experimental, shipped unverified by the owner's decision. Fable's earlier rule that they merge only after real-session verification is superseded for these three.
+
+No published number moved.
 
 ## 0.7.2 - 2026-11-08
 
