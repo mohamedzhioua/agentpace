@@ -260,6 +260,14 @@ class Skills(unittest.TestCase):
         self.assertIn("never turn it into a timeline", agentpace)
         self.assertIn("Only if the user stated their own review capacity", estimate)
 
+    def test_pace_estimate_forwards_a_quote_and_never_says_what_it_counts(self):
+        agentpace = (REPO / "skills" / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        estimate = (REPO / "skills" / "pace-estimate" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn('--quoted "<quote>"', estimate)
+        self.assertIn("`Quoted:` line as printed", estimate)
+        for text in (agentpace, estimate):
+            self.assertIn("say what the quote counts", text)
+
 
 if __name__ == "__main__":
     unittest.main()
