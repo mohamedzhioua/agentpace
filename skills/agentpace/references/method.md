@@ -10,8 +10,8 @@ Use this page to answer questions about the method. It is not needed for a routi
 
 **Effective parallelism.** Work divided by elapsed time, from real sessions. It can be below 1, because a session's clock includes the time between runs.
 
-**What is measured.** Time an agent ran, with idle gaps over 900 seconds clipped.
+**What is measured.** Per task, the time an agent ran, with each idle gap inside the run counted up to 900 seconds. Per plan, the session's span on its own clock, built the same way across the gaps between runs.
 
-**The human part.** Review, testing, decisions and waiting between agent turns stay out of the total. Every estimate prints them on their own line. They read "not measured" unless `agentpace turns` has measured the user's own wait per human turn from their main-session timestamps. That measurement is elapsed time, not effort, and is kept local. No multiplier turns agent time into human time, so none is applied. A human-scale quote such as "three weeks" is shown beside the range as unverified, never converted.
+**The human part.** No allowance for review, testing, decisions or waiting between agent turns is added to the total; because the session clock counts the gaps between runs up to the idle cap, a wait shorter than that sits inside the plan total and a longer one is clipped. Every estimate prints this on its own lines. They read "not measured" unless `agentpace turns` has measured the user's own wait per human turn from their main-session timestamps. That measurement is elapsed time, not effort, and is kept local. No multiplier turns agent time into human time, so none is applied. A human-scale quote such as "three weeks" is shown beside the range as unverified, never converted.
 
 **How far to trust it.** See `docs/backtest.md`. Every number there is regenerated from the published rows by `agentpace backtest`.

@@ -64,8 +64,8 @@ If the user wants to see later which number held, offer the same command with `-
 
 ## Report the result
 
-- Lead with the agent time as a range: P50, P80 and P90. Recommend P80 for planning.
-- Pass on the human part line as the CLI prints it. Unmeasured, it says review, testing, decisions and waiting between agent turns are not in the total. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
+- Lead with the plan total as a range: P50, P80 and P90, on the session clock. Recommend P80 for planning.
+- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
 - Name the critical path and the effective parallelism.
 - Pass every warning on. A warning means a cell had too few runs, so that range leans on broader data.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.
