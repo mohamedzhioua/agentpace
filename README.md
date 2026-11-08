@@ -33,6 +33,7 @@ review      3 min      8 min     13 min      82%  review x low x claude-opus-5-5
 Critical path: schema -> ui -> review (longest in 47% of simulations)
 Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 76% of simulations.
 Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
+Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
   - cell docs x normal x claude-opus-5-5: n=0, effective n=0.0, below 30. Pooled with all and interval widened.
@@ -140,6 +141,7 @@ review           3 min      8 min     13 min     100%  review x low x claude-opu
 Critical path: schema -> importer -> tests -> review (longest in 40% of simulations)
 Effective parallelism at cap 3: 0.90 (from 29 sessions). Throughput set the total in 78% of simulations.
 Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed 20261107.
+Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
   - cell tests x normal x claude-opus-5-5: n=2, effective n=2.0, below 30. Pooled with all and interval widened.
