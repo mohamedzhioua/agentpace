@@ -155,6 +155,7 @@ The quote is calendar time, as quoted, and nothing has checked it. The range is 
 | Use | What it does |
 |---|---|
 | `agentpace estimate <plan>` | P50, P80 and P90 for a plan, and the human part on its own line |
+| `agentpace estimate <plan> --review-capacity "4 PRs a day"` | The same, with your stated review capacity shown on its own line as yours: not measured, not applied to the range |
 | `agentpace estimate <plan> --data ~/.agentpace/runs.jsonl` | The same, from your own ingested runs only |
 | `agentpace estimate <plan> --record --quoted "3 weeks"` | Keep the forecast on your machine to score later, with any timeline someone already quoted |
 | `agentpace ingest [path]` | Read local agent history into rows |
