@@ -1,6 +1,6 @@
 ---
 name: pace-estimate
-description: Estimates a plan of coding-agent tasks as P50/P80/P90 wall-clock ranges with a critical path and the human part stated separately, using the agentpace CLI. Use when the user runs /pace-estimate or asks for a timed estimate of a specific task list or plan file. Natural-language "how long will this take" questions are the agentpace skill's job.
+description: Estimates a plan of coding-agent tasks as P50/P80/P90 agent-time ranges with a critical path and the human part stated separately, using the agentpace CLI. Use when the user runs /pace-estimate or asks for a timed estimate of a specific task list or plan file. Natural-language "how long will this take" questions are the agentpace skill's job.
 license: MIT
 compatibility: Requires Python 3.10+ and the agentpace CLI.
 ---

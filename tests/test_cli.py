@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from agentpace import cli, ingest, paths, render, schema
-from agentpace.estimate import PlanRange, TaskRange
+from agentpace.estimate import HumanPart, PlanRange, TaskRange
 from tests.synthetic import dataset, row
 
 
@@ -119,6 +119,42 @@ class EstimateCommand(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("ingest", err)
 
+    def test_a_model_that_is_not_a_string_is_a_clean_error(self):
+        good = {"id": "a", "kind": "docs"}
+        for bad in ({"x": 1}, ["a"], True, 3):
+            for document, message in (
+                ({"model": bad, "tasks": [good]}, "model must be a string"),
+                (
+                    {"tasks": [good, {**good, "id": "b", "model": bad}]},
+                    "task #2: model must be a string",
+                ),
+            ):
+                with self.subTest(document=document):
+                    code, out, err = self.run_cli(
+                        "estimate", "-", "--data", str(self.data), stdin=json.dumps(document)
+                    )
+                    self.assertEqual(code, 2)
+                    self.assertEqual(out, "")
+                    self.assertEqual(err, f"agentpace: {message}\n")
+
+    def test_a_null_plan_model_forecasts_as_no_model(self):
+        common = ("--data", str(self.data), "--draws", "500", "--json")
+        document = json.loads(self.plan.read_text(encoding="utf-8"))
+        _, without, _ = self.run_cli("estimate", "-", *common, stdin=json.dumps(document))
+        nulled = {**document, "model": None}
+        _, with_null, _ = self.run_cli("estimate", "-", *common, stdin=json.dumps(nulled))
+        self.assertEqual(with_null, without)
+
+    def test_the_first_line_names_agent_time_on_the_session_clock(self):
+        _, out, _ = self.run_cli(
+            "estimate", str(self.plan), "--data", str(self.data), "--draws", "500"
+        )
+        self.assertRegex(
+            out.splitlines()[0],
+            r"^Total agent time, on the session clock: P50 [^,]+, P80 [^,]+, P90 [^,]+$",
+        )
+        self.assertNotIn("wall clock", out.lower())
+
     def test_version(self):
         with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
             cli.main(["--version"])
@@ -141,6 +177,80 @@ class Durations(unittest.TestCase):
         self.assertIn("oracle track", text)
         self.assertIn("Warnings", text)
         self.assertIn("not completed", text)
+
+    def test_plan_text_never_says_wall_clock(self):
+        task = TaskRange("a", 1, 2, 3, "docs", 0, 0.0, 1.0)
+        measured = HumanPart(
+            status="measured",
+            source="your history, local",
+            per_turn_p50=60.0,
+            per_turn_p80=120.0,
+            per_turn_p90=180.0,
+            gaps=4,
+            sessions=2,
+        )
+        for human in (HumanPart(), measured):
+            for parallelism in (None, 1.5):
+                plan = PlanRange(
+                    p50=600,
+                    p80=1200,
+                    p90=1800,
+                    tasks=(task,),
+                    critical_path=("a",),
+                    critical_path_share=1.0,
+                    agent_cap=2,
+                    effective_parallelism=parallelism,
+                    parallelism_sessions=3,
+                    throughput_bound_share=0.5,
+                    method="shrunk",
+                    size_used=False,
+                    rows_used=10,
+                    rows_excluded=0,
+                    draws=500,
+                    seed=1,
+                    warnings=("x",),
+                    human=human,
+                )
+                with self.subTest(human=human.status, parallelism=parallelism):
+                    text = render.plan_text(plan)
+                    self.assertTrue(
+                        text.startswith(
+                            "Total agent time, on the session clock: P50 10 min, P80 20 min, "
+                            "P90 30 min\n"
+                        )
+                    )
+                    self.assertNotRegex(text, r"(?i)wall[ -]?clock")
+
+
+class CommandText(unittest.TestCase):
+    def test_validate_help_names_the_seed_default_and_data_runs(self):
+        out = io.StringIO()
+        with self.assertRaises(SystemExit), contextlib.redirect_stdout(out):
+            cli.main(["validate", "--help"])
+        self.assertIn(
+            "files or folders (default: the seed data shipped with agentpace; contributors pass "
+            "data/runs)",
+            " ".join(out.getvalue().split()),
+        )
+
+    def test_backtest_note_says_selection_is_frozen(self):
+        results = {"selection": {"winner": "not-the-default"}}
+        err = io.StringIO()
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            mock.patch.object(cli.backtest, "run", return_value=results),
+            mock.patch.object(cli.report, "write"),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(err),
+        ):
+            data = Path(folder) / "runs.jsonl"
+            schema.write_rows(data, [row()])
+            code = cli.main(["backtest", "--data", str(data), "--out", folder])
+        self.assertEqual(code, 0)
+        note = err.getvalue()
+        self.assertNotIn("update DEFAULT_METHOD", note)
+        for phrase in ("frozen at 2026-W45", "pin test fails CI", "re-registration in CHANGELOG"):
+            self.assertIn(phrase, note)
 
 
 class ExperimentalNote(unittest.TestCase):

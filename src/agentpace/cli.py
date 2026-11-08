@@ -130,28 +130,90 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cached_starts() -> dict[str, float]:
+    """Each session's earliest raw run start, by batch, from the local ingest caches.
+
+    A row holds no clock time, and its batch is an HMAC, so the caches are the only record of
+    which session came first. They are read in memory at the default idle cap, the only cap that
+    feeds them; sessions ingested otherwise, or before a cache was rebuilt, are simply missing.
+    Nothing is written, and no secret is created: without one, no batch could match.
+    """
+    secret_file = paths.home() / "secret"
+    files = {name: paths.cache_file(name) for name in ADAPTERS}
+    if not secret_file.exists() or not any(path.exists() for path in files.values()):
+        return {}
+    secret = pseudonym.load_secret(paths.home())
+    starts: dict[str, float] = {}
+    for adapter in ADAPTERS.values():
+        cache = RunCache(
+            files[adapter.name], adapter.name, adapter.version, ingest.DEFAULT_IDLE_CAP_S
+        )
+        for run in cache.runs():
+            batch = pseudonym.batch(secret, run.session)
+            starts[batch] = min(run.start, starts.get(batch, run.start))
+    return starts
+
+
+NO_CHRONOLOGY = (
+    "{count} sessions have no local chronology (no cache entry, or ingested with another idle "
+    "cap); they are listed by week only. Run agentpace ingest to refresh the cache."
+)
+CANNOT_TELL_LAST = (
+    "cannot tell which run is last: {count} sessions have no local chronology. "
+    "Run agentpace ingest, or give a reference from agentpace runs"
+)
+
+
 def cmd_runs(args: argparse.Namespace) -> int:
-    rows = schema.read_rows(paths.local_runs()) if paths.local_runs().exists() else []
+    rows = _local_rows()
     if not rows:
         raise ValueError("no local rows yet; run `agentpace ingest` first")
-    for row in sorted(rows, key=lambda r: (r["week"], r["batch"], r["offset_s"]))[-args.last :]:
+    starts = _cached_starts()
+
+    def order(row: schema.Row) -> tuple[str, int, float, str, int]:
+        # Within a week, sessions without a cached start come first, so --last N keeps the
+        # sessions known to be recent.
+        start = starts.get(row["batch"])
+        known = 0 if start is None else 1
+        return (row["week"], known, start or 0.0, row["batch"], row["offset_s"])
+
+    listed = sorted(rows, key=order)[-args.last :]
+    for row in listed:
         print(
             f"{ingest.run_ref(row)}  {row['week']}  {row['model']:<20} {row['task_kind']:<10}"
             f"{row['risk']:<7}{row['size']:<3} {row['duration_s']:>6}s  {row['outcome']}"
         )
+    unknown = {row["batch"] for row in listed if row["batch"] not in starts}
+    if unknown:
+        print(NO_CHRONOLOGY.format(count=len(unknown)), file=sys.stderr)
     return 0
 
 
-def cmd_label(args: argparse.Namespace) -> int:
-    if args.kind is None and args.risk is None:
-        raise ValueError("give --kind, --risk or both")
-    store = paths.local_runs()
+def _last_ref(rows: Sequence[schema.Row], starts: dict[str, float]) -> str:
+    """The last run of the session with the latest cached start, or a refusal.
+
+    It refuses rather than guesses when a session without chronology could be the later one:
+    one with a row in the chosen session's latest week or after it.
+    """
+    known = {row["batch"] for row in rows if row["batch"] in starts}
+    if not known:
+        unknown = {row["batch"] for row in rows}
+        raise ValueError(CANNOT_TELL_LAST.format(count=len(unknown)))
+    chosen = max(known, key=lambda batch: (starts[batch], batch))
+    members = [row for row in rows if row["batch"] == chosen]
+    latest_week = max(row["week"] for row in members)
+    rivals = {
+        row["batch"] for row in rows if row["batch"] not in starts and row["week"] >= latest_week
+    }
+    if rivals:
+        raise ValueError(CANNOT_TELL_LAST.format(count=len(rivals)))
+    return ingest.run_ref(max(members, key=lambda row: row["offset_s"]))
+
+
+def _label_store(store: Path, args: argparse.Namespace) -> tuple[str, schema.Row]:
+    """Label one run in the labels file and the store. The caller holds the store lock."""
     rows = schema.read_rows(store) if store.exists() else []
-    if args.ref == "last" and rows:
-        latest = max(rows, key=lambda r: (r["week"], r["batch"], r["offset_s"]))
-        ref = ingest.run_ref(latest)
-    else:
-        ref = args.ref
+    ref = _last_ref(rows, _cached_starts()) if args.ref == "last" and rows else args.ref
     matches = [row for row in rows if ingest.run_ref(row) == ref]
     if not matches:
         raise ValueError("no local run has that reference; see `agentpace runs`")
@@ -165,7 +227,20 @@ def cmd_label(args: argparse.Namespace) -> int:
     for row in matches:
         ingest.apply_labels(row, labels)
     schema.write_rows(store, rows)
-    print(f"labeled {ref}: {matches[0]['task_kind']}, {matches[0]['risk']} risk")
+    return ref, matches[0]
+
+
+def cmd_label(args: argparse.Namespace) -> int:
+    if args.kind is None and args.risk is None:
+        raise ValueError("give --kind, --risk or both")
+    store = paths.local_runs()
+    # A SubagentStop hook can ingest at any moment; without the lock, one side's write is lost.
+    try:
+        with ingest.store_lock(store, wait_s=5.0):
+            ref, labeled = _label_store(store, args)
+    except ingest.StoreBusy:
+        raise ValueError("another ingest is writing the store; try again") from None
+    print(f"labeled {ref}: {labeled['task_kind']}, {labeled['risk']} risk")
     return 0
 
 
@@ -231,14 +306,7 @@ def cmd_estimate(args: argparse.Namespace) -> int:
 
 def _first_cached_start(batch: str) -> float | None:
     """The earliest raw start of a session's runs, from the local ingest caches."""
-    secret = pseudonym.load_secret(paths.home())
-    starts = []
-    for adapter in ADAPTERS.values():
-        cache = RunCache(
-            paths.cache_file(adapter.name), adapter.name, adapter.version, ingest.DEFAULT_IDLE_CAP_S
-        )
-        starts += [r.start for r in cache.runs() if pseudonym.batch(secret, r.session) == batch]
-    return min(starts) if starts else None
+    return _cached_starts().get(batch)
 
 
 def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
@@ -366,7 +434,9 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     print(f"wrote {out / 'backtest.md'}; winner: {selection['winner']}")
     if selection["winner"] != estimate.DEFAULT_METHOD:
         print(
-            f"note: the default method is {estimate.DEFAULT_METHOD}; update DEFAULT_METHOD",
+            f"note: the default method stays {estimate.DEFAULT_METHOD}. Selection is frozen at "
+            "2026-W45 and a pin test fails CI on a flip; a flip needs re-registration in "
+            "CHANGELOG (DESIGN section 6).",
             file=sys.stderr,
         )
     return 0
@@ -598,7 +668,12 @@ def build_parser() -> argparse.ArgumentParser:
     share_cmd.set_defaults(handler=cmd_share)
 
     validate_cmd = commands.add_parser("validate", help="check data files")
-    validate_cmd.add_argument("paths", nargs="*", help="files or folders (default: seed data)")
+    validate_cmd.add_argument(
+        "paths",
+        nargs="*",
+        help="files or folders (default: the seed data shipped with agentpace; "
+        "contributors pass data/runs)",
+    )
     validate_cmd.set_defaults(handler=cmd_validate)
 
     site_cmd = commands.add_parser("site", help="refresh the data inside the static page")
