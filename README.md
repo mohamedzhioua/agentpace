@@ -68,7 +68,7 @@ Then ask your agent: "How long will the billing feature take?" The skill calls t
 
 ## Why agentpace
 
-Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 ranges of agent time and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 ranges measured from real agent runs and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
 
 ![How long agent runs took, by task kind](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/run-ranges.svg)
 
@@ -144,7 +144,7 @@ Warnings:
 <!-- /claim -->
 ```
 
-The quote is calendar time, as quoted, and nothing has checked it. The range is measured agent time on the session clock. The human part is stated apart, on its own line, and is in neither. The quote is shown beside the range, never converted into agent time or set against it.
+The quote is calendar time, as quoted, and nothing has checked it. The range is built from measured agent time on the session clock, which counts the gaps between runs up to the idle cap. The human part is stated apart, on its own line, and no allowance for it is added to either. The quote is shown beside the range, never converted into agent time or set against it.
 
 ## Commands
 
@@ -273,8 +273,10 @@ Each of these does something better than agentpace:
 - **One person's workflow.** Every run comes from <!-- claim:contributors -->1<!-- /claim --> contributor, across <!-- claim:projects -->21<!-- /claim --> projects and <!-- claim:sessions -->293<!-- /claim --> sessions, from <!-- claim:first_week -->2026-W40<!-- /claim --> to <!-- claim:last_week -->2026-W45<!-- /claim -->. One project holds <!-- claim:top_project -->67%<!-- /claim --> of runs, and three sessions hold <!-- claim:top_sessions -->45%<!-- /claim -->. It includes heavy automated fan-out, so it may not resemble your setup.
 - **Not a model speed ranking.** People send harder work to stronger models, so a slower row may just mean harder tasks.
 - **`feature` means any implementation work.** Without reading prompts, metadata cannot separate features, bug fixes and refactors. Those kinds stay thin until people label runs.
+- **Retries are not separated.** A run's duration includes any test-fix loop inside it. `retries` counts errored tool results, a proxy, because a real retry cannot be seen without reading content, and no field that describes what happened in a run (`retries`, `tool_calls`, `tokens`, `outcome`) ever predicts a duration. Codex upkeep sessions (`compact`) are skipped; nothing else is split out.
+- **Pooled by kind, risk and model only.** A cell with fewer than 30 runs leans on broader cells, with a warning. Repository size is not recorded, and `size` is an edit count measured after the run, so neither can segment the published runs. Long integration work has no cell of its own.
 - **Two harnesses, still one person.** The published rows hold Claude Code subagent runs and, since 0.6.0, Codex turns, all from the same contributor. Codex is scored on its own, never in the headline. Each Codex exec session is a single turn, so the session effect and the parallelism factor learn nothing from Codex, and a Codex plan borrows Claude Code's session structure. Gemini CLI, OpenCode and Cline have experimental adapters: built from each tool's source, not yet verified on real sessions, with no published rows (`validate` rejects them until each adapter is verified; [how to verify one](docs/verify-adapter.md)), and problems go in an [issue](https://github.com/mohamedzhioua/agentpace/issues). Other harnesses have no adapter.
-- **Agent time only, unless you measure the rest.** Review, testing, decisions and waiting between agent turns are not in the total. Every estimate says so on its own line and never derives them from agent time. `agentpace turns` measures your own wait per human turn from your main-session timestamps and keeps it on your machine. That is elapsed time, not effort, and it is never added to the total.
+- **No human allowance, and short waits sit inside the clock.** The plan total is a forecast on the session clock, which counts agent runs and the gaps between them, each gap up to the idle cap (900 s in the published rows). So a wait on you shorter than that sits inside the total, a longer one is clipped at the cap, and no allowance for review, testing or decisions is added. Every estimate says so on its own lines and never derives the human part from agent time. `agentpace turns` measures your own wait per human turn from your main-session timestamps and keeps it on your machine. That is elapsed time, not effort, shown beside the range and never added to it.
 - **Failed runs are under-counted.** Only runs with a clear completion signal train the estimator, so P90 may run low.
 - **Size is not used by default.** Stored size is measured after a run, so it would leak the answer into the forecast.
 - **The transcript format is undocumented.** It may change, and Claude Code removes old transcripts, so run `agentpace ingest` regularly.

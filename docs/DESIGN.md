@@ -48,7 +48,7 @@ None of the five audited repos handles F2, F3, F6 or F9. Those are where this pr
 | `week` | pattern | ISO week in UTC, for example `2026-W44` |
 | `batch` | 12 hex | HMAC of the session id under the same secret |
 | `project` | 12 hex, optional | HMAC of `project-v1:<folder>` under the same secret. Enables the leave-one-project-out split. `share --drop-project` omits it |
-| `offset_s` | integer >= 0 | Run start on the session's own clock, measured from its first run with idle gaps over 900 s removed. It carries no clock time, and `offset_s + duration_s` gives a run's end on that same clock |
+| `offset_s` | integer >= 0 | Run start on the session's own clock, measured from its first run, where each idle gap between runs counts up to 900 s and the rest of it is removed. It carries no clock time, and `offset_s + duration_s` gives a run's end on that same clock |
 
 Size thresholds, counted from edit-style tool calls: `S` 1 to 3, `M` 4 to 10, `L` 11 to 30, `XL` 31 or more, `na` for none. These are measured after the run, which is why sections 5 and 6 keep size out of the default forecast.
 
@@ -186,7 +186,7 @@ for each draw:
 - **Codex plans (0.6.0).** Each Codex exec session is one turn, so Codex rows add nothing to `b`, which needs sessions of at least 5 runs, or to `P_eff`, where every Codex row has a peak of 1. A plan of Codex tasks uses the session effect and throughput learned from Claude Code sessions.
 - **Contention.** No slowdown term is applied, because F3 shows the available estimate is confounded. A term can be added only if it wins in Phase 4.
 
-**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and outside the total, and JSON carries it as `human`. No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
+**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and with no allowance added to the total, and JSON carries it as `human`. Since 0.9.2 the output also says that the session clock counts the gaps between runs up to the idle cap, so a wait shorter than the cap sits inside the plan total (ruling for 0.10). No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
 
 ## 6. Backtest protocol
 
