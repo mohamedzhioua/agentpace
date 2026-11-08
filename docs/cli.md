@@ -139,7 +139,7 @@ With `--quoted`, one line sits directly under the total. It holds the quote verb
 Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)
 ```
 
-Then a table of tasks with their P50, P80, P90, how often each was on the critical path and the data cell it drew from, then the critical path, the effective parallelism, the method and the number of runs used, and any warnings. Durations print to two significant figures: seconds under 90 s, minutes under 90 min, hours under 48 h, days beyond.
+Then a table of tasks with their P50, P80, P90, how often each was on the critical path and the data cell it drew from, then the critical path, the effective parallelism, the method and the number of runs used, the runs that did not complete by harness, and any warnings. Durations print to two significant figures: seconds under 90 s, minutes under 90 min, hours under 48 h, days beyond. The line after the method counts every loaded run, never per cell: `Not completed, by harness: <harness> N of M (S%; F failed, U unknown), ...`, then says these are recorded harness outcomes, not task acceptance, left out of the fit, and, when there are any, how many completed rows with no duration are left out too.
 
 ### Plan JSON
 
@@ -195,7 +195,8 @@ One JSON object. Every duration is in seconds, as a number.
 | `method` | string | The method used. |
 | `size_used` | boolean | Whether `--use-size` was given. |
 | `rows_used` | integer | Completed runs the estimate learned from. |
-| `rows_excluded` | integer | Runs left out because they did not complete. |
+| `rows_excluded` | integer | Runs left out of the fit: those that did not complete (failed or unknown), and completed runs with no duration. |
+| `outcomes` | object | Recorded harness outcomes of every row the estimate loaded, after duplicates are dropped, and never per cell: `rows`, `completed`, `failed`, `unknown`, `completed_without_duration` (completed rows with a duration of 0), and `by_harness`, a list sorted by harness name of objects with `harness`, `rows`, `completed`, `failed` and `unknown`. An outcome is how the run ended in its harness, not task acceptance, and `unknown` is not counted as a failure. The counts are shown, never used to change the range. `rows` is `completed` + `failed` + `unknown`, `rows_used` is `completed` - `completed_without_duration`, and `rows_excluded` is `failed` + `unknown` + `completed_without_duration`. |
 | `draws` | integer | Simulations run. |
 | `seed` | integer | The random seed. |
 | `warnings` | list of strings | Thin or unseen cells, ignored sizes, an assumed parallelism. Pass them on. |
