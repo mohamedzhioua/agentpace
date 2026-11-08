@@ -13,7 +13,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
-- The three README images use absolute `raw.githubusercontent.com` URLs, so they render on the PyPI project page as well as on GitHub. Alt text is unchanged.
+- The three README images use absolute `raw.githubusercontent.com` URLs, so they can render on the PyPI project page as well as on GitHub. Alt text is unchanged.
 
 ### Fixed
 

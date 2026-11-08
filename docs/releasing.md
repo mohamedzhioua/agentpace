@@ -1,6 +1,6 @@
 # Releasing agentpace
 
-This is the maintainer's runbook. agentpace is not on PyPI yet: every install line installs from git, and `publish.yml` runs only when dispatched by hand. Part 1 is the release every version gets today. Parts 2 to 5 are the one-time PyPI setup and first upload, which only the owner can do. Line numbers below are as of v0.8.0; later releases may move them, so search for the quoted text.
+This is the maintainer's runbook. agentpace is not on PyPI yet: every install line installs from git, and `publish.yml` runs only when dispatched by hand. Part 1 is the release every version gets today. Parts 2 to 4 are the one-time PyPI setup, first upload and check, which need the owner's PyPI and GitHub accounts; part 5 is the pull request that follows. Line numbers below are as of v0.8.4; later releases may move them, so search for the quoted text.
 
 ## 1. Every release
 
@@ -14,7 +14,7 @@ This is the maintainer's runbook. agentpace is not on PyPI yet: every install li
    git push origin vX.Y.Z
    ```
 
-5. Publish a GitHub release page for the tag (`gh release create vX.Y.Z`). Tags v0.2.0 to v0.8.0 each have one.
+5. Publish a GitHub release page for the tag (`gh release create vX.Y.Z`).
 
 While `publish.yml` is manual, a release page uploads nothing.
 
@@ -43,7 +43,7 @@ agentpace uses trusted publishing: PyPI accepts the identity of the `publish.yml
    gh workflow run publish.yml --ref vX.Y.Z
    ```
 
-   This needs a `Bash(gh workflow run:*)` permission that the agent does not have, so the owner runs it.
+   Dispatching needs write access to the repository, so the owner runs it; nothing in a pull request can.
 4. Watch the run (`gh run list --workflow publish.yml`, then `gh run watch <id>`) and confirm it passes.
 
 **A published version is final.** PyPI never accepts a second upload of the same version, even after you delete it, so never re-dispatch a version that uploaded. If anything about it needs fixing, bump the patch version, release it as in part 1, and dispatch the new tag. A run that failed before `uv publish` uploaded anything can be dispatched again.
@@ -133,7 +133,7 @@ Two more places hold the git URL or depend on it, beyond the list above:
 
 In the same pull request, add `release: types: [published]` under `on:` in `publish.yml` and update its comment, so from then on a release page uploads its version. Keeping `workflow_dispatch` beside it is harmless.
 
-When the switch is done, `git grep -n "git+https://github.com/mohamedzhioua/agentpace"` and `git grep -n -i "not on PyPI"` both print nothing.
+When the switch is done, `git grep -n "git+https://github.com/mohamedzhioua/agentpace" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` and `git grep -n -i "not on PyPI" -- . ':!CHANGELOG.md' ':!docs/releasing.md'` both print nothing. `CHANGELOG.md` keeps the phrase as history and this file keeps it in the quotes above; rewrite this file's first paragraph in the same pull request.
 
 ## The README on PyPI
 
