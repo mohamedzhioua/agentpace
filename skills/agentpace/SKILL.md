@@ -58,7 +58,7 @@ When the conversation already holds a timeline in days, weeks or months, from th
 agentpace estimate plan.json --quoted "3 months"
 ```
 
-The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line.
+The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line. Never say what the difference between the quote and the range is, and never call it the human part: that would derive the human part from the agent time.
 
 If the user wants to see later which number held, offer the same command with `--record` added. Once the work is done, `agentpace score <id> --session <ref>` compares both with what the agents actually took.
 

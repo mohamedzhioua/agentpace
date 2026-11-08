@@ -13,8 +13,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   - A new line, directly above the human part, states the cap rule. `Quoted:` stays on line 2.
   - The human part line says `No allowance for it is added to the total above`. When `agentpace turns` has measured your waits, it adds that waits up to the idle cap already sit inside the session clock, so they must not be added to it.
   - `score` describes a session's actual as "that session's span on its own clock: agent runs plus the gaps between them, each gap up to the idle cap". The ledger summary says the same.
-  - `--json` output is unchanged, and `human.included_in_total` stays `false`. `docs/cli.md` now defines it as "no allowance added".
+  - `--json` output is unchanged, and `human.included_in_total` stays `false`. `docs/cli.md` now defines it as meaning that no allowance for the human part is added to the total.
 - The README, `docs/cli.md`, DESIGN (the `offset_s` row, which wrongly said long gaps were removed, and the estimator output paragraph), `data/README.md`, the `agentpace` and `pace-estimate` skill bodies, the method reference and the portable prompt are reworded to match. Skill frontmatters are unchanged.
+- The `agentpace` skill body and the portable prompt now say never to name the difference between a quoted timeline and the range, and never to call it the human part. A smoke prompt had called it that.
 
 ### Added
 
