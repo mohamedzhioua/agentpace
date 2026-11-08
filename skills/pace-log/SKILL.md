@@ -9,14 +9,15 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 **Use when** the user runs `/pace-log`, or asks to log, record or track their agent runs, or to relabel one.
 
-**Produces** fresh rows in `~/.agentpace` from local Claude Code history, the latest runs listed with their references, corrected labels, and the opt-in hook snippet when asked.
+**Produces** fresh rows in `~/.agentpace` from one harness's local history, the latest runs listed with their references, corrected labels, and the opt-in hook snippet when asked.
 
 Input, if any: $ARGUMENTS
 
 1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install git+https://github.com/mohamedzhioua/agentpace`
-2. Run `agentpace ingest`. It reads timestamps, model ids, token and tool counts only, and keeps rows in `~/.agentpace`. Nothing leaves this machine.
+2. Pick the source, and tell the user which one you are ingesting. `agentpace ingest` reads Claude Code subagent runs, the default. For another harness, add `--source` with one of `claude-code`, `codex`, `gemini-cli`, `opencode` or `cline`. It reads timestamps, model ids, token and tool counts only, and keeps rows in `~/.agentpace`. Nothing leaves this machine.
+   - `gemini-cli`, `opencode` and `cline` are experimental: each adapter was built from the tool's source and is not yet verified on real sessions, and `agentpace validate` rejects their rows, so a data pull request with them stays red until the adapter is verified. Say so when you use one, and pass on the note `ingest` prints. Anyone who wants to verify one can follow [docs/verify-adapter.md](https://github.com/mohamedzhioua/agentpace/blob/main/docs/verify-adapter.md).
 3. Run `agentpace runs --last 10` and show the list.
-4. If the user gave a kind or risk, apply it. `agentpace label last --kind bugfix` labels the latest run, and a reference from the list labels any other. Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`.
+4. If the user gave a kind or risk, apply it. `agentpace label last --kind bugfix` labels the latest run, and a reference from the list labels any other. If `label last` refuses because it cannot tell which run is last, do not guess: show the user the list from step 3 and label the reference they pick. Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`.
 
 ## Optional: log every run automatically
 

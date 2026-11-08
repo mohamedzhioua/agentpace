@@ -66,7 +66,7 @@ If the user wants to see later which number held, offer `agentpace estimate plan
 
 ## Limits to state when they matter
 
-- The seed data is one person's workflow, so results improve once the user runs `agentpace ingest` on their own history.
+- The seed data is one person's workflow, so it may not resemble the user's. `agentpace ingest` pools the user's own runs with it; `--data ~/.agentpace/runs.jsonl` uses only theirs. The Gemini CLI, OpenCode and Cline adapters are experimental, not yet verified on real sessions, so say so when an estimate leans on rows from them.
 - Without reading prompts, metadata cannot separate features from bug fixes or refactors, so those kinds may share data.
 - `size` is ignored unless `--use-size` is passed, because stored size is measured after a run. Do not pass it unless the user asks.
 
