@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+### Added
+
+- A draft Gemini CLI adapter (#29): `agentpace ingest --source gemini-cli` reads `~/.gemini/tmp/<project>/chats`, one agent turn per run and one session file per batch. It was built from the Gemini CLI source at `google-gemini/gemini-cli@62bab5b232c15b925d31e655ce844ab939c882b7` and is not yet verified on real sessions, so it stays a draft until real history is reconciled with it. DESIGN section 3 has the run definition and what is copied.
+- `gemini-cli` joins the `harness` enum in the run schema. Additive: no existing row changes.
+
+### Changed
+
+- Gemini Flash Lite models keep their own family (`gemini-3.1-flash-lite`) instead of folding into Flash.
+
 ## 0.7.2 - 2026-11-08
 
 ### Fixed
