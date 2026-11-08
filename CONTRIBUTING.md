@@ -20,15 +20,15 @@ A data pull request should touch only `data/runs/`.
 
 You supply the file. The maintainer does the rest:
 
-- **`validate-data` must pass.** It runs `agentpace validate data/runs` with the base branch's validator. A failure here is something to fix in your file.
-- **`quality` stays red, and that is expected.** New rows move the published numbers, so the backtest, the site and the README claims no longer match the data. The maintainer adds a commit to your branch with the regenerated backtest, site and claims, a CHANGELOG entry that lists every number that moved, and a version bump. Then it goes green.
+- **"Validate data" must pass.** That check (`validate-data.yml`) runs `agentpace validate data/runs` with the base branch's validator. A failure here is something to fix in your file.
+- **"Lint, types and published numbers" stays red, and that is expected.** That check is the `quality` job in `ci.yml`. New rows move the published numbers, so the backtest, the site and the README claims no longer match the data. The maintainer adds a commit to your branch with the regenerated backtest, site and claims, a CHANGELOG entry that lists every number that moved, and a version bump. Then it goes green.
 - **Keep "Allow edits by maintainers" on** when you open the pull request, so that commit can land on your branch.
 
-Rows from an experimental adapter (Gemini CLI, OpenCode, Cline) fail `validate-data` until that adapter is verified. See [Verify an experimental adapter](#verify-an-experimental-adapter).
+Rows from an experimental adapter (Gemini CLI, OpenCode, Cline) fail "Validate data" until that adapter is verified. See [Verify an experimental adapter](#verify-an-experimental-adapter).
 
 ## Label your runs
 
-Metadata cannot tell a feature from a bug fix. Labels can, and they improve every estimate. Run `agentpace runs` to find a reference, then `agentpace label <ref> --kind bugfix --risk high`. Do this before `agentpace share`.
+Metadata cannot tell a feature from a bug fix. Labels can: without them, bug fixes and refactors look like any other implementation run, so the `bugfix` and `refactor` cells stay thin until people label runs. Run `agentpace runs` to find a reference, then `agentpace label <ref> --kind bugfix --risk high`. Do this before `agentpace share`.
 
 ## Add a harness
 

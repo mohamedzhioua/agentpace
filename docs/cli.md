@@ -153,7 +153,7 @@ Each task:
 
 The plan holds no durations: every number comes from the data. A task with a model draws from the model × kind × risk cell, and one without from kind × risk. A model name the data has never seen falls back to the broader cell with a wider interval and a warning, so use the model family as it appears in `agentpace runs`, such as `claude-opus-5-5`.
 
-A plan that breaks these rules is refused with exit 2 and a message that names the task by its position (`task #2: ...`) and the rule, never the plan's text. `model` must be a string or `null`, at plan and task level.
+A plan that breaks these rules is refused with exit 2. A field problem is reported by the task's position and the rule (`task #2: ...`), never by the plan's text. A dependency on an id that is not in the plan is reported with both ids; a duplicate id or a cycle is reported as such. `model` must be a string or `null`, at plan and task level.
 
 ```json
 {

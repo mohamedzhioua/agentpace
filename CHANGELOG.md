@@ -15,9 +15,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Changed
 
 - CONTRIBUTING step 5 and the pull request template say `agentpace validate data/runs`. Plain `validate` checks the bundled seed, not the contributor's file.
-- CONTRIBUTING says what happens to a data pull request: `validate-data` must pass, and `quality` stays red until the maintainer adds a commit with the regenerated backtest, site and claims, a CHANGELOG entry listing every moved number, and a version bump. Contributors keep "Allow edits by maintainers" on.
+- CONTRIBUTING says what happens to a data pull request, naming the checks as they appear on it: "Validate data" must pass, and "Lint, types and published numbers" stays red until the maintainer adds a commit with the regenerated backtest, site and claims, a CHANGELOG entry listing every moved number, and a version bump. Contributors keep "Allow edits by maintainers" on.
 - CONTRIBUTING no longer asks for a `DEFAULT_METHOD` edit when a new method wins. Selection is frozen at 2026-W45, a test fails CI on a flip, and a flip needs re-registration in CHANGELOG (DESIGN section 6).
-- `/pace-log` names the `--source` choices and marks `gemini-cli`, `opencode` and `cline` experimental. The `agentpace` skill's limits no longer promise that results improve once a user ingests their own history, a claim nothing measured.
+- `/pace-log` names the `--source` choices, marks `gemini-cli`, `opencode` and `cline` experimental, and says to ask the user for a reference when `label last` refuses. The `agentpace` skill's limits name the three experimental adapters and no longer promise that results improve once a user ingests their own history, and CONTRIBUTING no longer says labels improve every estimate. Nothing measured either claim.
 - The README's `validate` row says contributors pass `data/runs`.
 
 No published number moved.

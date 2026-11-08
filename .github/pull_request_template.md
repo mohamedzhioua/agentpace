@@ -6,7 +6,7 @@
 - [ ] `agentpace validate data/runs` passes.
 - [ ] This pull request adds or extends one file under `data/runs/` and touches nothing else.
 - [ ] I dedicate these rows to the public domain under CC0-1.0.
-- [ ] "Allow edits by maintainers" is on. The `quality` check stays red until the maintainer adds the regenerated numbers (see CONTRIBUTING.md).
+- [ ] "Allow edits by maintainers" is on. The "Lint, types and published numbers" check stays red until the maintainer adds the regenerated numbers (see CONTRIBUTING.md).
 
 ## Changing code
 

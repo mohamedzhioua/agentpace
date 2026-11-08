@@ -71,10 +71,10 @@ Lifting a label is a minor version.
 
 ## 6. The order of pull requests
 
-A pull request that shares real-work rows from an experimental adapter is red by design: `validate-data` rejects its rows. That is expected, not a mistake to fix in the data file. The order is:
+A pull request that shares real-work rows from an experimental adapter is red by design: the "Validate data" check rejects its rows. That is expected, not a mistake to fix in the data file. The order is:
 
 1. The verification pull request, which lifts the label, merges first.
-2. The data pull request's checks re-run against the new base branch, whose validator now accepts the harness, and `validate-data` goes green.
+2. The data pull request is rebased onto the new `main` and pushed. Its checks run again with the base branch's validator, which now accepts the harness, and "Validate data" goes green.
 
 ## 7. When the rows do not match
 
