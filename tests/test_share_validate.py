@@ -192,6 +192,94 @@ class ShareCommand(Temp):
         self.assertIn("nothing new", err)
         self.assertEqual(len(list(self.out.glob("*.jsonl"))), 1)
 
+    def add_local_run(self, **overrides):
+        stored = schema.read_rows(paths.local_runs())
+        schema.write_rows(paths.local_runs(), [*stored, row(**overrides)])
+
+    def test_a_second_share_of_the_same_span_appends(self):
+        self.run_cli("--write")
+        path = self.out / NAME
+        first = path.read_bytes()
+        self.add_local_run(offset_s=50)
+        code, _, err = self.run_cli("--write")
+        self.assertEqual(code, 0)
+        self.assertEqual(list(self.out.glob("*.jsonl")), [path])
+        self.assertTrue(path.read_bytes().startswith(first))
+        self.assertEqual(len(schema.read_rows(path)), 3)
+        self.assertIn(f"added 1 rows to {path}, which already held 2. Nothing has been sent.", err)
+        self.assertEqual(validate.validate([self.out]), [])
+
+    def test_an_existing_file_keeps_its_bytes_even_without_a_final_newline(self):
+        self.out.mkdir()
+        path = self.out / NAME
+        path.write_bytes(schema.canonical(row(offset_s=90)).encode("utf-8"))
+        first = path.read_bytes()
+        code, _, err = self.run_cli("--write")
+        self.assertEqual(code, 0)
+        self.assertTrue(path.read_bytes().startswith(first + b"\n"))
+        self.assertEqual(len(schema.read_rows(path)), 3)
+        self.assertIn("which already held 1", err)
+        self.assertEqual(validate.validate([self.out]), [])
+
+    def test_a_file_holding_another_contributors_rows_is_refused(self):
+        self.out.mkdir()
+        path = self.out / NAME
+        path.write_bytes(schema.canonical(row(contributor="f" * 16, offset_s=90)).encode() + b"\n")
+        before = path.read_bytes()
+        for flags in (("--write",), ()):
+            with self.subTest(flags=flags):
+                code, out, err = self.run_cli(*flags)
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertIn(
+                    f"refusing to add rows to {NAME}: it holds another contributor's rows", err
+                )
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(list(self.out.iterdir()), [path])
+
+    def test_the_dry_run_names_the_file_it_would_create(self):
+        _, _, err = self.run_cli()
+        self.assertIn(f"--write would create {self.out / NAME}.", err)
+        self.assertFalse(self.out.exists())
+
+    def test_the_dry_run_names_the_file_it_would_extend(self):
+        self.run_cli("--write")
+        path = self.out / NAME
+        before = path.read_bytes()
+        self.add_local_run(offset_s=50)
+        _, printed, err = self.run_cli()
+        self.assertIn(f"--write would add them to {path}, which holds 2 rows.", err)
+        self.assertEqual(printed, schema.canonical(row(offset_s=50)) + "\n")
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(self.out.iterdir()), [path])
+
+    def test_experimental_rows_are_kept_and_named_in_both_modes(self):
+        self.add_local_run(harness="opencode", offset_s=60)
+        self.add_local_run(harness="gemini-cli", offset_s=70)
+        self.add_local_run(harness="gemini-cli", offset_s=80)
+        expected = (
+            "3 rows come from experimental adapters (gemini-cli, opencode). validate rejects them "
+            "until the adapter is verified, so a pull request with them stays red until a "
+            "maintainer reconciles them by hand; see docs/verify-adapter.md."
+        )
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                _, out, err = self.run_cli(*flags)
+                self.assertIn(expected, err)
+                self.assertNotIn("experimental", out)
+        self.assertEqual(len(schema.read_rows(self.out / NAME)), 5)
+
+    def test_no_experimental_warning_without_experimental_rows(self):
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                self.assertNotIn("experimental adapters", self.run_cli(*flags)[2])
+
+    def test_the_submit_commands_start_with_validate(self):
+        path = self.out / NAME
+        self.assertEqual(share.git_commands(path)[0], f'agentpace validate "{self.out}"')
+        err = self.run_cli("--write")[2]
+        self.assertIn(f'  agentpace validate "{self.out}"\n  git add "{path}"', err)
+
     def test_dry_run_and_write_conflict(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             self.run_cli("--dry-run", "--write")

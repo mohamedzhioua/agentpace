@@ -6,10 +6,12 @@ git push the contributor runs themselves, after reading exactly what it holds.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from agentpace import schema
+from agentpace.adapters import EXPERIMENTAL
 from agentpace.schema import Row
 
 NOTICE = """\
@@ -52,8 +54,58 @@ def file_name(rows: Sequence[Row]) -> str:
     return f"{rows[0]['contributor']}-{weeks[0]}-{weeks[-1]}.jsonl"
 
 
+def held_rows(path: Path, rows: Sequence[Row]) -> int | None:
+    """How many rows `path` already holds, or None when it does not exist yet.
+
+    Refuses a file that holds anyone else's rows: a contribution file belongs to one contributor.
+    """
+    if not path.exists():
+        return None
+    contributor = rows[0]["contributor"]
+    old = schema.read_rows(path)
+    if any(row.get("contributor") != contributor for row in old):
+        raise ValueError(
+            f"refusing to add rows to {path.name}: it holds another contributor's rows"
+        )
+    return len(old)
+
+
+def write_contribution(path: Path, rows: Sequence[Row]) -> tuple[int, int]:
+    """Create `path`, or extend it. Returns (rows added, rows it already held).
+
+    An existing file keeps its bytes exactly; the new rows go after them. `select` has already
+    left out every published run, so an appended row is never a duplicate.
+    """
+    if not rows:
+        raise ValueError("nothing to write")
+    existing = held_rows(path, rows) or 0
+    old = path.read_bytes() if path.exists() else b""
+    if old and not old.endswith(b"\n"):
+        old += b"\n"
+    new = "".join(schema.canonical(row) + "\n" for row in rows).encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(old + new)
+    os.replace(temporary, path)
+    return len(rows), existing
+
+
+def experimental_note(rows: Iterable[Row]) -> str | None:
+    """A warning when rows from unverified adapters are in the share. They stay in it."""
+    harnesses = [row["harness"] for row in rows if row["harness"] in EXPERIMENTAL]
+    if not harnesses:
+        return None
+    names = ", ".join(sorted(set(harnesses)))
+    return (
+        f"{len(harnesses)} rows come from experimental adapters ({names}). validate rejects them"
+        " until the adapter is verified, so a pull request with them stays red until a maintainer"
+        " reconciles them by hand; see docs/verify-adapter.md."
+    )
+
+
 def git_commands(path: Path) -> list[str]:
     return [
+        f'agentpace validate "{path.parent}"',
         f'git add "{path}"',
         'git commit -m "data: add runs"',
         "git push origin HEAD",

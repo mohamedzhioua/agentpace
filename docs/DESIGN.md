@@ -240,7 +240,7 @@ for each draw:
 **`share`**
 
 - Defaults to `--dry-run` and prints the exact rows, byte for byte, as they would be written.
-- `--write` creates `data/runs/<contributor>-<from>-<to>.jsonl` and prints the git commands to submit it.
+- `--write` adds or extends one file, `data/runs/<contributor>-<from>-<to>.jsonl`, and prints the commands to check and submit it, `agentpace validate` first. Rows already anywhere in the folder are left out. When the name exists, its old bytes are kept exactly and the new rows go after them, so a second share of the same span never removes a published row; a file holding another contributor's rows is refused. Rows from experimental adapters stay in the share, and `share` warns on stderr that `validate` rejects them until the adapter is verified.
 - No network code at all in v1 (D5). A test parses every module under `src/` and fails on any import of `socket`, `urllib`, `http` or `subprocess`. A `gh` submit path is a v2 item with its own grant.
 - `share` is a local file writer, so the DONE WHEN line is met as a ceiling: zero network calls anywhere.
 - Submitting a data pull request is a CC0-1.0 dedication, stated in `CONTRIBUTING.md`.
@@ -464,6 +464,19 @@ The owner ruled on 2026-11-08.
 - **Labeled everywhere.** They are labeled experimental in the CLI (`agentpace ingest` prints a note on stderr for these sources, from `adapters.EXPERIMENTAL`), in the README and here.
 - **Rows rejected until verified.** `validate` rejects rows from these harnesses, so a contributor's file turns CI red and is reconciled by hand before the label is lifted.
 - **Supersedes.** Fable's earlier rule that these adapters merge only after real history (the three rulings above) is superseded for these three.
+
+### Ruling for 0.9
+
+Fable 5.1 ruled on 2026-11-08, with an independent opinion from Codex (gpt-6-astra) on the same brief, both at the highest effort. The master checked the defects the opinion reported before the ruling; Fable reproduced the share overwrite and the plan-model errors itself.
+
+- **Order.** Safe repeated sharing first, then truthful CLI output, the contributor path and PyPI preparation (0.8.1 to 0.8.4). The quote beside the range is 0.9.0, `share --drop-session` 0.9.1, and the 2026-W46 data change follows once that week has ended.
+- **A second share appends.** `share --write` for a span whose file already exists adds the new rows to that file and leaves its old bytes untouched. A file holding another contributor's rows is refused. Distinct suffixed file names were rejected, because the dataset keeps one file per contributor and span. Rows from experimental adapters stay in a share, with a warning on stderr, because the red data pull request is how they get reconciled.
+- **"Last" comes from cached chronology.** `runs` and `label last` order sessions by the start times in the local ingest caches, never by pseudonym and never by a new row field. When a session has no cached start, `runs` says so and `label last` refuses rather than guesses. `label` takes the store lock, so a hook ingest cannot lose its write.
+- **One quantity, one name.** The first estimate line reads "Total agent time, on the session clock". "Wall clock" leaves the estimate output, the README and the pace-estimate skill. No number moves.
+- **Contributors validate `data/runs`.** The `validate` default stays the bundled seed, and every contributor instruction passes `data/runs`. A default that depends on the working directory was rejected as a second trap.
+- **PyPI stays manual.** A runbook, a corrected workflow comment and absolute README image links. No install line changes until a clean install of a real upload passes.
+- **A quote is shown, never converted.** `--quoted` no longer needs `--record`. The quote appears verbatim on its own stdout line, marked as calendar time, as quoted and unverified, with no ratio. `--json` output is unchanged.
+- **Out:** a browser estimator, leaderboard views, method reselection or a drift sentence, `--since` and `--weeks`, `score` matching the last session by itself, a second plan format, `doctor`, shell completion, `llms.txt`, Discussions, new adapters, lifting an experimental label without real sessions, and path-filtered CI that would make data pull requests look green.
 
 ## 12. Sources
 

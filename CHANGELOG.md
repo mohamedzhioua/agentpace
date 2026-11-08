@@ -4,6 +4,28 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.8.1 - 2026-11-08
+
+The first release from the ruling for 0.9 (DESIGN section 11).
+
+### Fixed
+
+- `agentpace share --write` no longer overwrites a contribution file. A second share of the same span used to replace `<contributor>-<first week>-<last week>.jsonl` with only the new rows, so rows already in it were lost. Now the file keeps its old bytes exactly and the new rows go after them. Rows already anywhere in `--out-dir` are still left out, so an appended row is never a duplicate. The command prints `added N rows to <path>, which already held M`, and a new file is reported with `wrote`, as before.
+- `share` refuses, with exit 2, a file of that name that holds another contributor's rows, and leaves it unchanged. The dry run refuses it too, so the two modes agree.
+
+### Added
+
+- The dry run says what `--write` would do: `--write would create <path>` or `--write would add them to <path>, which holds M rows`. Its stdout, the exact rows, is unchanged.
+- `share` warns on stderr, in both modes, when rows from experimental adapters are in the share. It names the harnesses and says that `validate` rejects them, so a pull request with them stays red until a maintainer reconciles them by hand. The rows stay in the share. For these rows this replaces 0.8.0's "`share` output is unchanged".
+- The commands `share --write` prints to submit start with `agentpace validate "<out-dir>"`.
+
+### Changed
+
+- The README contribute steps say `agentpace validate data/runs`, because bare `agentpace validate` checks the seed data shipped with the package, and that `--write` adds or extends one file under `data/runs`. DESIGN section 7 describes the append.
+- DESIGN section 11 records the ruling for 0.9.
+
+No published number moved.
+
 ## 0.8.0 - 2026-11-08
 
 The Gemini CLI, OpenCode and Cline adapters ship as experimental, by the owner's decision. Each was built from the tool's source and is unverified on real sessions. No published row comes from any of them. Problems go in an issue (DESIGN section 11, ruling for 0.8.0).
