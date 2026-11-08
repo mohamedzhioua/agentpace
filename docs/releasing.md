@@ -91,7 +91,7 @@ Only once part 4 passes, one pull request makes every change below, with a CHANG
    ```
 
    The pipx command becomes `pipx install agentpace`, the "not on PyPI yet" sentence goes, and the last sentence says to drop `uvx` from the command above.
-3. **Site "Try it" line** (`docs/index.html:205`):
+3. **Site "Try it" line** (`docs/index.html:207`):
 
    ```text
    <pre><code>uvx --from git+https://github.com/mohamedzhioua/agentpace agentpace estimate --example</code></pre>
@@ -129,7 +129,7 @@ Only once part 4 passes, one pull request makes every change below, with a CHANG
 Two more places hold the git URL or depend on it, beyond the list above:
 
 7. **`tests/test_skills.py::test_a_command_is_on_the_first_screen`** (`tests/test_skills.py:31`) looks for a line starting with `uvx --from` in the README's first 25 lines, so it fails once item 1 changes. Its prefix becomes `uvx agentpace`.
-8. **The site's "Check it yourself" block** (`docs/index.html:263`) starts with `uv tool install git+https://github.com/mohamedzhioua/agentpace`, which becomes `uv tool install agentpace`.
+8. **The site's "Check it yourself" block** (`docs/index.html:265`) starts with `uv tool install git+https://github.com/mohamedzhioua/agentpace`, which becomes `uv tool install agentpace`.
 
 In the same pull request, add `release: types: [published]` under `on:` in `publish.yml` and update its comment, so from then on a release page uploads its version. Keeping `workflow_dispatch` beside it is harmless.
 
@@ -139,10 +139,11 @@ When the switch is done, `git grep -n "git+https://github.com/mohamedzhioua/agen
 
 PyPI renders the README as the project description. The three images use absolute `raw.githubusercontent.com` URLs on `main`, so they render on GitHub and on PyPI alike; on PyPI they show the charts as they are on `main` today, not as they were at that version.
 
-The README's other relative links do not resolve on PyPI, because PyPI has no repository to resolve them against. That is accepted: the page links the repository, and these targets are one click away there. As of v0.8.0 they are:
+The README's other relative links do not resolve on PyPI, because PyPI has no repository to resolve them against. That is accepted: the page links the repository, and these targets are one click away there. As of v0.8.4 they are:
 
 - `LICENSE` (lines 9 and 260) and `data/LICENSE` (lines 10 and 260)
 - `examples/plan.json` (line 41)
+- `docs/verify-adapter.md` (lines 84 to 86 and 243)
 - `skills/` and `skills/agentpace/assets/portable-prompt.md` (line 103), the portable prompt again (line 114)
 - `skills/agentpace/SKILL.md`, `skills/pace-estimate/SKILL.md`, `skills/pace-log/SKILL.md`, `skills/pace-share/SKILL.md` (lines 109 to 112), and `skills/pace-log/SKILL.md` again (line 137)
 - `docs/backtest.md` and its anchors `#by-harness` (line 145), `#time-split-week-by-week` (line 173) and `#pooled-for-the-record` (line 186)
