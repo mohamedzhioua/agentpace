@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.3 - 2026-11-09
+
+### Added
+
+- `model-offset-v1`, a challenger registered before any 2026-W46 row was seen, scored only on the locked holdout under a frozen win rule (DESIGN sections 6 and 11; `experiments/model_offset/PROTOCOL.md`). It applies only where the lookup stops at an unseen model under a recorded kind and risk. The five-candidate selection stays closed, and a win could ship only by re-registration in a minor release. Nothing in the estimator changes.
+
+No published number moved.
+
 ## 0.12.2 - 2026-11-09
 
 ### Fixed
