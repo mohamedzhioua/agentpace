@@ -8,7 +8,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
-- The estimating skills open every answer with one fenced block that holds the CLI's own lines, copied character for character: the plan total, the `Quoted:` line, the session-clock line, the human part line, the `Review capacity:` line and every warning. A smoke run showed that an answer told to pass the lines on "as printed" still reworded them; inside the block it no longer does.
+- The estimating skills open every answer with one fenced block that holds the CLI's own lines, copied character for character: the plan total, the `Quoted:` line, the session-clock line, the human part line, the `Review capacity:` line and every warning. A smoke run showed that an answer told to pass the lines on "as printed" still reworded them; in the reruns, with the block, it did not.
 - The skills' sample plans leave `risk` out except for research (`other` with `risk: low`), and step 3 no longer asks for a risk.
 - Without the CLI, the `agentpace` skill shows the install command and stops; if the user would rather not install it, it answers from the portable prompt and labels the result a rule of thumb.
 - The quote rules are one positive contract plus the prohibitions, and `/pace-share` says what "nothing new to share" means and that `--write` runs inside a clone of the repository.
