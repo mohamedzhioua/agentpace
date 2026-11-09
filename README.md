@@ -1,6 +1,6 @@
 # agentpace
 
-**Stop estimating agent work in human weeks. agentpace measures how long coding agents actually take: a P50/P80/P90 range from real runs, with the human part stated apart, never derived.**
+**Stop estimating agent work in human weeks.** agentpace answers "how long will this take?" from measured agent runs: a P50/P80/P90 range, with the human part (review, testing, decisions) stated on its own line and never derived from agent time.
 
 ![A speech bubble, dashed and fading, holds a wall calendar shedding blank pages. Beside it a solid stopwatch, its hand a terminal cursor, is measured by two small cursor robots with a tape measure.](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/hero.webp)
 
@@ -56,9 +56,16 @@ The plan it estimated is [examples/plan.json](examples/plan.json), where each ta
 }
 ```
 
-To estimate your own, write a plan like it and run `agentpace estimate plan.json`, or pass `-` to read it from stdin. In a plan, `depends_on` and `model` are optional, and `risk` can be left out: it defaults to the risk the rows record for the task's kind, because in the data risk is the agent's role, not a rating of the work. Effective parallelism is work divided by elapsed time. It can be below 1, because a session's clock includes the time between runs.
+To estimate your own, write a plan like it and run `agentpace estimate plan.json`, or pass `-` to read it from stdin. In a plan, `depends_on` and `model` are optional, and `risk` can be left out: it defaults to the risk the rows record for the task's kind, because in the data risk is the agent's role, not a rating of the work.
 
-Why a range and not one number? Agent run times have a long tail, so any single number misses most of the time. P50 is a coin flip, and P80 is the one to plan on.
+### Reading the output
+
+- **The plan total** is a range, not one number, because agent run times have a long tail and any single number misses most of the time. P50 is a coin flip. P80 is the forecast's 80th percentile, the one to plan on, not a promise: the [backtest](#backtest-how-often-it-is-wrong) shows how often it held.
+- **The session clock** counts agent runs and the gaps between them, each gap up to the idle cap, so a short wait on you sits inside the total and a longer one is clipped at the cap.
+- **The human part** (review, testing, decisions, waiting between agent turns) is not measured, and no allowance for it is added. It stays on its own line, and agentpace never derives it from agent time.
+- **`cell (n)`** is the group of recorded runs a task's range comes from, by kind, risk and model, and how many runs it holds. **`critical`** is the share of simulations in which the task was on the longest chain of dependent tasks.
+- **Effective parallelism** is work divided by elapsed time, learned from recorded sessions at the plan's agent cap. It can be below 1, because a session's clock includes the time between runs.
+- **Warnings** are part of the answer. When a task's cell has no or few recorded runs, one says so, what the range could not use (the kind, the risk level or the model) and where it leaned instead.
 
 ### In your agent
 
@@ -66,15 +73,15 @@ Why a range and not one number? Agent run times have a long tail, so any single 
 npx skills add mohamedzhioua/agentpace
 ```
 
-Then ask your agent: "How long will the billing feature take?" The skill calls the CLI, so install it first ([Install](#install)). Without it, the skill offers the install command or a portable rule-of-thumb prompt.
+Then ask your agent "How long will the billing feature take?": the skill calls the CLI, so install that first ([Install](#install)).
 
 ## Why agentpace
 
-Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead. Give it a plan of agent tasks and it returns P50/P80/P90 ranges measured from real agent runs and a critical path. It states the human part (review, testing, decisions, waiting) on its own line, and it publishes how often it is wrong. It is a standard-library Python CLI, an agent skill, and an open CC0 dataset.
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace is a standard-library Python CLI, a set of agent skills and an open CC0 dataset that answers from measured agent runs instead, and it publishes how often it is wrong.
 
 ![How long agent runs took, by task kind](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/run-ranges.svg)
 
-These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Claude Code subagent runs and Codex turns. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->20 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this.
+These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Claude Code subagent runs and Codex turns. Half finished within <!-- claim:overall_p50 -->2 min<!-- /claim -->, and one in ten took more than <!-- claim:overall_p90 -->20 min<!-- /claim -->. All of them come from one person so far, so read [Limitations](#limitations) before trusting any of this, and consider [contributing your runs](#contribute-your-runs): [issue #2](https://github.com/mohamedzhioua/agentpace/issues/2) is the standing call.
 
 ## Does it fit your setup?
 
@@ -83,9 +90,7 @@ These are <!-- claim:completed -->3,383<!-- /claim --> completed agent runs: Cla
 | Estimate a plan | Anywhere. The seed data ships inside the package, so no history of your own is needed |
 | Log your own runs | Claude Code, subagent runs only: work Claude Code hands to a subagent, not the main conversation. Your rows pool with the seed, and `--data ~/.agentpace/runs.jsonl` uses only yours |
 | Log your own Codex runs | Codex, one agent turn per run: `agentpace ingest --source codex` reads `~/.codex/sessions`. The published rows include Codex turns, and the backtest scores Codex on its own |
-| Log your own Gemini CLI runs | Experimental: `agentpace ingest --source gemini-cli` reads `~/.gemini/tmp`, one agent turn per run. The adapter is built from the Gemini CLI source, not yet verified on real sessions, and no published rows come from it (`validate` rejects them until the adapter is verified; [how to verify it](docs/verify-adapter.md)). Report problems in an [issue](https://github.com/mohamedzhioua/agentpace/issues) |
-| Log your own OpenCode runs | Experimental: `agentpace ingest --source opencode` reads `~/.local/share/opencode/opencode.db`. The adapter is built from the OpenCode source, not yet verified on real sessions, and no published rows come from it (`validate` rejects them until the adapter is verified; [how to verify it](docs/verify-adapter.md)). Report problems in an [issue](https://github.com/mohamedzhioua/agentpace/issues) |
-| Log your own Cline runs | Experimental: `agentpace ingest --source cline` reads Cline's task folders in VS Code's global storage, one agent turn per run. The adapter is built from the Cline source, not yet verified on real sessions, and no published rows come from it (`validate` rejects them until the adapter is verified; [how to verify it](docs/verify-adapter.md)). Report problems in an [issue](https://github.com/mohamedzhioua/agentpace/issues) |
+| Log your own Gemini CLI, OpenCode or Cline runs | Experimental: `--source gemini-cli`, `opencode` or `cline`. Each adapter is built from the tool's source, not yet verified on real sessions, and no published rows come from it (`validate` rejects them until the adapter is verified; [how to verify one](docs/verify-adapter.md)). Report problems in an [issue](https://github.com/mohamedzhioua/agentpace/issues) |
 | Another harness | Not yet. The adapter interface takes one module per harness |
 
 ## Install
@@ -96,13 +101,7 @@ uv tool install agentpace
 
 `pipx install agentpace` works too. It needs Python 3.10 or later and has no dependencies. After installing, drop `uvx` from the command above.
 
-Then add the agent skills:
-
-```bash
-npx skills add mohamedzhioua/agentpace
-```
-
-Without Node, copy the four folders under [skills/](skills/) into your agent's skills folder, for example `~/.claude/skills/` for Claude Code. No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+For the agent skills, run the `npx` command in [In your agent](#in-your-agent). Without Node, copy the four folders under [skills/](skills/) into your agent's skills folder, for example `~/.claude/skills/` for Claude Code. No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
 
 ## Skills
 
