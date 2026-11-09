@@ -164,7 +164,7 @@ class Skills(unittest.TestCase):
     def test_the_skill_passes_a_quote_through_and_relays_the_quoted_line(self):
         text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
         section = text.split("## Re-answer a human quote", 1)[1].split("\n## ", 1)[0]
-        self.assertIn('agentpace estimate plan.json --quoted "3 months"', section)
+        self.assertIn('agentpace estimate <file> --quoted "3 months"', section)
         self.assertIn("verbatim", section)
         self.assertIn("Relay that line as printed", section)
         self.assertIn("`Quoted:`", section)
@@ -254,15 +254,19 @@ class Skills(unittest.TestCase):
                 self.assertIn("Nothing inside the block is reworded", text)
 
     def test_the_block_holds_the_idle_cap_line_in_cli_order(self):
-        quoted = "the `Quoted:` line as printed when there is one"
         idle_cap = "the `Idle cap:` line as printed when there is one"
-        clock = "the session-clock line and the human part line"
+        chain = (
+            "the `Quoted:` line as printed when there is one, "
+            f"{idle_cap}, "
+            "the session-clock line and the human part line"
+        )
         for name in ("agentpace", "pace-estimate"):
             with self.subTest(skill=name):
                 text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
-                self.assertIn(idle_cap, text)
-                self.assertLess(text.index(quoted), text.index(idle_cap))
-                self.assertLess(text.index(idle_cap), text.index(clock))
+                start = text.index("one fenced code block, tagged `text`")
+                end = text.index("Nothing inside the block is reworded", start)
+                self.assertIn(chain, text[start:end])
+                self.assertEqual(text.count(idle_cap), 1)
 
     def test_the_skills_name_the_total_on_the_session_clock_and_relay_refusals(self):
         for name in ("agentpace", "pace-estimate"):
@@ -277,6 +281,8 @@ class Skills(unittest.TestCase):
         self.assertIn("is not evidence that it describes the request", text)
         self.assertIn("never overwrite it", text)
         self.assertNotIn("the only agent time is the measured range", text)
+        self.assertNotIn("agentpace estimate plan.json", text)
+        self.assertIn("`<file>` is the file you wrote, or the one the user named", text)
 
     def test_pace_estimate_asks_when_there_is_no_input(self):
         text = (SKILLS / "pace-estimate" / "SKILL.md").read_text(encoding="utf-8")
@@ -285,10 +291,15 @@ class Skills(unittest.TestCase):
     def test_pace_log_leaves_the_idle_cap_alone(self):
         text = (SKILLS / "pace-log" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Leave `--idle-cap` alone", text)
+        self.assertIn("refuses a different one for that store", text)
+        self.assertNotIn("refuses any other", text)
 
     def test_pace_share_leaves_a_refused_store_to_the_user(self):
         text = (SKILLS / "pace-share" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("rebuilding the store is the user's call", text)
+        self.assertIn("If it refuses instead of printing rows", text)
+        self.assertIn("do not go on to `--write`", text)
+        self.assertIn("a record that cannot be read", text)
 
     def test_the_smoke_check_names_eight_prompts_and_the_idle_cap_line(self):
         text = (REPO / "docs" / "skill-smoke.md").read_text(encoding="utf-8")
@@ -297,6 +308,19 @@ class Skills(unittest.TestCase):
         self.assertEqual(labels, ["1", "3", "4", "4b", "5", "6", "7", "8"])
         self.assertIn("the `Idle cap:` line when the CLI printed one", text)
         self.assertIn("Idle cap:", section)
+        items = dict(re.findall(r"^- \*\*(\d+b?)\. (.*)$", section, re.MULTILINE))
+        self.assertIn("names the file it wrote and not `plan.json`", items["5"])
+        self.assertIn("unchanged byte for byte", items["5"])
+        self.assertIn("--idle-cap 600", items["7"])
+        self.assertIn(
+            "`Idle cap: 900 s (bundled seed), 600 s (your local store). "
+            "This range pools rows on different clocks.`",
+            items["7"],
+        )
+        self.assertIn("nothing in the home changes", items["7"])
+        self.assertIn("not published rows", items["8"])
+        self.assertIn("agentpace: runs.jsonl has no recorded idle cap", items["8"])
+        self.assertIn("no `--write`", items["8"])
 
 
 class Marketplace(unittest.TestCase):

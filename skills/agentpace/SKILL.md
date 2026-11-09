@@ -28,7 +28,7 @@ uv tool install agentpace
 1. Assume agents do the implementation unless the user says otherwise. If it is unclear and the answer would change, ask once.
 2. Break the work into tasks an agent would run as separate runs.
 3. Give each task an `id` and a `kind`, plus `depends_on` when it must wait for another task. Set `model` to the model that will run it when you know it, and `agent_cap` to the number of agents that will run at once. Leave `risk` out, except for research (below).
-4. Write the plan to a new file and run the estimator. Use an existing plan file instead only when the user names it or this conversation has already made it the plan for this work. A file that just happens to be in the folder, `plan.json` included, is not evidence that it describes the request: never estimate it as the answer and never overwrite it. If it might be the plan they mean, ask which to use before running anything.
+4. Write the plan to a new file and run the estimator on that file. Use an existing plan file instead only when the user names it or this conversation has already made it the plan for this work. A file that just happens to be in the folder, `plan.json` included, is not evidence that it describes the request: never estimate it as the answer and never overwrite it. If it might be the plan they mean, ask which to use before running anything. In the commands below, `<file>` is the file you wrote, or the one the user named.
 
 ```json
 {
@@ -44,7 +44,7 @@ uv tool install agentpace
 ```
 
 ```text
-agentpace estimate plan.json
+agentpace estimate <file>
 ```
 
 - Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`, as the data records them: `feature` is implementation work of any kind, `review` a read-only review, `other` anything else.
@@ -57,7 +57,7 @@ agentpace estimate plan.json
 When the conversation already holds a timeline in days, weeks or months, from the user, a document or an earlier answer, estimate the plan anyway, and pass the quote verbatim, in the words it was given:
 
 ```text
-agentpace estimate plan.json --quoted "3 months"
+agentpace estimate <file> --quoted "3 months"
 ```
 
 The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range, and leave the two side by side: the measured range is the plan total on the session clock, and the human part stays on its own line. Never convert the quote into agent time, never compare it with the range or give a ratio or difference between them, and never say what the quote counts or call the difference the human part: nothing has checked the quote, and that would derive the human part from the agent time.

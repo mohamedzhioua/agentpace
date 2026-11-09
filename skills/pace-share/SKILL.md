@@ -15,7 +15,7 @@ Sharing is opt-in. Do nothing here unless the user asked for it.
 
 1. Run `agentpace --version`. If it fails, show this command and stop, because installing is the user's call: `uv tool install agentpace`
 2. Run `agentpace share --dry-run`. It prints the exact rows and what they reveal, and writes nothing.
-3. If it refuses because the store's idle cap is not the default or is not recorded, with one line starting `agentpace:`, pass that line on as printed and stop: rebuilding the store is the user's call.
+3. If it refuses instead of printing rows, with one line starting `agentpace:`, pass that line on as printed and stop: do not go on to `--write`. When the refusal is about the store's idle cap (not the default, not recorded, or a record that cannot be read), rebuilding the store is the user's call: do not rename, delete or edit anything in `~/.agentpace` unless they ask.
 4. If it prints `nothing new to share`, every local run is already published; say so and stop.
 5. Tell the user how many rows there are, and pass on the notice in full. Offer to show the rows.
 6. Stop and ask. Run `agentpace share --write` only after the user says yes to writing the file. It writes into `data/runs` under the current folder, and only inside a clone of the agentpace repo is that the real dataset: there, rows already published are left out and `agentpace validate data/runs` checks the file against every other. Run it from their clone, as CONTRIBUTING describes.
