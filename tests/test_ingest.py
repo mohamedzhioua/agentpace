@@ -738,6 +738,24 @@ class Hook(TempRoot):
             ingest.ingest(ADAPTER, self.history, pseudonym.load_secret(home), cache=cache)
         self.assertEqual(parse.call_count, 1)  # only the other session's one transcript
 
+    def test_a_corrupt_store_is_silent_in_the_hook_and_named_by_a_manual_ingest(self):
+        self.store.parent.mkdir(parents=True)
+        self.store.write_bytes(schema.canonical(synthetic.row()).encode("utf-8") + b"\n{broken\n")
+        before = self.store.read_bytes()
+        self.assertEqual(self.hook(self.payload(self.paths[0])), (0, ""))
+        self.assertEqual(self.store.read_bytes(), before)
+        out, err = io.StringIO(), io.StringIO()
+        env = {"AGENTPACE_HOME": str(self.root / "home")}
+        with (
+            mock.patch.dict(os.environ, env),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            code = cli.main(["ingest", str(self.history)])
+        self.assertEqual(code, 2)
+        self.assertEqual(err.getvalue(), "agentpace: runs.jsonl:2: not valid JSON\n")
+        self.assertEqual(self.store.read_bytes(), before)
+
 
 class StoreLock(TempRoot):
     def test_a_second_writer_waits_then_gives_up(self):

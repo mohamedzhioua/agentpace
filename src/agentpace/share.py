@@ -101,9 +101,17 @@ def write_contribution(path: Path, rows: Sequence[Row]) -> tuple[int, int]:
     if old and not old.endswith(b"\n"):
         old += b"\n"
     new = "".join(schema.canonical(row) + "\n" for row in rows).encode("utf-8")
-    path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
-    temporary.write_bytes(old + new)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary.write_bytes(old + new)
+    except OSError as error:
+        with suppress(OSError):
+            temporary.unlink()
+        raise ValueError(
+            f"could not write {path.name} in {path.parent}: {error.strerror or error}. Nothing was"
+            " changed; choose a writable --out-dir and run share --write again"
+        ) from None
     try:
         os.replace(temporary, path)
     except OSError:
