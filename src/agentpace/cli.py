@@ -127,7 +127,8 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print(EXPERIMENTAL_NOTE.format(name=adapter.name), file=sys.stderr)
     for line in report.lines():
         print(line, file=sys.stderr)
-    print(f"store now holds: {render.count(total, 'row')}", file=sys.stderr)
+    # Two spaces: the value lines up with the ingest report's 18-character label column above it.
+    print(f"store now holds:  {render.count(total, 'row')}", file=sys.stderr)
     return 0
 
 

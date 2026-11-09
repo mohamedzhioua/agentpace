@@ -186,7 +186,7 @@ class Commands(Temp):
                 with mock.patch.object(cli, "_ingest_into_store", return_value=result):
                     code, _, err = self.run_cli("ingest", str(self.root))
                 self.assertEqual(code, 0)
-                self.assertTrue(err.endswith(f"\nstore now holds: {said}\n"))
+                self.assertTrue(err.endswith(f"\nstore now holds:  {said}\n"))
 
     def test_turns_says_what_it_measured(self):
         for count, said in (
