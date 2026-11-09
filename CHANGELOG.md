@@ -4,6 +4,22 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.13.0 - 2026-11-10
+
+### Fixed
+
+- A second `ingest --idle-cap` into the same store stored every run the cap touched twice, and `share` would have published both copies. A rows file now keeps one cap, in `<file>.clock.json` beside it; `ingest` refuses another cap and warns when the cap is not the default; `share` runs only on a store whose cap is known to be 900 s.
+
+### Added
+
+- `estimate` prints an `Idle cap:` line under the total, and `idle_cap` in `--json`, whenever your own rows or `--data` take part; `score --session` notes a store whose cap is not the recorded default.
+
+### Changed
+
+- A store from before 0.13.0 keeps working at the default cap, its cap shown as not recorded unless it holds only published rows; `docs/cli.md` ("The idle cap") says how to rebuild it.
+
+The estimator is unchanged, the bundled-seed output is unchanged, and no published number moved.
+
 ## 0.12.11 - 2026-11-10
 
 ### Added
