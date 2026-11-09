@@ -563,6 +563,308 @@ class ProjectRows(unittest.TestCase):
         self.assertEqual(len(backtest.by_project(self.folds, empty, "shrunk")), 3)
 
 
+def _plan_project(project, sessions, runs, start=0, **fields):
+    """`sessions` sessions of `runs` completed runs each, all in one project."""
+    return [
+        row(
+            project=project,
+            batch=f"{project[:4]}{start + s:08x}",
+            offset_s=60 * r,
+            duration_s=100 + 7 * r,
+            **fields,
+        )
+        for s in range(sessions)
+        for r in range(runs)
+    ]
+
+
+def _project_plans(rows, winner="shrunk", harness="claude-code"):
+    with (
+        mock.patch.object(backtest, "PLAN_DRAWS", 100),
+        mock.patch.object(backtest, "BOOTSTRAPS", 100),
+    ):
+        return backtest.project_plans(rows, winner, backtest.SEED, harness)
+
+
+class ProjectPlans(unittest.TestCase):
+    """Whole sessions with one project held out: retrospective, one stream, never selecting."""
+
+    @classmethod
+    def setUpClass(cls):
+        rows = dataset(sessions=60, runs_per_session=8, weeks=6)
+        # One more run in one session of the second project, and two fewer sessions in the
+        # last, so the ranks are by sessions, then runs, then pseudonym.
+        extra = next(r for r in rows if r["project"] == f"{1:012x}")
+        rows.append({**extra, "offset_s": 99_999})
+        dropped = {f"{3:012x}", f"{7:012x}"}
+        cls.rows = [r for r in rows if r["batch"] not in dropped]
+        cls.result = _project_plans(cls.rows)
+        cls.folds = backtest.project_plan_folds(cls.rows, "claude-code")
+        with mock.patch.object(backtest, "PLAN_DRAWS", 100):
+            cls.per_fold = {
+                fold.name: backtest.plan_forecasts([fold], "shrunk", backtest.SEED, "claude-code")
+                for fold in cls.folds
+            }
+            cls.pooled = backtest.plan_forecasts(cls.folds, "shrunk", backtest.SEED, "claude-code")
+        cls.full = _small_run(cls.rows)
+
+    def test_three_or_more_qualifying_projects_run(self):
+        result = self.result
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["label"], "oracle-structure")
+        self.assertEqual(result["harness"], "claude-code")
+        self.assertEqual(result["min_train_rows"], backtest.MIN_TRAIN_ROWS)
+        self.assertEqual((result["folds"], result["sessions"]), (4, 58))
+        self.assertEqual(set(result["results"]), {"agentpace", "sum-of-medians"})
+        self.assertEqual(
+            list(result),
+            [
+                "status",
+                "label",
+                "harness",
+                "min_train_rows",
+                "folds",
+                "sessions",
+                "results",
+                "intervals",
+                "by_project",
+                "without_largest",
+            ],
+        )
+
+    def test_it_sits_after_plans_in_the_report(self):
+        keys = list(self.full)
+        self.assertEqual(keys[keys.index("plans") + 1], "project_plans")
+        self.assertEqual(self.full["project_plans"]["status"], "ok")
+
+    def test_no_batch_or_project_on_both_sides_of_a_fold(self):
+        rows = [
+            *_plan_project("aaaaaaaaaaaa", 3, 5),
+            *_plan_project("bbbbbbbbbbbb", 3, 5),
+            *_plan_project("cccccccccccc", 50, 5),
+        ]
+        crossing = rows[0]["batch"]
+        # The held-out session also ran in another project, completed and not.
+        rows.append(row(project="cccccccccccc", batch=crossing, offset_s=9_000))
+        rows.append(row(project="cccccccccccc", batch=crossing, outcome="failed", offset_s=9_100))
+        rows.append(row(project="aaaaaaaaaaaa", batch="aaaa99999999", outcome="failed"))
+        folds = backtest.project_plan_folds(rows, "claude-code")
+        self.assertEqual([fold.name for fold in folds], ["aaaaaaaaaaaa", "bbbbbbbbbbbb"])
+        for fold in folds:
+            train = {r["batch"] for r in fold.train}
+            self.assertFalse(train & {r["batch"] for r in fold.test}, fold.name)
+            self.assertNotIn(fold.name, {r["project"] for r in fold.train})
+        held = folds[0]
+        self.assertFalse([r for r in held.train if r["batch"] == crossing])
+        self.assertEqual(len(held.train), len(rows) - len(held.test) - 2)
+
+    def test_five_completed_runs_qualify_and_four_do_not(self):
+        training = _plan_project("cccccccccccc", 50, 5)
+        for runs, expected in ((4, []), (5, ["aaaaaaaaaaaa", "bbbbbbbbbbbb"])):
+            with self.subTest(runs=runs):
+                rows = [
+                    *_plan_project("aaaaaaaaaaaa", 1, runs),
+                    *_plan_project("bbbbbbbbbbbb", 1, runs),
+                    *training,
+                ]
+                # A run that did not complete never makes a session qualify.
+                rows.append(row(project="aaaaaaaaaaaa", batch=rows[0]["batch"], outcome="failed"))
+                folds = backtest.project_plan_folds(rows, "claude-code")
+                self.assertEqual([fold.name for fold in folds], expected)
+
+    def test_a_project_with_no_qualifying_session_gives_no_fold(self):
+        rows = [
+            *_plan_project("aaaaaaaaaaaa", 2, 5),
+            *_plan_project("bbbbbbbbbbbb", 30, 4),
+            *_plan_project("cccccccccccc", 2, 5, harness="codex"),
+            *_plan_project("dddddddddddd", 50, 5),
+        ]
+        names = [fold.name for fold in backtest.project_plan_folds(rows, "claude-code")]
+        self.assertEqual(names, ["aaaaaaaaaaaa"])
+        everyone = [fold.name for fold in backtest.project_plan_folds(rows, None)]
+        self.assertEqual(everyone, ["aaaaaaaaaaaa", "cccccccccccc"])
+
+    def test_two_hundred_training_runs_are_needed(self):
+        held = _plan_project("aaaaaaaaaaaa", 1, 5)
+        for size, expected in ((199, []), (200, ["aaaaaaaaaaaa"])):
+            with self.subTest(size=size):
+                rows = [*held, *_plan_project("cccccccccccc", size // 5, 5)]
+                rows += _plan_project("cccccccccccc", 1, size % 5, start=999)
+                rows.append(row(project="cccccccccccc", outcome="failed", batch="cccc77777777"))
+                folds = backtest.project_plan_folds(rows, "claude-code")
+                self.assertEqual([fold.name for fold in folds], expected)
+        # 200 outside the project, but one of them belongs to the held-out session.
+        rows = [*held, *_plan_project("cccccccccccc", 40, 5)]
+        rows[-1] = {**rows[-1], "batch": held[0]["batch"]}
+        self.assertEqual(backtest.project_plan_folds(rows, "claude-code"), [])
+
+    def test_fewer_than_two_folds_say_so_and_add_no_loss(self):
+        rows = [*_plan_project("aaaaaaaaaaaa", 2, 5), *_plan_project("cccccccccccc", 50, 4)]
+        self.assertEqual(
+            _project_plans(rows),
+            {
+                "status": "could not run (fewer than 2 projects with a qualifying session)",
+                "label": "oracle-structure",
+            },
+        )
+        single = _small_run([{**r, "project": "aaaaaaaaaaaa"} for r in self.rows])
+        self.assertNotEqual(single["project_plans"]["status"], "ok")
+        self.assertFalse(
+            [e for e in single["losses"] if e["split"] == "project" and "whole" in e["track"]]
+        )
+        text = report.markdown(single)
+        self.assertIn(
+            "## Whole sessions, projects held out (oracle-structure)\n\n**Could not run (fewer "
+            "than 2 projects with a qualifying session).**",
+            text,
+        )
+
+    def test_pooled_forecasts_equal_one_call_over_the_kept_folds(self):
+        per_fold = [self.per_fold[fold.name] for fold in self.folds]
+        for name in ("agentpace", "sum-of-medians"):
+            joined = [f for found in per_fold for f in found[name]]
+            self.assertEqual(joined, self.pooled[name])
+            self.assertEqual(
+                self.result["results"][name], backtest.both_weightings(self.pooled[name])["row"]
+            )
+        with mock.patch.object(backtest, "BOOTSTRAPS", 100):
+            expected = backtest.intervals(
+                self.pooled,
+                "agentpace",
+                ["sum-of-medians"],
+                random.Random(f"{backtest.SEED}:project-plan-intervals"),
+            )
+        self.assertEqual(self.result["intervals"], expected)
+
+    def test_ranked_by_sessions_then_runs_then_pseudonym(self):
+        found = self.result["by_project"]
+        self.assertEqual(
+            [(p["sessions"], p["runs"]) for p in found],
+            [(15, 121), (15, 120), (15, 120), (13, 104)],
+        )
+        order = [f"{i:012x}" for i in (1, 0, 2, 3)]
+        folds = {fold.name: fold for fold in self.folds}
+        expected = [backtest._project_plan_row(folds[n], self.per_fold[n]) for n in order]
+        self.assertEqual(found, expected)
+        first = found[0]
+        self.assertEqual(first["train_rows"], len(self.rows) - 121)
+        ours = self.per_fold[order[0]]["agentpace"]
+        self.assertEqual(first["within80"], sum(f.actual <= f.p80 for f in ours))
+
+    def test_no_pseudonym_in_the_json_or_the_section(self):
+        text = report.to_json(self.full["project_plans"])
+        section = report.markdown(self.full).split("## Whole sessions, projects held out")[1]
+        section = section.split("\n## ")[0]
+        for name in {r["project"] for r in self.rows} | {r["batch"] for r in self.rows}:
+            self.assertNotIn(name, text)
+            self.assertNotIn(name, section)
+        self.assertNotIn("name", json.loads(text)["by_project"][0])
+
+    def test_without_largest_equals_the_metrics_over_the_rest(self):
+        largest = self.result["without_largest"]
+        self.assertEqual(
+            (largest["project"], largest["sessions"], largest["of_sessions"]), (1, 15, 58)
+        )
+        rest = [f"{i:012x}" for i in (0, 2, 3)]
+        for name in ("agentpace", "sum-of-medians"):
+            items = [f for n in rest for f in self.per_fold[n][name]]
+            self.assertEqual(largest["results"][name], backtest.both_weightings(items)["row"])
+
+    def test_every_old_key_equals_a_run_without_it(self):
+        absent = {"status": "could not run (patched out)", "label": "oracle-structure"}
+        with mock.patch.object(backtest, "project_plans", return_value=absent):
+            before = _small_run(self.rows)
+        after = dict(self.full)
+        self.assertEqual(after.pop("project_plans")["status"], "ok")
+        self.assertEqual(before.pop("project_plans"), absent)
+        added = [e for e in after["losses"] if e not in before["losses"]]
+        self.assertEqual([e for e in after["losses"] if e not in added], before.pop("losses"))
+        after.pop("losses")
+        self.assertEqual(
+            added, backtest._plan_losses("project", self.full["project_plans"]["results"])
+        )
+        self.assertEqual(list(after), list(before))
+        for key in before:
+            self.assertEqual(report.to_json(after[key]), report.to_json(before[key]), key)
+
+    def test_a_baseline_win_is_listed_after_the_time_plans_and_before_locked(self):
+        ours = dict.fromkeys(("mape", "mdape", "male", "pinball"), 10.0)
+        won = {
+            "status": "ok",
+            "label": "oracle-structure",
+            "results": {"agentpace": {**ours, "mape": 50.0}, "sum-of-medians": ours},
+        }
+        with mock.patch.object(backtest, "project_plans", return_value=won):
+            result = _small_run(self.rows, selection_last_week="2026-W04")
+        losses = result["losses"]
+        entry = {
+            "split": "project",
+            "track": "whole sessions",
+            "weighting": "session",
+            "metric": "mape",
+            "baseline": "sum-of-medians",
+            "baseline_value": 10.0,
+            "agentpace_value": 50.0,
+        }
+        self.assertIn(entry, losses)
+        at = losses.index(entry)
+        self.assertEqual(result["locked"]["status"], "ok")
+        self.assertTrue(all(e["split"] != "locked" for e in losses[:at]))
+        self.assertTrue(all(e["split"] == "locked" for e in losses[at + 1 :]))
+        self.assertTrue(
+            all(e["split"] != "time" or e["track"] != "whole sessions" for e in losses[at:])
+        )
+
+    def test_the_section_follows_the_time_split_plans(self):
+        text = report.markdown(self.full)
+        title = "## Whole sessions, projects held out (oracle-structure)"
+        self.assertLess(text.index("## Whole sessions (oracle-structure)"), text.index(title))
+        self.assertLess(text.index(title), text.index("## Locked holdout"))
+        self.assertIn(
+            "This is the forward test of plan totals; the next section holds out projects "
+            "instead of weeks.",
+            text,
+        )
+        self.assertNotIn("This is the only direct test of plan totals.", text)
+        section = text[text.index(title) : text.index("## Locked holdout")]
+        self.assertIn(
+            "Each of 58 claude-code sessions with at least 5 completed runs, across 4 projects",
+            section,
+        )
+        self.assertIn("This test never chooses the method.", section)
+        self.assertIn(
+            "An interval wholly above zero means the baseline is worse at the 95% level.", section
+        )
+        self.assertIn(
+            "A project with one or two sessions shows what happened there, not a rate.", section
+        )
+        self.assertIn("| 1 | 15 | 121 |", section)
+        self.assertIn("Without project 1 (15 of 58 test sessions): agentpace", section)
+
+    def test_is_current_also_compares_the_markdown(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            report.write(self.full, self.rows, out)
+            self.assertTrue(report.is_current(self.full, out))
+            page = out / "backtest.md"
+            text = page.read_text(encoding="utf-8")
+            title = "## Whole sessions, projects held out (oracle-structure)"
+            start = text.index(title)
+            end = text.index("## Locked holdout")
+            changed = {
+                "one character": text.replace("projects held out", "projects held ouT", 1),
+                "no section": text[:start] + text[end:],
+            }
+            for label, body in changed.items():
+                with self.subTest(label):
+                    page.write_text(body, encoding="utf-8", newline="\n")
+                    self.assertFalse(report.is_current(self.full, out))
+            page.unlink()
+            self.assertFalse(report.is_current(self.full, out))
+            report.write(self.full, self.rows, out)
+            self.assertTrue(report.is_current(self.full, out))
+
+
 class OneTable(unittest.TestCase):
     """When every held-out session is one run, the two weightings give one table."""
 
@@ -657,12 +959,14 @@ class BacktestCommand(unittest.TestCase):
             tempfile.TemporaryDirectory() as folder,
             mock.patch.object(backtest, "run", return_value=fake),
             mock.patch.object(cli, "_dataset", return_value=[]),
+            mock.patch.object(report, "markdown", return_value="# Backtest\n"),
         ):
             err = io.StringIO()
             with contextlib.redirect_stderr(err):
                 code = cli.main(["backtest", "--check", "--out", folder])
             self.assertEqual(code, 1)
             (Path(folder) / "backtest.json").write_text(report.to_json(fake), encoding="utf-8")
+            (Path(folder) / "backtest.md").write_text("# Backtest\n", encoding="utf-8")
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(cli.main(["backtest", "--check", "--out", folder]), 0)
 

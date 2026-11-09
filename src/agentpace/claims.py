@@ -115,6 +115,30 @@ def values(
     # The README describes the pooled selection-period number, so locked weeks stay out of it.
     weeks = [w for w in report["splits"]["time"]["by_week"] if w["period"] == "selection"]
     latest = weeks[-1]
+    # Whole sessions with projects held out. Not available when it could not run, or in a report
+    # from before it existed.
+    held_out = report.get("project_plans", {"status": "absent"})
+    project_plans = dict.fromkeys(
+        (
+            "project_plan_sessions",
+            "project_plan_projects",
+            "project_plan_p80",
+            "project_plan_p90",
+            "project_plan_gap",
+        ),
+        "not available",
+    )
+    if held_out["status"] == "ok":
+        held_plan = held_out["results"]["agentpace"]
+        held_found = held_out["intervals"]
+        held_low, held_high = held_found["rival_minus_ours"]["sum-of-medians"]
+        project_plans = {
+            "project_plan_sessions": str(held_out["sessions"]),
+            "project_plan_projects": str(held_out["folds"]),
+            "project_plan_p80": ci(held_plan["coverage80"], held_found["coverage80"], unit="%"),
+            "project_plan_p90": ci(held_plan["coverage90"], held_found["coverage90"], unit="%"),
+            "project_plan_gap": f"{held_low:+.0f} to {held_high:+.0f}",
+        }
 
     def spread(field: str) -> str:
         values = [week[field] for week in weeks]
@@ -176,6 +200,7 @@ def values(
         "project_p80": project_p80,
         "project_top_harness": project_top_harness,
         "project_top_sessions": project_top_sessions,
+        **project_plans,
         "contributor_split": contributor,
         "loss_count": str(len(report["losses"])),
         "not_completed_by_harness": _not_completed_by_harness(rows),

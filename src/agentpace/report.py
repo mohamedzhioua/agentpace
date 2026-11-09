@@ -247,7 +247,8 @@ def _plan_section(plans: dict[str, Any]) -> list[str]:
         "## Whole sessions (oracle-structure)",
         "",
         f"Each of {plans['sessions']} held-out sessions with at least 5 completed runs is treated "
-        "as a plan. This is the only direct test of plan totals. Real dependencies are not "
+        "as a plan. This is the forward test of plan totals; the next section holds out projects "
+        "instead of weeks. Real dependencies are not "
         "recorded, so the critical path falls back to the longest run, and the observed peak "
         "concurrency stands in for the agent cap, even though that peak is itself an outcome. "
         "It tests the throughput and session terms, not dependency planning.",
@@ -280,6 +281,66 @@ def _plan_rows(results: dict[str, Any]) -> list[str]:
             f"{m['coverage50']:.0f}% | {m['coverage80']:.0f}% | {m['coverage90']:.0f}% | "
             f"{m['width']:.1f}x | {m['pinball']:.0f} |"
         )
+    return lines
+
+
+def _project_plan_section(plans: dict[str, Any]) -> list[str]:
+    title = "## Whole sessions, projects held out (oracle-structure)"
+    if plans["status"] != "ok":
+        return [title, "", f"**{plans['status'].capitalize()}.**", ""]
+    lines = [
+        title,
+        "",
+        "The same test with a whole project held out instead of later weeks. Each of "
+        f"{plans['sessions']} {plans['harness']} sessions with at least 5 completed runs, across "
+        f"{plans['folds']} projects, is predicted by a model trained on every run outside its "
+        "project, from every harness and every week, later weeks included. So it is a "
+        "retrospective check of transfer to a codebase the model has not seen, not a forward "
+        "test, and all of it is one contributor's work. Projects are told apart per harness, so "
+        "the same folder used from another harness stays in training. A project is held out when "
+        f"it has at least one such session and at least {plans['min_train_rows']} completed runs "
+        "lie outside it. Each session is one forecast, so there is one table. This test never "
+        "chooses the method.",
+        "",
+        *_plan_rows(plans["results"]),
+        "",
+    ]
+    found = plans["intervals"]
+    ours = plans["results"]["agentpace"]
+    lines += [
+        "With 95% bootstrap intervals over sessions: P50 coverage "
+        f"{ci(ours['coverage50'], found['coverage50'], unit='%')}, P80 coverage "
+        f"{ci(ours['coverage80'], found['coverage80'], unit='%')}, P90 coverage "
+        f"{ci(ours['coverage90'], found['coverage90'], unit='%')}, pinball "
+        f"{ci(ours['pinball'], found['pinball'])}. Sum-of-medians pinball minus agentpace: "
+        f"{_gap(found['rival_minus_ours']['sum-of-medians'])}. An interval wholly above zero "
+        "means the baseline is worse at the 95% level.",
+        "",
+        "Each project on its own, most held-out sessions first. Projects are numbered by rank, "
+        "not named. A project with one or two sessions shows what happened there, not a rate.",
+        "",
+        "| Project | Test sessions | Runs | Training runs | Within P50 | Within P80 | Within P90 | "
+        "agentpace pinball | sum-of-medians pinball | P90/P50 |",
+        "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for rank, m in enumerate(plans["by_project"], start=1):
+        lines.append(
+            f"| {rank} | {m['sessions']} | {m['runs']:,} | {m['train_rows']:,} | "
+            f"{m['within50']} | {m['within80']} | {m['within90']} | {m['pinball']:.0f} | "
+            f"{m['naive_pinball']:.0f} | {m['width']:.1f}x |"
+        )
+    largest = plans["without_largest"]
+    parts = [
+        f"{name} P50, P80 and P90 coverage {m['coverage50']:.0f}%, {m['coverage80']:.0f}% and "
+        f"{m['coverage90']:.0f}%, pinball {m['pinball']:.0f}"
+        for name, m in largest["results"].items()
+    ]
+    lines += [
+        "",
+        f"Without project {largest['project']} ({largest['sessions']} of "
+        f"{largest['of_sessions']} test sessions): {'; '.join(parts)}.",
+        "",
+    ]
     return lines
 
 
@@ -448,6 +509,7 @@ def markdown(report: dict[str, Any]) -> str:
         )
     lines += _harness_section(stored["harness"], splits["harness"], winner)
     lines += _plan_section(stored["plans"])
+    lines += _project_plan_section(stored["project_plans"])
     lines += _locked_section(stored["locked"], winner, last)
     lines += _loss_section(report["losses"], winner)
     baselines = (
@@ -497,6 +559,12 @@ def write(report: dict[str, Any], rows: Sequence[Row], out: Path) -> None:
 
 
 def is_current(report: dict[str, Any], out: Path) -> bool:
-    """Compare rounded numbers rather than chart bytes, so this holds on every platform."""
-    stored = out / "backtest.json"
-    return stored.exists() and stored.read_text(encoding="utf-8") == to_json(report)
+    """Compare rounded numbers and the report text rather than chart bytes, so this holds on
+    every platform."""
+    stored, text = out / "backtest.json", out / "backtest.md"
+    return (
+        stored.exists()
+        and stored.read_text(encoding="utf-8") == to_json(report)
+        and text.exists()
+        and text.read_text(encoding="utf-8") == markdown(report)
+    )

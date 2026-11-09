@@ -250,7 +250,7 @@ Runs the published evaluation on held-out runs. Run it from the repository root.
 | `--data PATH` | the seed data | A rows file or folder. Repeatable. Your local store is not used unless you pass it. |
 | `--out` | `docs` | Where `backtest.md`, `backtest.json` and the two charts under `assets/` go. |
 | `--seed` | `20261107` | Random seed. |
-| `--check` | off | Write nothing; exit 1 if the results differ from the published `backtest.json`. |
+| `--check` | off | Write nothing; exit 1 if the results differ from the published `backtest.json`, or `backtest.md` is missing or differs from what they render. |
 
 stdout: what was written and the winning method, or that the numbers match. stderr: the mismatch under `--check`, and a note when the winner is not the shipped default.
 
