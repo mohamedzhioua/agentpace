@@ -443,5 +443,127 @@ class PlanDocuments(unittest.TestCase):
         self.assertIsNone(tasks[0].model)
 
 
+class WarningWording(unittest.TestCase):
+    """A cell warning says which level had no recorded run, what the task supplied below it,
+    where the mean and the residuals came from, and what is recorded under the parent."""
+
+    OPUS = "claude-opus-5-5"
+
+    @staticmethod
+    def rows():
+        extra = [
+            row(task_kind="migration", risk="high", duration_s=900 + i, batch=f"{0xA00 + i:012x}")
+            for i in range(3)
+        ]
+        extra += [
+            row(model="gpt-x", duration_s=1800 + i, batch=f"{0xB00 + i:012x}") for i in range(2)
+        ]
+        # feature 182 (claude-opus-5-5 180, gpt-x 2), review 180, docs 120, migration 3: 485
+        return dataset(sessions=60) + extra
+
+    @classmethod
+    def setUpClass(cls):
+        cls.shrunk = fit(cls.rows(), method="shrunk")
+        cls.backoff = fit(cls.rows(), method="backoff")
+
+    def warnings(self, task, model=None):
+        return est.estimate(model or self.shrunk, [task], 1, draws=200, seed=1).warnings
+
+    def test_unseen_kind_with_a_model(self):
+        self.assertEqual(
+            self.warnings(Task("a", "refactor", model=self.OPUS)),
+            (
+                "cell refactor: n=0. No recorded run has kind refactor, so risk normal and model "
+                "claude-opus-5-5 were not used. Mean and residuals from all (n=485); interval "
+                "widened by the spread between kinds. Recorded kinds: feature (182), "
+                "review (180), docs (120), migration (3).",
+            ),
+        )
+
+    def test_unseen_kind_without_a_model(self):
+        self.assertEqual(
+            self.warnings(Task("a", "refactor")),
+            (
+                "cell refactor: n=0. No recorded run has kind refactor, so risk normal was not "
+                "used. Mean and residuals from all (n=485); interval widened by the spread "
+                "between kinds. Recorded kinds: feature (182), review (180), docs (120), "
+                "migration (3).",
+            ),
+        )
+
+    def test_unseen_risk(self):
+        self.assertEqual(
+            self.warnings(Task("a", "feature", risk="high", model=self.OPUS)),
+            (
+                "cell feature x high: n=0. No recorded run has kind feature at risk high, so "
+                "model claude-opus-5-5 was not used. Mean and residuals from feature (n=182); "
+                "interval widened by the spread between risk levels. Recorded risk levels under "
+                "feature: normal (182).",
+            ),
+        )
+        self.assertEqual(
+            self.warnings(Task("a", "feature", risk="high")),
+            (
+                "cell feature x high: n=0. No recorded run has kind feature at risk high. Mean "
+                "and residuals from feature (n=182); interval widened by the spread between risk "
+                "levels. Recorded risk levels under feature: normal (182).",
+            ),
+        )
+
+    def test_unseen_model_lists_the_recorded_models(self):
+        self.assertEqual(
+            self.warnings(Task("a", "feature", model="claude-sonnet-5-5")),
+            (
+                "cell feature x normal x claude-sonnet-5-5: n=0. No recorded run has kind "
+                "feature at risk normal with model claude-sonnet-5-5. Mean and residuals from "
+                "feature x normal (n=182); interval widened by the spread between models. "
+                "Recorded models under feature x normal: claude-opus-5-5 (180), gpt-x (2).",
+            ),
+        )
+
+    def test_unseen_model_under_a_thin_parent_names_both_sources(self):
+        self.assertEqual(
+            self.warnings(Task("a", "migration", risk="high", model="claude-sonnet-5-5")),
+            (
+                "cell migration x high x claude-sonnet-5-5: n=0. No recorded run has kind "
+                "migration at risk high with model claude-sonnet-5-5. Mean from migration x high "
+                "(n=3); residuals pooled from all; interval widened by the spread between "
+                "models. Recorded models under migration x high: claude-opus-5-5 (3).",
+            ),
+        )
+
+    def test_a_thin_seen_cell_under_shrinkage(self):
+        self.assertEqual(
+            self.warnings(Task("a", "feature", model="gpt-x")),
+            (
+                "cell feature x normal x gpt-x: n=2, effective n=2.0, below 30. Mean shrunk "
+                "toward broader cells; residuals pooled from feature x normal; interval widened.",
+            ),
+        )
+
+    def test_a_thin_seen_cell_under_backoff(self):
+        self.assertEqual(
+            self.warnings(Task("a", "feature", model="gpt-x"), model=self.backoff),
+            (
+                "cell feature x normal x gpt-x: n=2, effective n=2.0, below 30. Mean taken from "
+                "broader cells; residuals pooled from feature x normal; interval widened.",
+            ),
+        )
+
+    def test_a_thin_global_cell(self):
+        model = fit(plain_rows(20, 60), method="global")
+        warnings = est.estimate(model, [Task("a", "feature")], 1, draws=200).warnings
+        self.assertEqual(
+            warnings[0], "cell all: n=20, effective n=20.0, below 30. Interval widened."
+        )
+        self.assertEqual(self.warnings(Task("a", "refactor"), fit(self.rows(), "global")), ())
+
+    def test_a_seen_cell_records_no_missing_level(self):
+        cell = self.shrunk.locate({"task_kind": "feature", "risk": "normal", "model": self.OPUS})
+        self.assertEqual((cell.missing, cell.parent, cell.parent_n), (None, "all", 0))
+        cell = self.shrunk.locate({"task_kind": "feature", "risk": "high", "model": self.OPUS})
+        self.assertEqual((cell.missing, cell.parent, cell.parent_n), ("risk", "feature", 182))
+
+
 if __name__ == "__main__":
     unittest.main()

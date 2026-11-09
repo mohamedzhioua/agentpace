@@ -495,6 +495,18 @@ Fable 5.1 ruled on 2026-11-08 on four questions users asked after the launch pos
 - **Declined:** retry bucketing, time to an accepted result, and new segmentation dimensions. The rows hold no attempt linkage, no acceptance event and no repository size.
 - **The 2026-W46 data change** takes the next patch number when that week has ended, and waits for none of this.
 
+### Ruling for 0.12
+
+Fable 5.1 ruled on 2026-11-09, with an independent opinion from Codex (gpt-6-astra) on the same brief, both at the highest effort. The master checked every claim in the opinion before the ruling.
+
+- **The finding.** In the rows, `risk` is the agent's role (review and research agents `low`, migration agents `high`, everything else `normal`; the classifier, section 4). A plan's `risk` was a judgment about the work. The lookup stops at the first unseen level, so a task marked `high` matched no runs, dropped the model, and for an Opus feature cut the P50 by a factor of 16, in the shorter direction. No backtest fold ever reaches that branch, because row risk follows the agent type.
+- **Warnings say what was not reached (0.11.2).** Which level had no recorded run, which of the task's levels were therefore not used, where the mean and residuals came from, and what is recorded under the parent. No counterfactual is simulated. A synthetic fixture pins the shipped method's numbers, not only its name.
+- **The portable prompt's table (0.11.3)** is by kind, recorded risk and model, with pooled rows that mirror the CLI's back-off and no range under 30 runs. Claim enforcement covers the prompt's cells.
+- **Plan risk is read as the recorded category (0.12.0), at the plan boundary, not in the method.** A written risk is used only where the rows can record that kind at that risk (`review` low, `migration` high, `other` low for research or normal, all else normal). Any other value, and an omitted one, takes the kind's recorded risk, and a warning names the task. `--use-risk` looks the written values up as given, for labelled datasets. `fit`, `locate`, the backtest's queries and the frozen selection are unchanged, so there is no re-registration.
+- **Declined:** reordering or extending the hierarchy, a model fallback at the root or a shared model effect (method changes under the frozen selection), relabelling unseen kinds, and a risk multiplier.
+- **Cleanup (0.12.1, 0.12.2):** count messages agree in number, documentation corrections, and clean errors for a bad rows line and a contribution file another program holds open.
+- The W46 data change takes the next patch when that week ends, and waits for nothing.
+
 ## 12. Sources
 
 Repos, audited at: `kiloloop/agent-estimate@8857979`, `MMMProd-Org/claude-eta@5448ae4` (the `mmmprod/claude-eta` URL redirects there), `ZhangHanDong/agent-estimation@71a4697`, `ecappa/web-dev-estimation@c61fb1c`, `MedAdemBHA/mythical-agent-month@b60165f`.

@@ -36,7 +36,7 @@ Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed
 Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
-  - cell docs x normal x claude-opus-5-5: n=0, effective n=0.0, below 30. Pooled with all and interval widened.
+  - cell docs x normal x claude-opus-5-5: n=0. No recorded run has kind docs at risk normal with model claude-opus-5-5. Mean from docs x normal (n=21); residuals pooled from all; interval widened by the spread between models. Recorded models under docs x normal: claude-sonnet-5-5 (21).
 <!-- /claim -->
 ```
 
@@ -144,7 +144,7 @@ Method: shrunk. 3383 runs, 47 not completed so excluded. 20000 simulations, seed
 Not completed, by harness: claude-code 13 of 3219 (0.4%; 3 failed, 10 unknown), codex 34 of 211 (16.1%; 33 failed, 1 unknown). These are recorded harness outcomes, not task acceptance, and they are left out of the fit.
 
 Warnings:
-  - cell tests x normal x claude-opus-5-5: n=2, effective n=2.0, below 30. Pooled with all and interval widened.
+  - cell tests x normal x claude-opus-5-5: n=2, effective n=2.0, below 30. Mean shrunk toward broader cells; residuals pooled from all; interval widened.
 <!-- /claim -->
 ```
 

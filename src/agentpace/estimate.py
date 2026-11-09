@@ -147,6 +147,11 @@ class Located:
     label: str
     pooled_from: str
     thin: bool
+    # Where the walk stopped, for the warning only: the path level whose value had no node, the
+    # deepest node it did reach, and that node's run count.
+    missing: str | None = None
+    parent: str = "all"
+    parent_n: int = 0
 
 
 @dataclass(frozen=True)
@@ -242,7 +247,8 @@ class Model:
         mu, v = node.mu, node.v
         pool_node = node
         prefix: tuple[str, ...] = ()
-        missing = False
+        missing: str | None = None
+        parent, parent_n = "all", 0
         for depth, name in enumerate(self.path, start=1):
             value = query.get(name)
             if value is None:
@@ -252,7 +258,7 @@ class Model:
             if child is None:
                 # Never seen: the parent's mean, plus the spread between sibling cells.
                 v += self.tau2.get(depth, 0.0)
-                missing = True
+                missing, parent, parent_n = name, " x ".join(prefix[:-1]) or "all", node.n
                 break
             node, mu, v = child, child.mu, child.v
             if child.n_eff >= POOL_MIN:
@@ -262,11 +268,14 @@ class Model:
             mu=mu,
             v=v,
             pool=pool_node.pool,
-            n=0 if missing else node.n,
-            n_eff=0.0 if missing else node.n_eff,
+            n=0 if missing is not None else node.n,
+            n_eff=0.0 if missing is not None else node.n_eff,
             label=" x ".join(prefix) or "all",
             pooled_from=" x ".join(pool_node.key) or "all",
-            thin=missing or node.n_eff < POOL_MIN,
+            thin=missing is not None or node.n_eff < POOL_MIN,
+            missing=missing,
+            parent=parent,
+            parent_n=parent_n,
         )
 
     def throughput(self, cap: int) -> ThroughputBucket | None:
@@ -558,6 +567,49 @@ def _clamped_exp(value: float) -> float:
     return math.exp(min(value, 30.0))
 
 
+_LEVEL = {"task_kind": "kind", "size": "size", "risk": "risk", "model": "model"}
+_LEVELS = {"task_kind": "kinds", "size": "sizes", "risk": "risk levels", "model": "models"}
+_PREFIX = {"task_kind": "kind", "size": "at size", "risk": "at risk", "model": "with model"}
+
+
+def _and(items: Sequence[str]) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
+
+
+def _unseen_note(model: Model, task: Task, cell: Located) -> str:
+    """Say which level had no recorded run, what the task supplied below it, and what the range
+    leaned on instead. Reads the fitted nodes only: no draw, no counterfactual cell."""
+    assert cell.missing is not None
+    query = {"task_kind": task.kind, "risk": task.risk, "model": task.model, "size": task.size}
+    depth = model.path.index(cell.missing) + 1
+    reached = model.path[:depth]
+    has = " ".join(f"{_PREFIX[name]} {query[name]}" for name in reached)
+    supplied = [
+        f"{_LEVEL[name]} {query[name]}" for name in model.path[depth:] if query[name] is not None
+    ]
+    dropped = ""
+    if supplied:
+        dropped = f", so {_and(supplied)} {'was' if len(supplied) == 1 else 'were'} not used"
+    if cell.parent == cell.pooled_from:
+        source = f"Mean and residuals from {cell.parent} (n={cell.parent_n})"
+    else:
+        source = (
+            f"Mean from {cell.parent} (n={cell.parent_n}); residuals pooled from {cell.pooled_from}"
+        )
+    key = tuple(str(query[name]) for name in reached[:-1])
+    siblings = sorted(
+        (node for k, node in model.nodes.items() if len(k) == depth and k[:-1] == key),
+        key=lambda node: (-node.n, node.key[-1]),
+    )
+    listed = ", ".join(f"{node.key[-1]} ({node.n})" for node in siblings)
+    levels = _LEVELS[cell.missing]
+    under = f" under {cell.parent}" if cell.parent != "all" else ""
+    return (
+        f"cell {cell.label}: n=0. No recorded run has {has}{dropped}. {source}; interval widened "
+        f"by the spread between {levels}. Recorded {levels}{under}: {listed}."
+    )
+
+
 def _warnings(model: Model, tasks: Sequence[Task], located: Mapping[str, Located]) -> list[str]:
     notes: list[str] = []
     seen: set[str] = set()
@@ -565,10 +617,19 @@ def _warnings(model: Model, tasks: Sequence[Task], located: Mapping[str, Located
         cell = located[task.id]
         if cell.thin and cell.label not in seen:
             seen.add(cell.label)
-            notes.append(
-                f"cell {cell.label}: n={cell.n}, effective n={cell.n_eff:.1f}, below {POOL_MIN}. "
-                f"Pooled with {cell.pooled_from} and interval widened."
+            below = (
+                f"cell {cell.label}: n={cell.n}, effective n={cell.n_eff:.1f}, below {POOL_MIN}."
             )
+            if cell.missing is not None:
+                notes.append(_unseen_note(model, task, cell))
+            elif cell.label == "all":
+                notes.append(f"{below} Interval widened.")
+            else:
+                mean = "shrunk toward" if model.method.shrink else "taken from"
+                notes.append(
+                    f"{below} Mean {mean} broader cells; residuals pooled from "
+                    f"{cell.pooled_from}; interval widened."
+                )
     if "size" not in model.path and any(task.size for task in tasks):
         notes.append(
             "size ignored: stored size is measured after a run, so it is left out unless you "
