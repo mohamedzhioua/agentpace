@@ -98,8 +98,8 @@ def texts(data: dict[str, Any]) -> dict[str, str]:
         ),
         "reading-scope": (
             f"{data['runs']:,} runs in {data['sessions']} sessions from {data['contributors']} "
-            f"{people}, with heavy automated fan-out. It will not match your setup until more "
-            "people contribute."
+            f"{people}, with heavy automated fan-out, so these runs may not resemble your "
+            "workflow. More contributors would widen what they cover."
         ),
         "reading-backtest": (
             f"On {scores['sessions']} held-out sessions, the P80 for the whole session covered "
