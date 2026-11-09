@@ -218,7 +218,7 @@ The estimator does not use the harness. Each harness is shown on its own, from t
 
 ## Whole sessions (oracle-structure)
 
-Each of 56 held-out sessions with at least 5 completed runs is treated as a plan. This is the only direct test of plan totals. Real dependencies are not recorded, so the critical path falls back to the longest run, and the observed peak concurrency stands in for the agent cap, even though that peak is itself an outcome. It tests the throughput and session terms, not dependency planning.
+Each of 56 held-out sessions with at least 5 completed runs is treated as a plan. This is the forward test of plan totals; the next section holds out projects instead of weeks. Real dependencies are not recorded, so the critical path falls back to the longest run, and the observed peak concurrency stands in for the agent cap, even though that peak is itself an outcome. It tests the throughput and session terms, not dependency planning.
 
 | Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -226,6 +226,35 @@ Each of 56 held-out sessions with at least 5 completed runs is treated as a plan
 | sum-of-medians | 85% | 90% | 2.25 | 5% | 5% | 5% | 1.0x | 37990 |
 
 With 95% bootstrap intervals over sessions: P50 coverage 59% (CI 45% to 71%), P80 coverage 80% (CI 70% to 91%), P90 coverage 91% (CI 84% to 98%), pinball 19720 (CI 13260 to 28000). Sum-of-medians pinball minus agentpace: +7271 to +31170.
+
+## Whole sessions, projects held out (oracle-structure)
+
+The same test with a whole project held out instead of later weeks. Each of 63 claude-code sessions with at least 5 completed runs, across 11 projects, is predicted by a model trained on every run outside its project, from every harness and every week, later weeks included. So it is a retrospective check of transfer to a codebase the model has not seen, not a forward test, and all of it is one contributor's work. Projects are told apart per harness, so the same folder used from another harness stays in training. A project is held out when it has at least one such session and at least 200 completed runs lie outside it. Each session is one forecast, so there is one table. This test never chooses the method.
+
+| Method | MAPE | MdAPE | MALE | P50 cov. | P80 cov. | P90 cov. | P90/P50 | Pinball |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| agentpace | 250% | 62% | 0.97 | 48% | 87% | 95% | 3.3x | 28380 |
+| sum-of-medians | 80% | 90% | 2.28 | 5% | 5% | 5% | 1.0x | 39440 |
+
+With 95% bootstrap intervals over sessions: P50 coverage 48% (CI 35% to 60%), P80 coverage 87% (CI 79% to 95%), P90 coverage 95% (CI 89% to 100%), pinball 28380 (CI 16700 to 42650). Sum-of-medians pinball minus agentpace: -7019 to +27430. An interval wholly above zero means the baseline is worse at the 95% level.
+
+Each project on its own, most held-out sessions first. Projects are numbered by rank, not named. A project with one or two sessions shows what happened there, not a rate.
+
+| Project | Test sessions | Runs | Training runs | Within P50 | Within P80 | Within P90 | agentpace pinball | sum-of-medians pinball | P90/P50 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 15 | 2,287 | 1,096 | 10 | 15 | 15 | 72670 | 40680 | 3.3x |
+| 2 | 13 | 130 | 3,237 | 0 | 10 | 12 | 11090 | 46510 | 4.2x |
+| 3 | 11 | 223 | 3,154 | 10 | 11 | 11 | 11580 | 14460 | 2.9x |
+| 4 | 5 | 202 | 3,178 | 1 | 3 | 4 | 37760 | 148400 | 3.2x |
+| 5 | 5 | 124 | 3,259 | 5 | 5 | 5 | 24510 | 8504 | 3.2x |
+| 6 | 5 | 71 | 3,301 | 0 | 3 | 4 | 7193 | 27310 | 3.5x |
+| 7 | 3 | 58 | 3,325 | 0 | 3 | 3 | 7945 | 42260 | 3.2x |
+| 8 | 3 | 30 | 3,353 | 3 | 3 | 3 | 12490 | 279 | 3.0x |
+| 9 | 1 | 16 | 3,365 | 0 | 1 | 1 | 6339 | 38210 | 3.8x |
+| 10 | 1 | 11 | 3,372 | 1 | 1 | 1 | 6672 | 517 | 3.4x |
+| 11 | 1 | 10 | 3,373 | 0 | 0 | 1 | 4635 | 23740 | 3.3x |
+
+Without project 1 (15 of 63 test sessions): agentpace P50, P80 and P90 coverage 42%, 83% and 94%, pinball 14540; sum-of-medians P50, P80 and P90 coverage 4%, 4% and 4%, pinball 39060.
 
 ## Locked holdout
 
@@ -259,6 +288,7 @@ This section is generated. It lists every split, track, weighting and metric whe
 | harness | pre-run | session | mape | global-median | 75.52 | 130.98 |
 | harness | pre-run | session | pinball | global-median | 1326.14 | 1637.58 |
 | time | whole sessions | session | mape | sum-of-medians | 85.30 | 248.59 |
+| project | whole sessions | session | mape | sum-of-medians | 80.29 | 249.67 |
 
 ## Baselines
 

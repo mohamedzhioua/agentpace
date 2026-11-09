@@ -4,6 +4,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.11 - 2026-11-09
+
+### Added
+
+- A whole-session test with projects held out (`docs/backtest.md`, "Whole sessions, projects held out"; `project_plans` in `backtest.json`): 63 Claude Code sessions across 11 projects, each predicted from every run outside its project, later weeks included, with each project on its own by rank and the result without the largest. It is retrospective, draws one new named interval stream (`project-plan-intervals`) and never chooses the method. One README bullet under "Where it falls short" cites it through five new claims: `project_plan_sessions`, `project_plan_projects`, `project_plan_p80`, `project_plan_p90`, `project_plan_gap`.
+
+### Changed
+
+- `backtest --check` now also fails when `docs/backtest.md` is missing or is not what the numbers render.
+- **Numbers that moved:** `loss_count` 20 to 21. The new test's MAPE row, where a sum of medians beats agentpace (80.29 against 249.67), joins the generated "Where agentpace loses" list.
+
+No other published number moved.
+
 ## 0.12.10 - 2026-11-09
 
 ### Added

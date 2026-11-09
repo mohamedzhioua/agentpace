@@ -1279,6 +1279,214 @@
       }
     }
   },
+  "project_plans": {
+    "status": "ok",
+    "label": "oracle-structure",
+    "harness": "claude-code",
+    "min_train_rows": 200,
+    "folds": 11,
+    "sessions": 63,
+    "results": {
+      "agentpace": {
+        "mape": 249.7,
+        "mdape": 62.02,
+        "male": 0.9668,
+        "coverage50": 47.62,
+        "coverage80": 87.3,
+        "coverage90": 95.24,
+        "pinball": 28380.0,
+        "width": 3.308,
+        "width80": 2.315
+      },
+      "sum-of-medians": {
+        "mape": 80.29,
+        "mdape": 89.52,
+        "male": 2.276,
+        "coverage50": 4.762,
+        "coverage80": 4.762,
+        "coverage90": 4.762,
+        "pinball": 39440.0,
+        "width": 1.0,
+        "width80": 1.0
+      }
+    },
+    "intervals": {
+      "coverage50": [
+        34.92,
+        60.32
+      ],
+      "coverage80": [
+        79.37,
+        95.24
+      ],
+      "coverage90": [
+        88.89,
+        100.0
+      ],
+      "pinball": [
+        16700.0,
+        42650.0
+      ],
+      "rival_minus_ours": {
+        "sum-of-medians": [
+          -7019.0,
+          27430.0
+        ]
+      }
+    },
+    "by_project": [
+      {
+        "sessions": 15,
+        "runs": 2287,
+        "train_rows": 1096,
+        "within50": 10,
+        "within80": 15,
+        "within90": 15,
+        "pinball": 72670.0,
+        "naive_pinball": 40680.0,
+        "width": 3.255
+      },
+      {
+        "sessions": 13,
+        "runs": 130,
+        "train_rows": 3237,
+        "within50": 0,
+        "within80": 10,
+        "within90": 12,
+        "pinball": 11090.0,
+        "naive_pinball": 46510.0,
+        "width": 4.207
+      },
+      {
+        "sessions": 11,
+        "runs": 223,
+        "train_rows": 3154,
+        "within50": 10,
+        "within80": 11,
+        "within90": 11,
+        "pinball": 11580.0,
+        "naive_pinball": 14460.0,
+        "width": 2.912
+      },
+      {
+        "sessions": 5,
+        "runs": 202,
+        "train_rows": 3178,
+        "within50": 1,
+        "within80": 3,
+        "within90": 4,
+        "pinball": 37760.0,
+        "naive_pinball": 148400.0,
+        "width": 3.185
+      },
+      {
+        "sessions": 5,
+        "runs": 124,
+        "train_rows": 3259,
+        "within50": 5,
+        "within80": 5,
+        "within90": 5,
+        "pinball": 24510.0,
+        "naive_pinball": 8504.0,
+        "width": 3.244
+      },
+      {
+        "sessions": 5,
+        "runs": 71,
+        "train_rows": 3301,
+        "within50": 0,
+        "within80": 3,
+        "within90": 4,
+        "pinball": 7193.0,
+        "naive_pinball": 27310.0,
+        "width": 3.47
+      },
+      {
+        "sessions": 3,
+        "runs": 58,
+        "train_rows": 3325,
+        "within50": 0,
+        "within80": 3,
+        "within90": 3,
+        "pinball": 7945.0,
+        "naive_pinball": 42260.0,
+        "width": 3.185
+      },
+      {
+        "sessions": 3,
+        "runs": 30,
+        "train_rows": 3353,
+        "within50": 3,
+        "within80": 3,
+        "within90": 3,
+        "pinball": 12490.0,
+        "naive_pinball": 278.7,
+        "width": 3.014
+      },
+      {
+        "sessions": 1,
+        "runs": 16,
+        "train_rows": 3365,
+        "within50": 0,
+        "within80": 1,
+        "within90": 1,
+        "pinball": 6339.0,
+        "naive_pinball": 38210.0,
+        "width": 3.808
+      },
+      {
+        "sessions": 1,
+        "runs": 11,
+        "train_rows": 3372,
+        "within50": 1,
+        "within80": 1,
+        "within90": 1,
+        "pinball": 6672.0,
+        "naive_pinball": 517.0,
+        "width": 3.427
+      },
+      {
+        "sessions": 1,
+        "runs": 10,
+        "train_rows": 3373,
+        "within50": 0,
+        "within80": 0,
+        "within90": 1,
+        "pinball": 4635.0,
+        "naive_pinball": 23740.0,
+        "width": 3.295
+      }
+    ],
+    "without_largest": {
+      "project": 1,
+      "sessions": 15,
+      "of_sessions": 63,
+      "results": {
+        "agentpace": {
+          "mape": 277.5,
+          "mdape": 58.94,
+          "male": 1.024,
+          "coverage50": 41.67,
+          "coverage80": 83.33,
+          "coverage90": 93.75,
+          "pinball": 14540.0,
+          "width": 3.323,
+          "width80": 2.328
+        },
+        "sum-of-medians": {
+          "mape": 86.51,
+          "mdape": 93.49,
+          "male": 2.622,
+          "coverage50": 4.167,
+          "coverage80": 4.167,
+          "coverage90": 4.167,
+          "pinball": 39060.0,
+          "width": 1.0,
+          "width80": 1.0
+        }
+      }
+    }
+  },
   "losses": [
     {
       "split": "time",
@@ -1459,6 +1667,15 @@
       "baseline": "sum-of-medians",
       "baseline_value": 85.3,
       "agentpace_value": 248.6
+    },
+    {
+      "split": "project",
+      "track": "whole sessions",
+      "weighting": "session",
+      "metric": "mape",
+      "baseline": "sum-of-medians",
+      "baseline_value": 80.29,
+      "agentpace_value": 249.7
     }
   ]
 }
