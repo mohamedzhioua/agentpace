@@ -28,7 +28,7 @@ agentpace [--version] <command> [options]
 |---|---|
 | 0 | Success. `ingest --hook` always exits 0, whatever happened. |
 | 1 | A check found a problem: `validate` found invalid rows, or `backtest --check`, `site --check` or `claims --check` found published files out of date. |
-| 2 | The command refused its input. Either the arguments are wrong (an unknown command, flag or choice; argparse prints the usage), or the input is (a missing path, a plan path that is not a file, an invalid plan, an unknown run reference). The message is one line on stderr, starting `agentpace:`. |
+| 2 | The command refused its input. Either the arguments are wrong (an unknown command, flag or choice; argparse prints the usage), or the input is (a missing path, a plan path that is not a file, an invalid plan, an unknown run reference, or a store whose idle cap does not allow the command). The message is one line on stderr, starting `agentpace:`. |
 
 Any other failure ends with a Python traceback and exit code 1. None is known; please report one in an [issue](https://github.com/mohamedzhioua/agentpace/issues).
 
@@ -40,6 +40,7 @@ agentpace keeps its local files in `~/.agentpace`, or in the folder the `AGENTPA
 |---|---|---|
 | `secret` | the first command that needs it | A random key, created on first use (owner-only permissions where the system supports them). The `contributor`, `batch` and `project` pseudonyms are keyed by it, so a new secret gives new rows new pseudonyms. Never share it. |
 | `runs.jsonl` | `ingest`, `label` | Your rows, one JSON object per line, in the [run schema](../schema/run.schema.json). `estimate` pools them with the seed by default. |
+| `runs.jsonl.clock.json` | `ingest` | The idle cap the store was filled with, written before its first rows. Local only, never shared. See [The idle cap](#the-idle-cap). |
 | `runs.jsonl.lock` | `ingest`, `label` | Present only while a command is writing the store, so a hook and a manual run never interleave. One older than 15 minutes is taken to be left by a crash. |
 | `labels.json` | `label` | Your kind and risk corrections, by run reference. `ingest` re-applies them to fresh rows. |
 | `cache-<harness>.json` | `ingest` at the default idle cap | One per harness, such as `cache-claude-code.json`. Parsed runs by transcript path, so a second ingest reads only what changed. It holds transcript paths, so project folder names sit in it raw, as they do in the transcripts. Local only, never shared. |
@@ -61,11 +62,38 @@ Reads a harness's local history and merges the rows into the store. Only timesta
 | `path` | the harness's own history folder | Where to read from. It must exist. |
 | `--source` | `claude-code` | One of `claude-code`, `cline`, `codex`, `gemini-cli`, `opencode`. `gemini-cli`, `opencode` and `cline` are experimental: built from each tool's source, not yet verified on real sessions, and `validate` rejects their rows. See [verify-adapter.md](verify-adapter.md). |
 | `--out` | `~/.agentpace/runs.jsonl` | The rows file to merge into. |
-| `--idle-cap` | `900` | Seconds an idle gap may contribute, inside a run's duration and between runs on the session clock. A non-default cap neither reads nor writes the cache. |
+| `--idle-cap` | `900` | Seconds an idle gap may contribute, inside a run's duration and between runs on the session clock. A non-default cap neither reads nor writes the cache. A rows file keeps one cap; see [The idle cap](#the-idle-cap). |
 | `--kind-map NAME=KIND` | none | Map one of your agent types to a task kind. Repeatable. |
 | `--hook` | off | Read a Claude Code `SubagentStop` payload on stdin and ingest that session quietly. Prints nothing and always exits 0. Gives up after 5 s if the store is busy. Because it cannot report, run `agentpace ingest` by hand when runs stop appearing: it prints what the hook could not, such as a store line that is not valid JSON. |
 
-stdout: nothing. stderr: a note when the source is experimental, then the report (files seen, read from cache, rows produced, empty runs, unreadable files, unparsed lines, zero-duration, still running, and skipped files or runs when there are any), then `store now holds: N rows`.
+stdout: nothing. stderr: a note when the source is experimental, then, when the idle cap is not the default, a warning:
+
+```text
+warning: idle cap is 600 s, not the default 900 s. The published dataset uses 900 s, so these rows cannot be shared, and an estimate that pools them with the bundled seed mixes two clocks.
+```
+
+then the report (files seen, read from cache, rows produced, empty runs, unreadable files, unparsed lines, zero-duration, still running, and skipped files or runs when there are any), then `store now holds:  N rows`. Last, on an ingest by hand into a store whose idle cap was never recorded:
+
+```text
+note: runs.jsonl has no recorded idle cap: it was filled before agentpace kept one. share refuses such a store. To record the cap, rebuild it: https://github.com/mohamedzhioua/agentpace/blob/main/docs/cli.md#the-idle-cap
+```
+
+### The idle cap
+
+`--idle-cap` sets how many seconds an idle gap may contribute, inside a run and between runs on the session clock. It changes a run's `duration_s` and `offset_s`, so the same run ingested under two caps would be stored twice. A rows file therefore keeps one cap.
+
+- The first ingest into a new or empty rows file writes `<file>.clock.json` beside it, holding `{"version": 1, "idle_cap_s": N}`. For the default store that is `runs.jsonl.clock.json`. Keep `--out` files outside `data/runs`: `validate` rejects any file there that is not `.jsonl`.
+- A later ingest with another `--idle-cap` is refused with exit 2 and ingests nothing. For another cap, pass `--out` with a new file.
+- With a cap other than the default, `ingest` warns: the published dataset uses 900 s, so those rows cannot be shared.
+- `share` runs only when the default store's cap is known to be 900 s.
+- `estimate` prints an `Idle cap:` line under the total whenever your own rows or `--data` take part.
+
+**A store from before 0.13.0** has rows and no record. If every row in it is a published row, it counts as 900 s and the next ingest writes the record. Otherwise its cap is not recorded: `ingest` still adds to it at the default cap and says so, `estimate` still uses it and says so, and `share` refuses it. To record the cap, rebuild the store:
+
+1. Rename `runs.jsonl` in your agentpace folder, for example to `runs-before-0.13.jsonl`. agentpace no longer reads it, and nothing is lost.
+2. Run `agentpace ingest`, once for each harness you log (`--source codex`, and so on). It rebuilds `runs.jsonl` at the default cap from the history your harness still has, and writes the record.
+
+Runs whose transcripts the harness has deleted are not rebuilt; they stay in the renamed file, which `estimate --data` can still read. Labels are re-applied by run reference, and a label made on a row from another cap may no longer match its run, so check `agentpace runs` afterwards. Do the same to repair a store that was filled under two caps. The record cannot see a write by an agentpace older than 0.13.0, which ignores it.
 
 ## runs
 
@@ -133,7 +161,17 @@ The session clock counts agent runs and the gaps between them, each gap up to th
 Human part (review, testing, decisions, waiting between agent turns): not measured. No allowance for it is added to the total above. State it separately; do not derive it from the agent time.
 ```
 
-The clock note gives the default cap. In rows ingested with a non-default `--idle-cap`, each gap counts up to that cap instead. Without `--data`, the seed rows, clipped at 900 s, are pooled with your local rows, which were clipped at whatever `--idle-cap` you ingested with; for one consistent cap, pass `--data` with rows ingested under it.
+The clock note gives the default cap. When rows other than the bundled seed take part, your local store or `--data`, one more line sits above it, under the total and under the `Quoted:` line when there is one. It names the idle cap each source was clipped at, from the record `ingest` keeps beside a rows file.
+
+```text
+Idle cap: 900 s (bundled seed, your local store).
+Idle cap: 900 s (bundled seed), 600 s (your local store). This range pools rows on different clocks.
+Idle cap: 900 s (bundled seed), not recorded (your local store). The rows with no recorded cap may be on another clock.
+Idle cap: 600 s (--data rows).
+Idle cap: not recorded (--data rows).
+```
+
+A rows file with no record counts as 900 s when every row in it is a published row, and as not recorded otherwise. For one clock, pass `--data` with rows ingested under it. With only the bundled seed, whose rows are at 900 s, the line is absent.
 
 With `--quoted`, one line sits directly under the total. It holds the quote verbatim and is never converted into agent time or compared with the range:
 
@@ -204,6 +242,7 @@ One JSON object. Every duration is in seconds, as a number.
 | `seed` | integer | The random seed. |
 | `warnings` | list of strings | Thin or unseen cells, ignored sizes, a written risk the estimate did not use, an assumed parallelism. Pass them on. |
 | `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`: no allowance for the human part is added to the total (waits shorter than the idle cap sit inside the session clock already). When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. With `--review-capacity`, it holds `review_capacity_stated`, your text as given, stripped. Keys without a value are left out. |
+| `idle_cap` | object | Present only when rows other than the bundled seed take part, under the same rule as the `Idle cap:` line, such as `{"seconds": 900, "sources": [{"source": "bundled seed", "seconds": 900}, {"source": "your local store", "seconds": 900}]}`. `seconds` is the one idle cap every source shares, else `null`. `sources` has one entry per source label and cap, in the line's order: `source` is `bundled seed`, `your local store` or `--data rows`, and its `seconds` is `null` when the cap is not recorded. |
 
 The JSON output does not change with `--record` or `--quoted`.
 
@@ -220,7 +259,17 @@ Without an id, prints how your recorded forecasts held up: how many are scored, 
 | `--session REF` | A session, or any run reference from `runs` (its session is used). The actual is the span of that session's completed local runs on its own clock. It is refused when the session has fewer than 2 completed runs, ran before the forecast was issued, or has no cached start to prove it began after the forecast. |
 | `--actual DURATION` | Your own figure, attested by you, such as `"2h"` or `"3 days"`: a number and one of `min`, `h`, `d`, `w`, `mo`, or their long forms. 1 d = 86,400 s, 1 w = 7 d, 1 mo = 30 d. |
 
-stdout: the forecast, the actual and whether it fell within each quantile, plus the quote's ratio to the actual when one was recorded. stderr: a count of damaged ledger lines, if any were skipped.
+stdout: the forecast, the actual and whether it fell within each quantile, plus the quote's ratio to the actual when one was recorded. stderr: a count of damaged ledger lines, if any were skipped. With `--session`, a note when your store's idle cap was never recorded:
+
+```text
+note: runs.jsonl has no recorded idle cap, so this session's span may not be on the forecast's clock.
+```
+
+or when it was recorded at a cap other than the default:
+
+```text
+note: runs.jsonl was filled with a 600 s idle cap, so this session's span is on that clock, which may not be the forecast's.
+```
 
 ## turns
 
@@ -271,6 +320,18 @@ Prepares your local rows for a data pull request. It never sends anything.
 | `--since YYYY-Www` | none | Only rows from this ISO week onward. |
 | `--drop-project` | off | Leave out the `project` field. |
 | `--drop-session REF` | none | Leave out a whole session, in the dry run and in the file. A session, or any run reference from `runs` (its session is used). Repeatable. Its rows are left out before anything else, so they count neither as published nor in the file name's weeks. A `REF` whose session has no local row is refused with exit 2, and nothing is written. |
+
+`share` runs only on a store whose idle cap is known to be 900 s (see [The idle cap](#the-idle-cap)). In both modes, before it reads `--out-dir` or applies any option, it refuses with exit 2, prints nothing on stdout and writes nothing when the store was filled with another cap:
+
+```text
+agentpace: runs.jsonl was filled with a 600 s idle cap, and the published dataset uses 900 s, so its rows cannot be shared. Nothing was written. To contribute, rename it and run agentpace ingest at the default cap
+```
+
+or when its cap was never recorded:
+
+```text
+agentpace: runs.jsonl has no recorded idle cap, so share cannot tell whether its rows are on the published 900 s clock. Nothing was written. Rebuild the store first: https://github.com/mohamedzhioua/agentpace/blob/main/docs/cli.md#the-idle-cap
+```
 
 `--write` adds or extends one file, `<contributor>-<first week>-<last week>.jsonl`, in `--out-dir`. If that file exists, the new rows are appended and its existing bytes are left as they are. A file holding another contributor's rows is refused with exit 2. The dry run says which of the two `--write` would do.
 

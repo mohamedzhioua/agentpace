@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from agentpace import cli, paths, pseudonym, schema, turns
-from tests.synthetic import row
+from tests.synthetic import row, write_store
 
 MARKERS = (
     "CANARY-PROMPT",
@@ -238,7 +238,7 @@ class Estimate(Temp):
 
 class Isolation(Temp):
     def test_share_output_is_unchanged_by_a_turns_file(self):
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         out_dir = str(self.root / "runs")
         _, without, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.write_session("s", SESSION)
@@ -249,7 +249,7 @@ class Isolation(Temp):
 
     def test_share_cannot_read_turns(self):
         """Turns are never shared in any form (DESIGN 7), so `share` has no path to the file."""
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         self.write_session("s", SESSION)
         self.run_cli("turns", str(self.projects))
         self.assertTrue(paths.turns_file().exists())

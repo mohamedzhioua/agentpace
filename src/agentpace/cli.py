@@ -16,6 +16,7 @@ from agentpace import (
     __version__,
     backtest,
     claims,
+    clock,
     estimate,
     forecasts,
     ingest,
@@ -45,11 +46,22 @@ def _kind_map(pairs: Sequence[str]) -> dict[str, str]:
 
 
 def _ingest_into_store(
-    args: argparse.Namespace, path: Path, wait_s: float
+    args: argparse.Namespace,
+    path: Path,
+    wait_s: float,
+    found: list[clock.StoreCap] | None = None,
 ) -> tuple[ingest.IngestReport, int]:
+    """Ingest into the rows file, which keeps one idle cap. The cap is checked under the lock and
+    before anything is parsed, cached or created, so a refused ingest changes nothing. The cap
+    the rows file had is appended to `found` when given."""
+    clock.check_cap(args.idle_cap)
     adapter = get_adapter(args.source)
     out = Path(args.out) if args.out else paths.local_runs()
     with ingest.store_lock(out, wait_s=wait_s):
+        cap = clock.store_cap(out)
+        clock.admit(cap, args.idle_cap, out.name)
+        if found is not None:
+            found.append(cap)
         secret = pseudonym.load_secret(paths.home())
         labels = ingest.load_labels(paths.labels_file())
         # A non-default idle cap changes durations and keys, so it neither reads nor feeds the
@@ -62,6 +74,10 @@ def _ingest_into_store(
         rows, report = ingest.ingest(
             adapter, path, secret, args.idle_cap, _kind_map(args.kind_map), labels, cache=cache
         )
+        # The note goes first: a crash before the rows leaves a note beside no row, which pins
+        # nothing.
+        if cap.note_due:
+            clock.write_note(out, args.idle_cap)
         return report, ingest.merge_into(out, rows)
 
 
@@ -117,18 +133,24 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     path = Path(args.path) if args.path else adapter.default_path()
     if not path.exists():
         raise ValueError("the transcript path does not exist")
+    found: list[clock.StoreCap] = []
     try:
-        report, total = _ingest_into_store(args, path, wait_s=30.0)
+        report, total = _ingest_into_store(args, path, wait_s=30.0, found=found)
     except ingest.StoreBusy as busy:
         raise ValueError(
             f"another ingest is writing the store. Try again, or delete {busy} if none is running"
         ) from None
     if adapter.name in EXPERIMENTAL:
         print(EXPERIMENTAL_NOTE.format(name=adapter.name), file=sys.stderr)
+    if args.idle_cap != ingest.DEFAULT_IDLE_CAP_S:
+        print(clock.not_default_warning(args.idle_cap), file=sys.stderr)
     for line in report.lines():
         print(line, file=sys.stderr)
     # Two spaces: the value lines up with the ingest report's 18-character label column above it.
     print(f"store now holds:  {render.count(total, 'row')}", file=sys.stderr)
+    if any(cap.state == clock.NOT_RECORDED for cap in found):
+        out = Path(args.out) if args.out else paths.local_runs()
+        print(clock.not_recorded_note(out.name), file=sys.stderr)
     return 0
 
 
@@ -318,6 +340,8 @@ def cmd_estimate(args: argparse.Namespace) -> int:
         raise ValueError("the plan is not valid JSON") from None
     tasks, cap = estimate.tasks_from_json(document, args.use_risk)
     rows = _dataset(args.data)
+    # Rows beyond the bundled seed get an `Idle cap:` line and an `idle_cap` key; nothing else.
+    caps = clock.estimate_caps(args.data)
     # Only the default pool takes in rows unasked; rows passed with --data were chosen.
     experimental = None if args.data else _experimental_rows_note(rows)
     if experimental:
@@ -329,7 +353,10 @@ def cmd_estimate(args: argparse.Namespace) -> int:
     if capacity is not None:
         human = dataclasses.replace(human, review_capacity_stated=capacity)
     plan = estimate.estimate(model, tasks, cap, args.draws, args.seed, human)
-    print(render.plan_json(plan) if args.json else render.plan_text(plan, args.quoted))
+    if args.json:
+        print(render.plan_json(plan, caps.as_dict() if caps.shown else None))
+    else:
+        print(render.plan_text(plan, args.quoted, caps.line() if caps.shown else None))
     if args.record:
         record = forecasts.forecast_record(
             issued_at=forecasts.utc_now(),
@@ -366,6 +393,7 @@ def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
         raise ValueError("no recorded forecast has that id; see ~/.agentpace/forecasts.jsonl")
     if (args.session is None) == (args.actual is None):
         raise ValueError("give --session <ref> or --actual <duration>, not both")
+    note = None
     if args.actual is not None:
         actual = forecasts.parse_duration(args.actual)
         if actual is None:
@@ -380,7 +408,10 @@ def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
         source = "attested by you"
     else:
         batch = _session_of(args.session)
-        rows = [r for r in _local_rows() if r["batch"] == batch and r["outcome"] == "completed"]
+        store = paths.local_runs()
+        local = _local_rows()
+        note = clock.session_note(clock.store_cap(store, local), store.name)
+        rows = [r for r in local if r["batch"] == batch and r["outcome"] == "completed"]
         try:
             actual = forecasts.check_session(forecast, rows, _first_cached_start(batch))
         except forecasts.ScoreRefused as refused:
@@ -398,6 +429,8 @@ def _score_one(args: argparse.Namespace, ledger: forecasts.Ledger) -> int:
             "each gap up to the idle cap"
         )
     forecasts.append(paths.forecasts_file(), record)
+    if note is not None:
+        print(note, file=sys.stderr)
     print(render.score_text(forecast, record, source))
     human = _human_part(paths.turns_file())
     if human.status == "measured":
@@ -501,6 +534,8 @@ def cmd_share(args: argparse.Namespace) -> int:
     rows = schema.read_rows(store) if store.exists() else []
     if not rows:
         raise ValueError("no local rows yet; run `agentpace ingest` first")
+    # Before the output folder is read or any filter applied, in both modes.
+    clock.check_shareable(clock.store_cap(store, rows), store.name)
     out = Path(args.out_dir)
     published = schema.read_dataset([out]) if out.exists() else []
     sessions = [_session_of(ref) for ref in args.drop_session]

@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from agentpace import cli, paths, schema, share, validate
-from tests.synthetic import row
+from tests.synthetic import row, write_store
 
 SOURCE = Path(__file__).resolve().parent.parent / "src"
 NAME = "0123456789abcdef-2026-W10-2026-W10.jsonl"
@@ -166,7 +166,7 @@ class ShareCommand(Temp):
         patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
         patch.start()
         self.addCleanup(patch.stop)
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         self.out = self.root / "runs"
 
     def run_cli(self, *args):
@@ -433,7 +433,7 @@ class ReplaceRefused(Temp):
         patch = mock.patch.dict(os.environ, {"AGENTPACE_HOME": str(self.root / "home")})
         patch.start()
         self.addCleanup(patch.stop)
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         self.out = self.root / "runs"
         self.path = self.out / NAME
 

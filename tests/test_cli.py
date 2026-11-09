@@ -9,7 +9,7 @@ from unittest import mock
 
 from agentpace import cli, forecasts, ingest, paths, render, schema
 from agentpace.estimate import HumanPart, PlanRange, TaskRange
-from tests.synthetic import dataset, row
+from tests.synthetic import dataset, row, write_store
 from tests.test_skills import BANNED_PHRASES
 
 MEASURED = HumanPart(
@@ -444,7 +444,7 @@ class ExperimentalNote(unittest.TestCase):
             row(harness=harness, week="2026-W45", offset_s=index)
             for index, harness in enumerate(("gemini-cli", "opencode", "cline", "claude-code"))
         ]
-        schema.write_rows(paths.local_runs(), rows)
+        write_store(paths.local_runs(), rows)
         code, out, err = self.run_cli("share", "--out-dir", str(self.root / "runs"), "--dry-run")
         self.assertEqual(code, 0, err)
         self.assertNotIn("experimental", out)
@@ -474,7 +474,7 @@ class ExperimentalNote(unittest.TestCase):
             "Pass --data to choose the rows.\n",
         )
         self.assertNotIn("experimental", out)
-        self.assertEqual(set(json.loads(out)), set(PlanRange.__dataclass_fields__))
+        self.assertEqual(set(json.loads(out)), {*PlanRange.__dataclass_fields__, "idle_cap"})
 
     def test_no_note_without_experimental_rows_or_with_chosen_data(self):
         schema.write_rows(paths.local_runs(), [row(harness="claude-code", week="2026-W45")])

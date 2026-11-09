@@ -364,11 +364,9 @@ class Privacy(Temp):
             self.assertNotIn("CANARY_CWD", text)
 
     def test_share_keeps_claude_rows_unchanged_in_a_mixed_store(self):
-        from tests.synthetic import row
+        from tests.synthetic import row, write_store
 
-        schema.write_rows(
-            paths.local_runs(), [row(week="2026-W45"), row(week="2026-W45", offset_s=5)]
-        )
+        write_store(paths.local_runs(), [row(week="2026-W45"), row(week="2026-W45", offset_s=5)])
         out_dir = str(self.root / "runs")
         _, before, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.write([meta(), *turn(0, 60, "t1")])

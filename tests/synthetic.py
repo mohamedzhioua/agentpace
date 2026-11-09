@@ -12,6 +12,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from agentpace import schema
+
 CANARIES = (
     "CANARY_PROMPT",
     "CANARY_CODE",
@@ -143,6 +145,14 @@ def row(**overrides: Any) -> dict[str, Any]:
     }
     base.update(overrides)
     return base
+
+
+def write_store(path: Path, rows: list[dict[str, Any]], idle_cap_s: int = 900) -> None:
+    """A rows file as `ingest` leaves it: the rows, and beside them the note of the idle cap
+    they were filled with."""
+    schema.write_rows(path, rows)
+    note = path.with_name(path.name + ".clock.json")
+    note.write_bytes((json.dumps({"version": 1, "idle_cap_s": idle_cap_s}) + "\n").encode("utf-8"))
 
 
 def dataset(

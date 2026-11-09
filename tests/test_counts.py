@@ -12,7 +12,7 @@ from unittest import mock
 
 from agentpace import cli, ingest, paths, render, schema, share, turns
 from agentpace.estimate import HumanPart, PlanRange, TaskRange
-from tests.synthetic import row
+from tests.synthetic import row, write_store
 
 NAME = "0123456789abcdef-2026-W10-2026-W10.jsonl"
 
@@ -260,7 +260,7 @@ class Share(Temp):
         self.path = self.out / NAME
 
     def local(self, *rows):
-        schema.write_rows(paths.local_runs(), list(rows))
+        write_store(paths.local_runs(), list(rows))
 
     def share(self, *args):
         return self.run_cli("share", "--out-dir", str(self.out), *args)

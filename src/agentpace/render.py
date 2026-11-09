@@ -98,7 +98,9 @@ def outcomes_text(plan: PlanRange) -> str | None:
     return line
 
 
-def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
+def plan_text(plan: PlanRange, quoted: str | None = None, idle_cap: str | None = None) -> str:
+    """The text form. `idle_cap` is the finished `Idle cap:` line, under the quote when there is
+    one and directly above the clock note."""
     width = max(len("task"), *(len(task.id) for task in plan.tasks))
     capacity = review_capacity_text(plan.human)
     lines = [
@@ -106,6 +108,7 @@ def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
         f"P80 {duration(plan.p80)}, "
         f"P90 {duration(plan.p90)}",
         *([quote_text(quoted)] if quoted is not None else []),
+        *([idle_cap] if idle_cap is not None else []),
         CLOCK_NOTE,
         human_text(plan.human),
         *([capacity] if capacity is not None else []),
@@ -151,8 +154,12 @@ def plan_dict(plan: PlanRange) -> dict[str, Any]:
     return data
 
 
-def plan_json(plan: PlanRange) -> str:
-    return json.dumps(plan_dict(plan), indent=2)
+def plan_json(plan: PlanRange, idle_cap: dict[str, Any] | None = None) -> str:
+    """The JSON form. `idle_cap`, when given, is added as one top-level key of that name."""
+    data = plan_dict(plan)
+    if idle_cap is not None:
+        data["idle_cap"] = idle_cap
+    return json.dumps(data, indent=2)
 
 
 def score_text(forecast: dict[str, Any], score: dict[str, Any], source: str) -> str:

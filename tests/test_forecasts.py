@@ -14,7 +14,7 @@ from agentpace import cli, forecasts, paths, pseudonym, render, schema
 from agentpace.adapters import get_adapter
 from agentpace.adapters.base import RawRun
 from agentpace.cache import RunCache
-from tests.synthetic import dataset, row
+from tests.synthetic import dataset, row, write_store
 from tests.test_skills import BANNED_PHRASES
 
 REPO = Path(__file__).resolve().parent.parent
@@ -184,7 +184,7 @@ class RecordCommand(unittest.TestCase):
         code, out, err = self.estimate("--quoted", "3 weeks")
         self.assertEqual(code, 0, err)
         self.assertEqual(err, "")
-        lines = out.splitlines()
+        lines = [line for line in out.splitlines() if not line.startswith("Idle cap: ")]
         self.assertTrue(lines[0].startswith("Plan total on the session clock: P50 "))
         self.assertEqual(
             lines[1], 'Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)'
@@ -219,7 +219,7 @@ class RecordCommand(unittest.TestCase):
         )
 
     def test_share_is_unchanged_by_a_ledger(self):
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         out_dir = str(self.root / "runs")
         _, before, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.estimate("--record", "--quoted", "3 weeks")

@@ -98,6 +98,7 @@ class PlanRisk(unittest.TestCase):
         direct = est.estimate(
             est.fit(self.rows), [est.Task("api", "feature", "high", model=OPUS)], 2, int(DRAWS)
         )
+        given.pop("idle_cap")
         self.assertEqual(given, json.loads(render.plan_json(direct)))
 
     def test_a_research_task_keeps_its_cell(self):
