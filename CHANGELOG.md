@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.2 - 2026-11-09
+
+### Fixed
+
+- A rows file with a line that is not valid JSON, or not a JSON object, is refused with its file name and line number and exit 2, instead of the decoder's message. The message never quotes the line.
+- When the contribution file cannot be replaced because another program holds it open, as Windows does, `share --write` says so, leaves the file as it was and removes its temporary file, instead of a traceback.
+
+No published number moved.
+
 ## 0.12.1 - 2026-11-09
 
 ### Fixed
