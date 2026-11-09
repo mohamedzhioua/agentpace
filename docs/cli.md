@@ -63,7 +63,7 @@ Reads a harness's local history and merges the rows into the store. Only timesta
 | `--out` | `~/.agentpace/runs.jsonl` | The rows file to merge into. |
 | `--idle-cap` | `900` | Seconds an idle gap may contribute, inside a run's duration and between runs on the session clock. A non-default cap neither reads nor writes the cache. |
 | `--kind-map NAME=KIND` | none | Map one of your agent types to a task kind. Repeatable. |
-| `--hook` | off | Read a Claude Code `SubagentStop` payload on stdin and ingest that session quietly. Prints nothing and always exits 0. Gives up after 5 s if the store is busy. |
+| `--hook` | off | Read a Claude Code `SubagentStop` payload on stdin and ingest that session quietly. Prints nothing and always exits 0. Gives up after 5 s if the store is busy. Because it cannot report, run `agentpace ingest` by hand when runs stop appearing: it prints what the hook could not, such as a store line that is not valid JSON. |
 
 stdout: nothing. stderr: a note when the source is experimental, then the report (files seen, read from cache, rows produced, empty runs, unreadable files, unparsed lines, zero-duration, still running, and skipped files or runs when there are any), then `store now holds: N rows`.
 

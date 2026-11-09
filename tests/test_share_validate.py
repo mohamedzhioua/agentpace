@@ -360,6 +360,16 @@ class ValidateCommand(Temp):
         with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(cli.main(["validate", str(bad)]), 1)
 
+    def test_a_file_that_is_not_utf8_stays_a_finding(self):
+        path = self.root / NAME
+        path.write_bytes(b"\xff\xfe\x00")
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["validate", str(path)])
+        self.assertEqual(code, 1)
+        self.assertIn("file is not UTF-8", out.getvalue() + err.getvalue())
+        self.assertNotIn("agentpace: ", err.getvalue())
+
 
 class BadRowLines(Temp):
     """A rows file with a bad line is refused by file name and line number, never content."""
@@ -405,6 +415,14 @@ class BadRowLines(Temp):
         self.assertEqual(str(caught.exception), f"{NAME}:1: not valid JSON")
         self.assertIsNone(caught.exception.__cause__)
         self.assertTrue(caught.exception.__suppress_context__)
+
+    def test_a_file_that_is_not_utf8_is_refused_by_name(self):
+        path = self.root / NAME
+        path.write_bytes(b"\xff\xfe\x00")
+        code, out, err = self.estimate(path)
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertEqual(err, f"agentpace: {NAME}: file is not UTF-8\n")
 
 
 class ReplaceRefused(Temp):
@@ -483,6 +501,70 @@ class ReplaceRefused(Temp):
         code, _, err = self.run_cli("--write")
         self.assertEqual(code, 2)
         self.assertEqual(err, f"agentpace: {NAME}:2: not valid JSON\n")
+
+    def test_an_out_dir_holding_a_file_that_is_not_utf8_is_refused_by_name(self):
+        self.out.mkdir()
+        self.path.write_bytes(b"\xff\xfe\x00")
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                code, out, err = self.run_cli(*flags)
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertEqual(err, f"agentpace: {NAME}: file is not UTF-8\n")
+                self.assertEqual(self.path.read_bytes(), b"\xff\xfe\x00")
+
+    def refuse(self, method, target):
+        """Patch one `Path` method to fail with a permission error on `target` alone."""
+        real = getattr(Path, method)
+
+        def refused(path, *args, **kwargs):
+            if path == target:
+                raise PermissionError(13, "Permission denied")
+            return real(path, *args, **kwargs)
+
+        return mock.patch.object(Path, method, refused)
+
+    def assert_write_refused(self, code, out, err):
+        # The privacy notice comes first; the refusal is the last line and the only error.
+        refusal = err.splitlines(keepends=True)[-1]
+        self.assertEqual(code, 2)
+        self.assertEqual(err.count("agentpace:"), 1)
+        self.assertTrue(refusal.startswith("agentpace: could not write"), err)
+        self.assertEqual(
+            refusal,
+            f"agentpace: could not write {NAME} in {self.out}: Permission denied. Nothing was"
+            " changed; choose a writable --out-dir and run share --write again\n",
+        )
+        for said in (out, err):
+            self.assertNotIn("wrote", said)
+            self.assertNotIn("added", said)
+            self.assertNotIn("Traceback", said)
+
+    def test_an_unwritable_folder_leaves_a_new_file_unmade(self):
+        self.out.mkdir()
+        temporary = self.path.with_name(NAME + ".tmp")
+        with self.refuse("write_bytes", temporary):
+            code, out, err = self.run_cli("--write")
+        self.assert_write_refused(code, out, err)
+        self.assertEqual(list(self.out.iterdir()), [])
+
+    def test_an_unwritable_folder_leaves_an_existing_file_as_it_was(self):
+        self.assertEqual(self.run_cli("--write")[0], 0)
+        first = self.path.read_bytes()
+        stored = schema.read_rows(paths.local_runs())
+        schema.write_rows(paths.local_runs(), [*stored, row(offset_s=50)])
+        temporary = self.path.with_name(NAME + ".tmp")
+        with self.refuse("write_bytes", temporary):
+            code, out, err = self.run_cli("--write")
+        self.assert_write_refused(code, out, err)
+        self.assertEqual(self.path.read_bytes(), first)
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()), [NAME])
+
+    def test_a_folder_that_cannot_be_made_is_refused_the_same_way(self):
+        with self.refuse("mkdir", self.out):
+            code, out, err = self.run_cli("--write")
+        self.assert_write_refused(code, out, err)
+        self.assertFalse(self.out.exists())
 
 
 class NoNetwork(unittest.TestCase):
