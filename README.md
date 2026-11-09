@@ -73,13 +73,13 @@ To estimate your own, write a plan like it and run `agentpace estimate plan.json
 npx skills add mohamedzhioua/agentpace
 ```
 
-or, in Claude Code, as a plugin:
+or, in Claude Code 2.1.275 or later, as a plugin:
 
 ```text
 /plugin install agentpace --marketplace mohamedzhioua/agentpace
 ```
 
-The plugin line needs Claude Code 2.1.275 or later. Either way, install the CLI first ([Install](#install)). `npx skills add` gives `/pace-estimate`, `/pace-log` and `/pace-share`; the plugin namespaces them as `/agentpace:pace-estimate`, `/agentpace:pace-log` and `/agentpace:pace-share`. The `agentpace` skill triggers by itself in both. Install one route, not both, or each skill loads twice.
+Either way, install the CLI first ([Install](#install)). `npx skills add` gives `/pace-estimate`, `/pace-log` and `/pace-share`; the plugin namespaces them as `/agentpace:pace-estimate`, `/agentpace:pace-log` and `/agentpace:pace-share`. The `agentpace` skill triggers by itself in both. Install one route, not both, or each skill loads twice.
 
 Then ask your agent "How long will the billing feature take?": the skill calls the CLI.
 

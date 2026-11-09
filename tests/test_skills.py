@@ -318,7 +318,7 @@ class PluginRoute(unittest.TestCase):
         for name in ("pace-estimate", "pace-log", "pace-share"):
             with self.subTest(skill=name):
                 text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
-                line = next(line for line in text.splitlines() if line.startswith("**Use when**"))
+                line = next((ln for ln in text.splitlines() if ln.startswith("**Use when**")), "")
                 self.assertIn(f"`/{name}`", line)
                 self.assertIn(f"`/agentpace:{name}`", line)
 
