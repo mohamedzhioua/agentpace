@@ -248,12 +248,17 @@ class Marketplace(unittest.TestCase):
         self.assertFalse((REPO / "hooks").exists())
         self.assertFalse((REPO / ".claude-plugin" / "plugin.json").exists())
 
-    def test_the_description_is_short_and_carries_no_banned_phrase(self):
-        description = self.entry()["description"]
-        self.assertTrue(1 <= len(description) <= 300)
-        for phrase in BANNED_PHRASES:
-            with self.subTest(phrase=phrase):
-                self.assertNotIn(phrase.lower(), description.lower())
+    def test_the_descriptions_are_short_and_carry_no_banned_phrase(self):
+        descriptions = {
+            "marketplace": self.manifest["description"],
+            "plugin": self.entry()["description"],
+        }
+        for level, description in descriptions.items():
+            with self.subTest(level=level):
+                self.assertTrue(1 <= len(description) <= 300)
+                for phrase in BANNED_PHRASES:
+                    with self.subTest(level=level, phrase=phrase):
+                        self.assertNotIn(phrase.lower(), description.lower())
 
 
 if __name__ == "__main__":
