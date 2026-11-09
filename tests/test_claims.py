@@ -7,7 +7,9 @@ import unittest
 from pathlib import Path
 
 from agentpace import claims, cli, paths, schema
+from agentpace import estimate as est
 from agentpace.adapters import EXPERIMENTAL
+from tests import synthetic
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -76,13 +78,112 @@ class Published(unittest.TestCase):
         # `project_top_harness` is a harness name such as "codex", which the README also uses
         # as an ordinary word, for example `--source codex`. It is not a number from the data.
         words = {"project_top_harness"}
-        text = (REPO / "README.md").read_text(encoding="utf-8")
+        for document in ("README.md", "skills/agentpace/assets/portable-prompt.md"):
+            text = (REPO / document).read_text(encoding="utf-8")
+            unmarked = claims._MARKER.sub("", text)
+            for name, value in self.known.items():
+                if name in words or len(value) < 3:
+                    continue
+                with self.subTest(document=document, claim=name):
+                    self.assertNotIn(value, unmarked)
+
+
+def _table_cells(table: str) -> dict[tuple[str, str, str], list[str]]:
+    """The body rows of a generated cell table, keyed by kind, risk and model."""
+    cells = {}
+    for line in table.strip().splitlines()[2:]:
+        kind, risk, model, *rest = (part.strip() for part in line.strip("|").split("|"))
+        cells[(kind, risk, model)] = rest
+    return cells
+
+
+class CellTable(unittest.TestCase):
+    """The portable prompt's table mirrors the CLI's back-off and shows no range below 30 runs."""
+
+    def rows(self, count, **fields):
+        return [synthetic.row(**{"duration_s": 60 + i, **fields}) for i in range(count)]
+
+    def test_two_models_in_one_kind_get_different_quantiles(self):
+        rows = self.rows(40, model="claude-opus-5-5", duration_s=3000)
+        rows += self.rows(40, model="claude-sonnet-5-5")
+        cells = _table_cells(claims._cell_table(rows))
+        opus = cells[("feature", "normal", "claude-opus-5-5")]
+        sonnet = cells[("feature", "normal", "claude-sonnet-5-5")]
+        self.assertEqual(opus[0], "40")
+        self.assertEqual(sonnet[0], "40")
+        self.assertNotEqual(opus[1:], sonnet[1:])
+        self.assertEqual(cells[("feature", "normal", "all models")][0], "80")
+
+    def test_a_completed_row_with_no_duration_is_left_out(self):
+        rows = [*self.rows(30), synthetic.row(duration_s=0)]
+        cells = _table_cells(claims._cell_table(rows))
+        self.assertEqual(cells[("feature", "normal", "claude-opus-5-5")][0], "30")
+        self.assertEqual(cells[("all kinds", "all", "all models")][0], "30")
+
+    def test_a_cell_of_ten_to_twenty_nine_runs_shows_no_range(self):
+        for count in (10, 29):
+            with self.subTest(count=count):
+                table = claims._cell_table(self.rows(count))
+                cells = _table_cells(table)
+                self.assertEqual(
+                    cells[("feature", "normal", "claude-opus-5-5")],
+                    [str(count), "too few runs", "", ""],
+                )
+                self.assertIn(f"| {count} | too few runs | | |", table)
+        cells = _table_cells(claims._cell_table(self.rows(30)))
+        self.assertNotIn("too few runs", cells[("feature", "normal", "claude-opus-5-5")])
+
+    def test_a_cell_under_ten_runs_is_absent(self):
+        rows = self.rows(30) + self.rows(9, model="gpt-x")
+        cells = _table_cells(claims._cell_table(rows))
+        self.assertNotIn(("feature", "normal", "gpt-x"), cells)
+        self.assertEqual(cells[("feature", "normal", "all models")][0], "39")
+
+    def test_all_kinds_counts_every_usable_row(self):
+        rows = synthetic.dataset(seed=7, sessions=60)
+        rows += [synthetic.row(outcome="failed"), synthetic.row(duration_s=0)]
+        usable = [r for r in rows if r["outcome"] == "completed" and r["duration_s"] > 0]
+        cells = _table_cells(claims._cell_table(rows))
+        self.assertEqual(cells[("all kinds", "all", "all models")][0], f"{len(usable):,}")
+
+    def test_pooled_rows_lead_each_group_and_models_follow_by_runs(self):
+        rows = self.rows(12, model="b-model") + self.rows(12, model="a-model")
+        rows += self.rows(20, model="c-model") + self.rows(40, task_kind="docs")
+        keys = list(_table_cells(claims._cell_table(rows)))
+        self.assertEqual(
+            keys,
+            [
+                ("docs", "normal", "all models"),
+                ("docs", "normal", "claude-opus-5-5"),
+                ("feature", "normal", "all models"),
+                ("feature", "normal", "c-model"),
+                ("feature", "normal", "a-model"),
+                ("feature", "normal", "b-model"),
+                ("all kinds", "all", "all models"),
+            ],
+        )
+
+    def test_the_prompt_states_no_table_value_outside_the_table(self):
+        text = (REPO / "skills" / "agentpace" / "assets" / "portable-prompt.md").read_text(
+            encoding="utf-8"
+        )
+        table = next(
+            match.group(2)
+            for match in claims._MARKER.finditer(text)
+            if match.group(1) == "cell_table"
+        )
         unmarked = claims._MARKER.sub("", text)
-        for name, value in self.known.items():
-            if name in words or len(value) < 3:
-                continue
-            with self.subTest(claim=name):
-                self.assertNotIn(value, unmarked)
+        durations = set(re.findall(r"\d[\d,]*(?:\.\d)? (?:s|min|h|days)", table))
+        # The prose names the pooling threshold ("fewer than 30 runs") and the quantile labels
+        # (P50, P80, P90). A cell whose run count equals one of those is not a number leaking
+        # from the table, so a regenerated table that lands on it must not fail here.
+        labels = {str(est.POOL_MIN), *(f"{q * 100:.0f}" for q in est.QUANTILES)}
+        counts = {match.strip("| ") for match in re.findall(r"\| [\d,]+ \|", table)} - labels
+        self.assertTrue(durations)
+        self.assertTrue(counts)
+        for token in durations | counts:
+            with self.subTest(token=token):
+                self.assertNotRegex(unmarked, rf"(?<![\d,.]){re.escape(token)}(?![\d,])")
 
 
 class QuoteExample(unittest.TestCase):

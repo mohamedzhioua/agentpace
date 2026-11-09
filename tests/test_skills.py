@@ -208,7 +208,7 @@ class Skills(unittest.TestCase):
 
     def test_portable_prompt_exists_and_carries_numbers(self):
         text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")
-        self.assertIn("<!-- claim:kind_table -->", text)
+        self.assertIn("<!-- claim:cell_table -->", text)
         self.assertIn("P90", text)
 
 

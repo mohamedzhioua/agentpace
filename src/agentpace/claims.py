@@ -22,19 +22,38 @@ _MARKER = re.compile(r"<!-- claim:([a-z0-9_]+) -->(.*?)<!-- /claim -->", re.DOTA
 _MIN_TABLE_ROWS = 10
 
 
-def _kind_table(rows: Sequence[Row]) -> str:
-    completed = [row for row in rows if row["outcome"] == "completed"]
-    entries = []
-    for kind in sorted({row["task_kind"] for row in completed}):
-        values = sorted(row["duration_s"] for row in completed if row["task_kind"] == kind)
-        if len(values) >= _MIN_TABLE_ROWS:
-            entries.append((kind, len(values), *(est.quantile(values, q) for q in est.QUANTILES)))
-    entries.sort(key=lambda entry: entry[2])
-    lines = ["| Task kind | Runs | P50 | P80 | P90 |", "|---|---:|---:|---:|---:|"]
-    lines += [
-        f"| {kind} | {n:,} | {render.duration(p50)} | {render.duration(p80)} | "
-        f"{render.duration(p90)} |"
-        for kind, n, p50, p80, p90 in entries
+def _cell_table(rows: Sequence[Row]) -> str:
+    """Durations by task kind, recorded risk and model, in the order the CLI backs off.
+
+    Each `(task_kind, risk)` group lists its pooled row first, then its models; the `all kinds`
+    row is last. A row needs `_MIN_TABLE_ROWS` runs to be listed and `est.POOL_MIN` to show a range.
+    """
+    usable = [row for row in rows if row["outcome"] == "completed" and row["duration_s"] > 0]
+
+    def line(kind: str, risk: str, model: str, chosen: Sequence[Row]) -> str | None:
+        if len(chosen) < _MIN_TABLE_ROWS:
+            return None
+        if len(chosen) < est.POOL_MIN:
+            cells = "too few runs | |"
+        else:
+            values = sorted(row["duration_s"] for row in chosen)
+            cells = " | ".join(render.duration(est.quantile(values, q)) for q in est.QUANTILES)
+        return f"| {kind} | {risk} | {model} | {len(chosen):,} | {cells} |"
+
+    entries: list[str | None] = []
+    for kind, risk in sorted({(row["task_kind"], row["risk"]) for row in usable}):
+        group = [row for row in usable if row["task_kind"] == kind and row["risk"] == risk]
+        entries.append(line(kind, risk, "all models", group))
+        counts: dict[str, int] = {}
+        for row in group:
+            counts[row["model"]] = counts.get(row["model"], 0) + 1
+        for model in sorted(counts, key=lambda name: (-counts[name], name)):
+            entries.append(line(kind, risk, model, [r for r in group if r["model"] == model]))
+    entries.append(line("all kinds", "all", "all models", usable))
+    lines = [
+        "| Task kind | Recorded risk | Model | Runs | P50 | P80 | P90 |",
+        "|---|---|---|---:|---:|---:|---:|",
+        *(entry for entry in entries if entry is not None),
     ]
     return "\n" + "\n".join(lines) + "\n"
 
@@ -160,7 +179,7 @@ def values(
         "contributor_split": contributor,
         "loss_count": str(len(report["losses"])),
         "not_completed_by_harness": _not_completed_by_harness(rows),
-        "kind_table": _kind_table(rows),
+        "cell_table": _cell_table(rows),
         "example_output": _example_output(rows, plan_path),
         "quote_example_output": _example_output(rows, quote_plan_path, QUOTE_EXAMPLE),
     }

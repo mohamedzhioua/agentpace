@@ -4,6 +4,43 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.11.3 - 2026-11-09
+
+### Changed
+
+- The portable prompt's table is now by task kind, recorded risk and model (claim `cell_table`, replacing `kind_table`), with a pooled `all models` row per kind and risk and an `all kinds` row, and no range for rows under 30 runs, the estimator's own pooling threshold. The old table pooled every model, so its feature row was mostly Sonnet runs.
+  - The retired rows were: docs 21 runs 45 s / 3 min / 6 min; feature 1,353 runs 56 s / 3 min / 24 min; review 1,560 runs 2 min / 6 min / 12 min; other 445 runs 8 min / 24 min / 43 min.
+  - The new rows, as generated:
+
+| Task kind | Recorded risk | Model | Runs | P50 | P80 | P90 |
+|---|---|---|---:|---:|---:|---:|
+| docs | normal | all models | 21 | too few runs | | |
+| docs | normal | claude-sonnet-5-5 | 21 | too few runs | | |
+| feature | normal | all models | 1,353 | 56 s | 3 min | 24 min |
+| feature | normal | claude-sonnet-5-5 | 1,148 | 50 s | 2 min | 2 min |
+| feature | normal | claude-opus-5-5 | 205 | 33 min | 66 min | 87 min |
+| other | low | all models | 48 | 4 min | 13 min | 20 min |
+| other | low | claude-sonnet-5-5 | 29 | too few runs | | |
+| other | low | claude-opus-5-5 | 12 | too few runs | | |
+| other | normal | all models | 397 | 9 min | 26 min | 44 min |
+| other | normal | gpt-6.1-sol | 157 | 9 min | 18 min | 26 min |
+| other | normal | claude-opus-5-5 | 95 | 24 min | 63 min | 83 min |
+| other | normal | claude-sonnet-5-5 | 78 | 5 min | 15 min | 21 min |
+| other | normal | claude-fable-5-1 | 46 | 11 min | 32 min | 41 min |
+| other | normal | gpt-6-astra | 16 | too few runs | | |
+| review | low | all models | 1,560 | 2 min | 6 min | 12 min |
+| review | low | claude-opus-5-5 | 1,255 | 2 min | 5 min | 8 min |
+| review | low | claude-fable-5-1 | 198 | 7 min | 15 min | 22 min |
+| review | low | claude-sonnet-5-5 | 107 | 3 min | 12 min | 19 min |
+| all kinds | all | all models | 3,383 | 2 min | 8 min | 20 min |
+
+- The prompt now asks for the model and states the fallback order (the model's row, then the kind's `all models` row, then `all kinds`) instead of "the broadest fitting row". It says that recorded risk is the agent's role, not a rating of the work.
+- The table counts completed runs with a positive duration, the estimator's own filter. No row is affected today.
+- The site says recorded risk is the agent's role.
+- The test that keeps data values inside claim markers now covers the portable prompt too, including each number in its table.
+
+No run changed, and no number in the README, the backtest or the site moved. The portable prompt's table is regenerated from the same rows.
+
 ## 0.11.2 - 2026-11-09
 
 ### Changed
