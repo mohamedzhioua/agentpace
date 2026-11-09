@@ -43,6 +43,25 @@ def classify_risk(agent_type: str | None, kind: str) -> str:
     return "normal"
 
 
+RECORDED_RISKS: Mapping[str, frozenset[str]] = {
+    "review": frozenset({"low"}),
+    "migration": frozenset({"high"}),
+    "other": frozenset({"low", "normal"}),
+}
+
+
+def kind_default_risk(kind: str) -> str:
+    return {"review": "low", "migration": "high"}.get(kind, "normal")
+
+
+def recorded_risk(kind: str, risk: str | None) -> str:
+    """The risk a plan task is looked up at: as written when the rows can record that kind at that
+    risk, else the kind's recorded risk."""
+    if risk is not None and risk in RECORDED_RISKS.get(kind, frozenset({"normal"})):
+        return risk
+    return kind_default_risk(kind)
+
+
 def size_bucket(edit_calls: int) -> str:
     """Measured after the run, so it is kept out of the default forecast."""
     if edit_calls == 0:

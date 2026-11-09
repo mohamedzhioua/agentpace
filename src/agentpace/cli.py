@@ -304,7 +304,7 @@ def cmd_estimate(args: argparse.Namespace) -> int:
         document = json.loads(text)
     except json.JSONDecodeError:
         raise ValueError("the plan is not valid JSON") from None
-    tasks, cap = estimate.tasks_from_json(document)
+    tasks, cap = estimate.tasks_from_json(document, args.use_risk)
     rows = _dataset(args.data)
     # Only the default pool takes in rows unasked; rows passed with --data were chosen.
     experimental = None if args.data else _experimental_rows_note(rows)
@@ -658,6 +658,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--use-size",
         action="store_true",
         help="use size: an oracle track, because stored size is measured after a run",
+    )
+    estimate_cmd.add_argument(
+        "--use-risk",
+        action="store_true",
+        help="use each task's risk as written, as a recorded category (review and research agents "
+        "low, migration agents high, all else normal), even where no recorded run has that kind "
+        "at that risk; by default such a task takes its kind's recorded risk",
     )
     estimate_cmd.add_argument("--draws", type=int, default=estimate.DEFAULT_DRAWS)
     estimate_cmd.add_argument("--seed", type=int, default=estimate.DEFAULT_SEED)

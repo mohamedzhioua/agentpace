@@ -4,6 +4,24 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.0 - 2026-11-09
+
+### Changed
+
+- A plan task's `risk` is now read as the recorded category it matches against. In the rows, risk is the agent's role (review and research agents `low`, migration agents `high`, everything else `normal`), not how hard or how reversible the work is.
+  - A written risk is used only where the rows can record that kind at that risk: `review` low, `migration` high, `other` low (research) or normal, every other kind normal.
+  - Any other value, and an omitted one, takes the kind's recorded risk, and a warning names each task it changed, such as `risk as written was not used for api (high -> normal), review (normal -> low): …`.
+  - Before, such a task matched an empty `kind x risk` cell, which dropped the model. For an Opus feature marked `high`, that cut the P50 by a factor of 16, in the shorter direction.
+  - An explicit `"risk": null` in a plan now means "not given", as `"model": null` already did, instead of being refused.
+- The skills stop advising `risk: high`: they leave `risk` out except for research (`other` with `risk: low`), ask for the model, which is the strongest split in the data, and pass a stated review capacity as the figure itself, in at most 80 characters, or not at all.
+- `docs/cli.md`, the README, DESIGN section 5, `method.md` and CONTRIBUTING say the same. CONTRIBUTING's `label` example no longer sets `--risk high`.
+
+### Added
+
+- `agentpace estimate --use-risk` looks every written risk up as given, for datasets whose labelled rows hold other pairs.
+
+Training, the back-off order, the backtest's queries and the frozen selection are unchanged. Forecasts for plans with such risks change by design; the published example quantiles, the backtest numbers and the record ids of canonical plans do not. No published number moved.
+
 ## 0.11.3 - 2026-11-09
 
 ### Changed

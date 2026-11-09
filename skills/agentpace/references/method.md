@@ -2,7 +2,7 @@
 
 Use this page to answer questions about the method. It is not needed for a routine estimate.
 
-**A task.** The estimator finds the closest cell of past runs by kind, risk and model. A thin cell leans on broader cells, so a cell with few runs gets a wider range and a warning.
+**A task.** The estimator finds the closest cell of past runs by kind, risk and model. A thin cell leans on broader cells, so a cell with few runs gets a wider range and a warning. Risk is the agent's role as recorded, not a rating of the work; a plan's risk is read the same way.
 
 **A plan.** Each simulation draws a duration for every task, then takes the longer of two limits: the longest dependency path, and the total work divided by the throughput real sessions achieved at that agent cap. Tasks in one plan share a session effect, because they share a repo, a model and a day. Without it, the total of many tasks would come out falsely narrow.
 

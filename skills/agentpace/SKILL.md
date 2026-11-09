@@ -48,7 +48,7 @@ If they do not want to install anything, use [assets/portable-prompt.md](assets/
 agentpace estimate plan.json
 ```
 
-Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. Risks: `low`, `normal`, `high`. Use `risk: high` for migrations and for work that is hard to reverse. `model` is optional.
+Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`, as the data records them: `feature` is implementation work of any kind, `review` a read-only review, `other` anything else; research is `other` with `risk: low`. Leave `risk` out otherwise: in the rows it is the agent's role, not how hard or how reversible the work is, so `high` buys nothing and the output says when a written risk was not used. Set `model` whenever you know which model will run the task; it is the strongest split in the data. `bugfix`, `refactor` and `migration` have few or no seed runs: an estimate with them leans on broader runs, up to all runs, and says so; pass that on rather than relabel the work.
 
 ## Re-answer a human quote
 
@@ -65,9 +65,9 @@ If the user wants to see later which number held, offer the same command with `-
 ## Report the result
 
 - Lead with the plan total as a range: P50, P80 and P90, on the session clock. Recommend P80 for planning.
-- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs. If they state their review capacity, such as "4 PRs a day", pass it verbatim with `--review-capacity "<figure>"`, relay the `Review capacity:` line as printed, and never turn it into a timeline.
+- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs. If they state their review capacity, such as "4 PRs a day", pass it verbatim with `--review-capacity "<figure>"`, relay the `Review capacity:` line as printed, and never turn it into a timeline. Pass the figure itself, not the sentence around it, in at most 80 characters; if it does not fit, leave the flag off and repeat the user's figure as theirs beside the result.
 - Name the critical path and the effective parallelism.
-- Pass every warning on. A warning means a cell had too few runs, so that range leans on broader data.
+- Pass every warning on, as printed. One names a cell with no or few recorded runs and says what the range could not use (the kind, the risk level or the model) and where it leaned instead; one says a written risk or size was not used; one says parallelism was assumed.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.
 
 ## Limits to state when they matter

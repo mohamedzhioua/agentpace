@@ -153,6 +153,8 @@ All math lives in `src/agentpace/estimate.py`. Fields used as predictors: `model
 
 `size` is accepted as the brief specifies, but it is ignored by default. Stored `size` is an edit count measured after the run (F6), and a user's S/M/L guess made before the run is a different quantity. `--use-size` opts in, and the output names the oracle-size track. Phase 4 shows what that costs or gains. If the backtest supports it, this default can change.
 
+`risk` is read the same way (0.12.0). In the rows, `risk` is the agent's role, set by the classifier (section 4). A plan's `risk` is a judgment about the work, which no row records. So a task's risk is looked up as written only where the rows can record that kind at that risk; any other value, and an omitted one, takes the kind's recorded risk, and the output names the tasks it changed. `--use-risk` looks every written value up as given, for datasets whose labelled rows hold other pairs. The rule lives at the plan boundary (`tasks_from_json`), never in `fit` or `locate`, so training, the back-off order and the backtest's held-out queries are unchanged, and the frozen selection stands without re-registration.
+
 **Single-task distribution, on the log scale**
 
 *Superseded:* this section first gave every run a session weight of `1 / sqrt(runs in that session)` (F2), with `n_eff` the Kish effective size under those weights. The pre-registered selection chose the unweighted `shrunk` (section 11), so the default is unweighted and `n_eff` equals `n`. Session weighting survives only as the `weighted` candidate.

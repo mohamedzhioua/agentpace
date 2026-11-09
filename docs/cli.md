@@ -100,7 +100,7 @@ stdout: `labeled <ref>: <kind>, <risk> risk`.
 ## estimate
 
 ```text
-agentpace estimate (PLAN | - | --example) [--data PATH]... [--method NAME] [--use-size] [--draws N] [--seed N] [--json] [--turns FILE] [--record] [--quoted TEXT] [--review-capacity TEXT]
+agentpace estimate (PLAN | - | --example) [--data PATH]... [--method NAME] [--use-size] [--use-risk] [--draws N] [--seed N] [--json] [--turns FILE] [--record] [--quoted TEXT] [--review-capacity TEXT]
 ```
 
 Simulates a plan of tasks and prints P50, P80 and P90 per task (agent run time) and for the plan (its span on the session clock).
@@ -112,6 +112,7 @@ Simulates a plan of tasks and prints P50, P80 and P90 per task (agent run time) 
 | `--data PATH` | the seed data plus `~/.agentpace/runs.jsonl` if it exists | A rows file or folder. Repeatable. When given, only these rows are used. |
 | `--method` | `shrunk` | One of `global`, `kind`, `backoff`, `shrunk`, `weighted`. The default is the backtest's pre-registered winner. |
 | `--use-size` | off | Use `size`. An oracle track, because stored size is measured after a run. |
+| `--use-risk` | off | Look each task's `risk` up as written, as a recorded category (review and research agents `low`, migration agents `high`, all else `normal`), even where no recorded run has that kind at that risk. By default such a task takes its kind's recorded risk; see `risk` under Plan JSON. |
 | `--draws` | `20000` | Simulations. At least 100. |
 | `--seed` | `20261107` | Random seed. The same plan, data and seed give the same result. |
 | `--json` | off | Print the result as JSON instead of text. |
@@ -158,12 +159,12 @@ Each task:
 |---|---|---|---|
 | `id` | string or integer | required | Unique within the plan. An integer is read as its string form. |
 | `kind` | string | required | One of `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. |
-| `risk` | string | `normal` | One of `low`, `normal`, `high`. |
+| `risk` | string or `null` | the kind's recorded risk: `low` for `review`, `high` for `migration`, else `normal` | One of `low`, `normal`, `high`. In the rows, risk is the agent's role, not a rating of the work. A written value is used when the rows can record that kind at that risk (`review` low, `migration` high, `other` low for research or normal, all else normal); any other value takes the kind's recorded risk and a warning names the task; `--use-risk` looks every written value up as given. |
 | `size` | string or `null` | `null` | One of `S`, `M`, `L`, `XL`, `na`. Ignored, with a warning, unless `--use-size` is given. |
 | `model` | string or `null` | the plan's `model` | Overrides the plan's model for this task. An explicit `null` means no model for this task; it does not inherit the plan's `model`. |
 | `depends_on` | list of task ids | `[]` | Tasks that must finish before this one starts. Each must be in the plan, and the graph must have no cycle. |
 
-The plan holds no durations: every number comes from the data. A task with a model draws from the model × kind × risk cell, and one without from kind × risk. A model name the data has never seen falls back to the broader cell with a wider interval and a warning, so use the model family as it appears in `agentpace runs`, such as `claude-opus-5-5`.
+The plan holds no durations: every number comes from the data. A task with a model draws from the model × kind × risk cell, and one without from kind × risk. A model name the data has never seen falls back to the broader cell with a wider interval and a warning, so use the model family as it appears in `agentpace runs`, such as `claude-opus-5-5`. A cell with no recorded run gets a warning that names the level that had none (kind, risk or model), which of the task's levels were therefore not used, where the mean and the residuals came from, and what is recorded under the broader cell. A cell with too few runs to stand alone gets one that says its mean was shrunk toward broader cells and names the cell its residuals were pooled from. A written risk the rows cannot record at that kind gets one that names each such task with its risk as written and the risk used.
 
 A plan that breaks these rules is refused with exit 2. A field problem is reported by the task's position and the rule (`task #2: ...`), never by the plan's text. A dependency on an id that is not in the plan is reported with both ids; a duplicate id or a cycle is reported as such. `model` must be a string or `null`, at plan and task level.
 
@@ -173,7 +174,8 @@ A plan that breaks these rules is refused with exit 2. A field problem is report
   "model": "claude-opus-5-5",
   "tasks": [
     { "id": "schema", "kind": "feature" },
-    { "id": "api", "kind": "feature", "risk": "high", "depends_on": ["schema"] },
+    { "id": "research", "kind": "other", "risk": "low" },
+    { "id": "api", "kind": "feature", "depends_on": ["schema"] },
     { "id": "docs", "kind": "docs", "model": null, "depends_on": ["api"] }
   ]
 }
@@ -200,7 +202,7 @@ One JSON object. Every duration is in seconds, as a number.
 | `outcomes` | object | Recorded harness outcomes of every row the estimate loaded, after duplicates are dropped, and never per cell: `rows`, `completed`, `failed`, `unknown`, `completed_without_duration` (completed rows with a duration of 0), and `by_harness`, a list sorted by harness name of objects with `harness`, `rows`, `completed`, `failed` and `unknown`. An outcome is how the run ended in its harness, not task acceptance, and `unknown` is not counted as a failure. The counts are shown, never used to change the range. `rows` is `completed` + `failed` + `unknown`, `rows_used` is `completed` - `completed_without_duration`, and `rows_excluded` is `failed` + `unknown` + `completed_without_duration`. |
 | `draws` | integer | Simulations run. |
 | `seed` | integer | The random seed. |
-| `warnings` | list of strings | Thin or unseen cells, ignored sizes, an assumed parallelism. Pass them on. |
+| `warnings` | list of strings | Thin or unseen cells, ignored sizes, a written risk the estimate did not use, an assumed parallelism. Pass them on. |
 | `human` | object | The human part. `status` is `not measured` or `measured`, and `included_in_total` is always `false`: no allowance for the human part is added to the total (waits shorter than the idle cap sit inside the session clock already). When measured, it also holds `source`, `per_turn_p50`, `per_turn_p80`, `per_turn_p90` (seconds per human turn), `gaps` and `sessions`. With `--review-capacity`, it holds `review_capacity_stated`, your text as given, stripped. Keys without a value are left out. |
 
 The JSON output does not change with `--record` or `--quoted`.
