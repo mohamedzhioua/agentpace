@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import unittest
 from pathlib import Path
@@ -212,6 +213,52 @@ class Skills(unittest.TestCase):
         text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")
         self.assertIn("<!-- claim:cell_table -->", text)
         self.assertIn("P90", text)
+
+
+class Marketplace(unittest.TestCase):
+    def setUp(self):
+        path = REPO / ".claude-plugin" / "marketplace.json"
+        self.manifest = json.loads(path.read_text(encoding="utf-8"))
+
+    def entry(self):
+        plugins = self.manifest["plugins"]
+        self.assertEqual(len(plugins), 1)
+        return plugins[0]
+
+    def test_the_marketplace_names_itself_and_its_owner(self):
+        self.assertEqual(self.manifest["name"], "agentpace")
+        self.assertEqual(self.manifest["owner"]["name"], "mohamedzhioua")
+
+    def test_it_lists_one_plugin_served_from_the_repository_root(self):
+        entry = self.entry()
+        self.assertEqual(entry["name"], "agentpace")
+        self.assertEqual(entry["source"], "./")
+
+    def test_the_entry_lists_no_components_so_every_skill_loads(self):
+        entry = self.entry()
+        for field in ("skills", "hooks", "commands", "agents", "mcpServers"):
+            with self.subTest(field=field):
+                self.assertNotIn(field, entry)
+
+    def test_the_source_holds_the_skills_folder(self):
+        entry = self.entry()
+        self.assertEqual((REPO / entry["source"] / "skills").resolve(), SKILLS.resolve())
+
+    def test_no_hooks_folder_or_plugin_manifest_ships(self):
+        self.assertFalse((REPO / "hooks").exists())
+        self.assertFalse((REPO / ".claude-plugin" / "plugin.json").exists())
+
+    def test_the_descriptions_are_short_and_carry_no_banned_phrase(self):
+        descriptions = {
+            "marketplace": self.manifest["description"],
+            "plugin": self.entry()["description"],
+        }
+        for level, description in descriptions.items():
+            with self.subTest(level=level):
+                self.assertTrue(1 <= len(description) <= 300)
+                for phrase in BANNED_PHRASES:
+                    with self.subTest(level=level, phrase=phrase):
+                        self.assertNotIn(phrase.lower(), description.lower())
 
 
 if __name__ == "__main__":
