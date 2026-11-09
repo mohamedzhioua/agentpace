@@ -38,6 +38,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentpace import classify
 from agentpace.schema import Row
 
 QUANTILES = (0.5, 0.8, 0.9)
@@ -479,6 +480,8 @@ class Task:
     size: str | None = None
     model: str | None = None
     depends_on: tuple[str, ...] = ()
+    # The plan's risk as written, kept to say when the lookup used another; None when omitted.
+    risk_given: str | None = None
 
 
 @dataclass(frozen=True)
@@ -635,6 +638,18 @@ def _warnings(model: Model, tasks: Sequence[Task], located: Mapping[str, Located
             "size ignored: stored size is measured after a run, so it is left out unless you "
             "pass --use-size."
         )
+    changed = [
+        f"{task.id} ({task.risk_given} -> {task.risk})"
+        for task in tasks
+        if task.risk_given is not None and task.risk_given != task.risk
+    ]
+    if changed:
+        notes.append(
+            f"risk as written was not used for {', '.join(changed)}: in the recorded runs, risk "
+            "is the agent's role (review and research agents low, migration agents high, "
+            "everything else normal), not how hard or how reversible the work is, so each took "
+            "the risk recorded for its kind. Pass --use-risk to look the values up as written."
+        )
     return notes
 
 
@@ -780,8 +795,12 @@ def cell_quantiles(
     return p50, p80, p90
 
 
-def tasks_from_json(document: Any) -> tuple[list[Task], int]:
-    """Validate a plan document. Errors name the problem, never the document's text."""
+def tasks_from_json(document: Any, use_risk: bool = False) -> tuple[list[Task], int]:
+    """Validate a plan document. Errors name the problem, never the document's text.
+
+    A task's risk is looked up as written only where the rows can record that kind at that risk;
+    any other value, and an omitted one, takes the kind's recorded risk. `use_risk=True` keeps
+    every written value. The rule lives here, at the plan boundary, never in `fit` or `locate`."""
     from agentpace import schema
 
     if not isinstance(document, dict) or not isinstance(document.get("tasks"), list):
@@ -800,9 +819,10 @@ def tasks_from_json(document: Any) -> tuple[list[Task], int]:
         kind = item.get("kind")
         if kind not in schema.enum("task_kind"):
             raise ValueError(f"{where}: kind must be one of {schema.enum('task_kind')}")
-        risk = item.get("risk", "normal")
-        if risk not in schema.enum("risk"):
+        given = item.get("risk")
+        if given is not None and given not in schema.enum("risk"):
             raise ValueError(f"{where}: risk must be one of {schema.enum('risk')}")
+        risk = given if (use_risk and given is not None) else classify.recorded_risk(kind, given)
         size = item.get("size")
         if size is not None and size not in schema.enum("size"):
             raise ValueError(f"{where}: size must be one of {schema.enum('size')}")
@@ -820,6 +840,7 @@ def tasks_from_json(document: Any) -> tuple[list[Task], int]:
                 size=size,
                 model=item.get("model", plan_model),
                 depends_on=tuple(str(dependency) for dependency in dependencies),
+                risk_given=given,
             )
         )
     return tasks, cap

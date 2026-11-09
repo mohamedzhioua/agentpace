@@ -442,6 +442,39 @@ class PlanDocuments(unittest.TestCase):
         )
         self.assertIsNone(tasks[0].model)
 
+    def _one(self, use_risk=False, **item):
+        tasks, _ = est.tasks_from_json({"tasks": [{"id": "a", **item}]}, use_risk=use_risk)
+        return tasks[0]
+
+    def test_a_written_risk_no_row_can_record_takes_the_kinds_recorded_risk(self):
+        task = self._one(kind="feature", risk="high")
+        self.assertEqual((task.risk, task.risk_given), ("normal", "high"))
+
+    def test_use_risk_keeps_the_written_value(self):
+        task = self._one(use_risk=True, kind="feature", risk="high")
+        self.assertEqual((task.risk, task.risk_given), ("high", "high"))
+
+    def test_an_omitted_risk_takes_the_kinds_recorded_risk(self):
+        for kind, risk in (("review", "low"), ("migration", "high"), ("feature", "normal")):
+            with self.subTest(kind=kind):
+                task = self._one(kind=kind)
+                self.assertEqual((task.risk, task.risk_given), (risk, None))
+                self.assertEqual(self._one(use_risk=True, kind=kind).risk, risk)
+
+    def test_a_recordable_pair_is_kept(self):
+        for kind, risk in (("other", "low"), ("other", "normal"), ("review", "low")):
+            with self.subTest(kind=kind, risk=risk):
+                task = self._one(kind=kind, risk=risk)
+                self.assertEqual((task.risk, task.risk_given), (risk, risk))
+
+    def test_a_risk_outside_the_enum_is_still_refused(self):
+        for use_risk in (False, True):
+            with (
+                self.subTest(use_risk=use_risk),
+                self.assertRaisesRegex(ValueError, r"^task #1: risk must be one of"),
+            ):
+                self._one(use_risk=use_risk, kind="feature", risk="nope")
+
 
 class WarningWording(unittest.TestCase):
     """A cell warning says which level had no recorded run, what the task supplied below it,
