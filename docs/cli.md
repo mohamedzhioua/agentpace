@@ -159,7 +159,7 @@ Each task:
 |---|---|---|---|
 | `id` | string or integer | required | Unique within the plan. An integer is read as its string form. |
 | `kind` | string | required | One of `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`. |
-| `risk` | string | the kind's recorded risk: `low` for `review`, `high` for `migration`, else `normal` | One of `low`, `normal`, `high`. In the rows, risk is the agent's role, not a rating of the work. A written value is used when the rows can record that kind at that risk (`review` low, `migration` high, `other` low for research or normal, all else normal); any other value takes the kind's recorded risk and a warning names the task; `--use-risk` looks every written value up as given. |
+| `risk` | string or `null` | the kind's recorded risk: `low` for `review`, `high` for `migration`, else `normal` | One of `low`, `normal`, `high`. In the rows, risk is the agent's role, not a rating of the work. A written value is used when the rows can record that kind at that risk (`review` low, `migration` high, `other` low for research or normal, all else normal); any other value takes the kind's recorded risk and a warning names the task; `--use-risk` looks every written value up as given. |
 | `size` | string or `null` | `null` | One of `S`, `M`, `L`, `XL`, `na`. Ignored, with a warning, unless `--use-size` is given. |
 | `model` | string or `null` | the plan's `model` | Overrides the plan's model for this task. An explicit `null` means no model for this task; it does not inherit the plan's `model`. |
 | `depends_on` | list of task ids | `[]` | Tasks that must finish before this one starts. Each must be in the plan, and the graph must have no cycle. |
