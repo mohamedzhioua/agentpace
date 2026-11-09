@@ -288,5 +288,79 @@ class NotCompletedByHarness(unittest.TestCase):
                 self.assertNotRegex(unmarked, rf"(?<![\d.]){re.escape(share)}")
 
 
+PROJECT_PLAN_CLAIMS = (
+    "project_plan_sessions",
+    "project_plan_projects",
+    "project_plan_p80",
+    "project_plan_p90",
+    "project_plan_gap",
+)
+
+
+class ProjectPlans(unittest.TestCase):
+    """Whole sessions with projects held out reach the README only through five claims."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows = schema.read_dataset([paths.seed_dir()])
+        cls.report = json.loads((REPO / "docs" / "backtest.json").read_text(encoding="utf-8"))
+        cls.readme = (REPO / "README.md").read_text(encoding="utf-8")
+
+    def known(self, project_plans):
+        found = {key: value for key, value in self.report.items() if key != "project_plans"}
+        if project_plans is not None:
+            found["project_plans"] = project_plans
+        return claims.values(self.rows, found)
+
+    def test_values_follow_the_report(self):
+        # Not today's values, so a claim that stopped reading the report would fail here.
+        ours = {"coverage80": 72.41, "coverage90": 88.62}
+        held_out = {
+            "status": "ok",
+            "folds": 7,
+            "sessions": 41,
+            "results": {"agentpace": ours},
+            "intervals": {
+                "coverage80": [61.2, 83.9],
+                "coverage90": [80.1, 97.0],
+                "rival_minus_ours": {"sum-of-medians": [-345.6, 9876.4]},
+            },
+        }
+        known = self.known(held_out)
+        self.assertEqual(
+            [known[name] for name in PROJECT_PLAN_CLAIMS],
+            ["41", "7", "72% (CI 61% to 84%)", "89% (CI 80% to 97%)", "-346 to +9876"],
+        )
+
+    def test_not_available_unless_it_ran(self):
+        could_not = {
+            "status": "could not run (fewer than 2 projects with a qualifying session)",
+            "label": "oracle-structure",
+        }
+        for project_plans in (could_not, None):
+            known = self.known(project_plans)
+            for name in PROJECT_PLAN_CLAIMS:
+                with self.subTest(name=name, absent=project_plans is None):
+                    self.assertEqual(known[name], "not available")
+
+    def test_the_readme_carries_the_five_markers_in_one_retrospective_bullet(self):
+        bullet = next(
+            line
+            for line in self.readme.splitlines()
+            if "<!-- claim:project_plan_sessions -->" in line
+        )
+        self.assertTrue(bullet.startswith("- "))
+        for name in PROJECT_PLAN_CLAIMS:
+            self.assertEqual(self.readme.count(f"<!-- claim:{name} -->"), 1, name)
+            self.assertIn(f"<!-- claim:{name} -->", bullet)
+        self.assertIn("retrospective", bullet)
+        self.assertIn("<!-- claim:contributors -->", bullet)
+        self.assertNotIn("one contributor", bullet)
+        self.assertIn("never chooses the method", bullet)
+        self.assertIn("docs/backtest.md#whole-sessions-projects-held-out-oracle-structure", bullet)
+        self.assertIn("This is the forward test of plan totals.", self.readme)
+        self.assertNotIn("This is the only direct test of plan totals.", self.readme)
+
+
 if __name__ == "__main__":
     unittest.main()

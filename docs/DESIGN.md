@@ -192,7 +192,7 @@ for each draw:
 
 ## 6. Backtest protocol
 
-`agentpace backtest` regenerates `docs/backtest.md` and an SVG chart with a fixed seed. CI re-runs it and fails if any reported number differs, comparing rounded values rather than chart bytes so results hold across Python versions and operating systems. Published numbers cannot drift from the code.
+`agentpace backtest` regenerates `docs/backtest.md` and an SVG chart with a fixed seed. CI re-runs it and fails if any reported number differs or `docs/backtest.md` is not what those numbers render, comparing rounded values and the report text rather than chart bytes so results hold across Python versions and operating systems. The report's oldest tables (the selection, the splits and the losses) print unrounded values, so a last-digit difference between platforms would fail the check while the rounded values match; none has been seen. Published numbers cannot drift from the code.
 
 **Splits**
 
@@ -216,7 +216,9 @@ for each draw:
 
 *Challengers (2026-11-09).* The five-candidate selection is closed and its winner is the incumbent. A challenger is a method registered by name, definition, streams and win rule in `experiments/` before any row from the weeks it is scored on exists. It is scored only on the locked holdout, against the incumbent, never on selection folds, and its forecasts come from streams of its own, so no published number moves. It ships only by re-registration in `CHANGELOG.md` and this section, as a minor release. One is registered: `model-offset-v1` (section 11).
 
-**Plan-level test.** Each held-out session is treated as a plan and predicted from earlier data only. The actual value is the span of its runs on the session clock: `max(offset_s + duration_s) - min(offset_s)`. This is the only direct test of the total, the number users actually care about, and it needs D2. It is labeled "oracle-structure" for two reasons: real dependencies are not recorded, so `CP` falls back to the longest single run, and the session's observed peak concurrency stands in for its cap even though that is itself an outcome. So it tests the throughput and session-effect terms, not dependency planning, and the report must say so.
+**Plan-level test.** Each held-out session is treated as a plan and predicted from earlier data only. The actual value is the span of its runs on the session clock: `max(offset_s + duration_s) - min(offset_s)`. This is the forward test of the total, the number users actually care about, and it needs D2. It is labeled "oracle-structure" for two reasons: real dependencies are not recorded, so `CP` falls back to the longest single run, and the session's observed peak concurrency stands in for its cap even though that is itself an outcome. So it tests the throughput and session-effect terms, not dependency planning, and the report must say so.
+
+*Projects held out.* The same test also runs with one project held out at a time: every session of the selection harness with at least 5 completed runs, in every project that has one and leaves `MIN_TRAIN_ROWS` completed runs outside it, predicted by a model fitted on all rows outside that project, later weeks included, with no row of a held-out session in training. It is retrospective, reported under its own heading with each project by rank and the pooled result without the largest, draws only a named interval stream of its own, and never chooses the method. The time-split test remains the forward test.
 
 **Idle-cap sensitivity.** The 900 s cap is `ingest --idle-cap`. Published rows cannot be re-clipped without the raw transcripts, so this check runs locally with `ingest --idle-cap` and `backtest --data`, and is not a README claim. The results are in section 11.
 
@@ -523,6 +525,20 @@ Fable 5.1 ruled on 2026-11-09, with an independent opinion from Codex (gpt-6-ast
 - **Presentation and contributors:** a plain first screen with a "Reading the output" list and the example output intact; one install location; contributors install from PyPI, preview before any clone, and clone only to write and validate, because `share` dedupes against the output folder alone.
 - **Cleanup:** the quiet hook keeps its contract and the manual `ingest` is the documented recovery; a non-UTF-8 rows file and an unwritable destination are clean exit-2 refusals; the skill templates leave `risk` out except for research.
 - The W46 data change takes the next patch when that week ends, and waits for nothing.
+
+### Ruling for the 0.14 round
+
+Fable 5.1 ruled on 2026-11-09, with an independent opinion from Codex (gpt-6-astra), both at the highest effort; the master verified every code claim in the opinion first.
+
+- **The finding.** A user asked for the idle cap beside the range. Checking it showed that a second `ingest --idle-cap` into one store kept every run the cap touched twice, because the cap moves `offset_s` and `duration_s` and both are in the duplicate key, and that `share` would have published both copies.
+- **A rows file keeps one cap (0.13.0).** `ingest` writes `<file>.clock.json` beside the rows file before its first rows, `{"version": 1, "idle_cap_s": N}`, and refuses any other cap after that. It warns when the cap is not the default. `share` runs only on a store whose cap is known to be 900 s. E3's key and the row schema are unchanged.
+- **Shown, not enforced, at `estimate`.** Whenever rows beyond the bundled seed take part, one `Idle cap:` line sits under the total, under the quote when there is one, naming each source's cap and saying when the range pools different clocks or rows with no recorded cap. `--json` carries the same as `idle_cap`. With the bundled seed alone the output is unchanged.
+- **Stores from before 0.13.0.** A store with rows and no record counts as 900 s when every row in it is a published row, and as not recorded otherwise. A not-recorded store still takes default-cap ingests, because the hook is silent and a refusal would lose runs, and still feeds estimates, labelled; `share` refuses it until it is rebuilt by renaming it and ingesting again.
+- **Declined:** a digest of the rows in the record, which would turn a label or an older CLI's default-cap ingest into an invalid store; refusing estimates that pool two clocks; a clock field in the forecast ledger; an automatic rebuild; a detector of mixed stores, which flags a clean one.
+- **Whole sessions with projects held out (0.12.11).** The plan-level test also runs leave-one-project-out, over every Claude Code session with 5 or more completed runs, trained on every run outside the project, later weeks included. It is retrospective, draws one named interval stream, never chooses the method, and its baseline wins join "Where agentpace loses". On the 0.12.10 seed coverage held and the pinball gap to a sum of medians was no longer wholly above zero; the README says so in claims. `backtest --check` now covers `backtest.md` too.
+- **Skills.** They name the range the plan total on the session clock, never hours of agent time; use a plan file only when the user names it; relay the cap line and any refusal as printed; and leave the store alone when the CLI refuses. Eight smoke prompts are recorded in `docs/skill-smoke.md`.
+- **Deferred or left:** `experiments` as a first-party import root until the experiment closes; the user-scope double load; the portable prompt.
+- **The 2026-W46 data change** takes the next patch from 2026-11-16 and waits for nothing. It gains one check: a session already published is shared again only when it reproduces every published key.
 
 ## 12. Sources
 

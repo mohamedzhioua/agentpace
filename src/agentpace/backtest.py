@@ -667,6 +667,96 @@ def _plan_losses(split: str, results: dict[str, dict[str, float]]) -> list[dict[
     ]
 
 
+def _qualifying(rows: Sequence[Row], harness: str | None) -> dict[str, list[Row]]:
+    """The sessions `plan_forecasts` scores: completed runs per batch, at least
+    `est.MIN_SESSION_RUNS` of them, of `harness` when one is given."""
+    return {
+        batch: members
+        for batch, members in _sessions(_completed(rows)).items()
+        if len(members) >= est.MIN_SESSION_RUNS
+        and (harness is None or members[0]["harness"] == harness)
+    }
+
+
+def project_plan_folds(rows: Sequence[Row], harness: str | None) -> list[Fold]:
+    """Leave one project out, for whole sessions. Training is every row outside the project,
+    from every harness and every week, minus any row of a session that also runs inside it.
+    A project is kept when it holds a qualifying session and enough completed runs lie outside."""
+    folds = []
+    for fold in group_folds(rows, "project", 1):
+        if not fold.name or not _qualifying(fold.test, harness):
+            continue
+        held = {row["batch"] for row in fold.test}
+        train = [row for row in fold.train if row["batch"] not in held]
+        if len(_completed(train)) >= MIN_TRAIN_ROWS:
+            folds.append(Fold(fold.name, train, fold.test))
+    return folds
+
+
+def _project_plan_row(fold: Fold, forecasts: dict[str, list[Forecast]]) -> dict[str, Any]:
+    ours, naive = forecasts["agentpace"], forecasts["sum-of-medians"]
+    scored = {f.session for f in ours}
+    mine = both_weightings(ours)["row"]
+    return {
+        "sessions": len(scored),
+        "runs": sum(1 for row in _completed(fold.test) if row["batch"] in scored),
+        "train_rows": len(_completed(fold.train)),
+        "within50": sum(f.actual <= f.p50 for f in ours),
+        "within80": sum(f.actual <= f.p80 for f in ours),
+        "within90": sum(f.actual <= f.p90 for f in ours),
+        "pinball": mine["pinball"],
+        "naive_pinball": both_weightings(naive)["row"]["pinball"],
+        "width": mine["width"],
+    }
+
+
+def project_plans(
+    rows: Sequence[Row], winner: str, seed: int, harness: str | None
+) -> dict[str, Any]:
+    """The whole-session test with one project held out at a time instead of later weeks.
+
+    Retrospective: training includes later weeks. Each plan seeds its own generator, so the
+    forecasts consume no shared stream, and the intervals draw from a stream of their own. Each
+    session is one forecast, so only the row weighting is reported. It never chooses anything."""
+    folds = project_plan_folds(rows, harness)
+    if len(folds) < 2:
+        return {
+            "status": "could not run (fewer than 2 projects with a qualifying session)",
+            "label": "oracle-structure",
+        }
+    per_fold = [plan_forecasts([fold], winner, seed, harness) for fold in folds]
+    names = list(per_fold[0])
+    pooled = {name: [f for found in per_fold for f in found[name]] for name in names}
+    entries = [_project_plan_row(fold, found) for fold, found in zip(folds, per_fold, strict=True)]
+    # Most held-out sessions first, then most runs, then pseudonym. The pseudonym is not stored.
+    order = sorted(
+        range(len(folds)),
+        key=lambda i: (-entries[i]["sessions"], -entries[i]["runs"], folds[i].name),
+    )
+    rest = order[1:]
+    rng = random.Random(f"{seed}:project-plan-intervals")
+    return {
+        "status": "ok",
+        "label": "oracle-structure",
+        "harness": harness or "all",
+        "min_train_rows": MIN_TRAIN_ROWS,
+        "folds": len(folds),
+        "sessions": len(pooled["agentpace"]),
+        "results": {name: both_weightings(items)["row"] for name, items in pooled.items()},
+        "intervals": intervals(pooled, "agentpace", ["sum-of-medians"], rng),
+        "by_project": [entries[i] for i in order],
+        "without_largest": {
+            "project": 1,
+            "sessions": entries[order[0]]["sessions"],
+            "of_sessions": len(pooled["agentpace"]),
+            "results": {
+                name: both_weightings([f for i in rest for f in per_fold[i][name]])["row"]
+                for name in names
+            },
+        },
+    }
+
+
 def run(
     rows: Sequence[Row], seed: int = SEED, selection_last_week: str = SELECTION_LAST_WEEK
 ) -> dict[str, Any]:
@@ -794,7 +884,10 @@ def run(
             plans, "agentpace", ["sum-of-medians"], random.Random(f"{seed}:plan-intervals")
         ),
     }
+    report["project_plans"] = project_plans(usable, winner, seed, population)
     report_losses += _plan_losses("time", report["plans"]["results"])
+    if report["project_plans"]["status"] == "ok":
+        report_losses += _plan_losses("project", report["project_plans"]["results"])
     if report["locked"]["status"] == "ok":
         locked_losses += _plan_losses("locked", report["locked"]["plans"])
     report["losses"] = report_losses + locked_losses
