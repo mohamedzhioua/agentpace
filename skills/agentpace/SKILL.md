@@ -17,19 +17,17 @@ This skill triggers on natural-language questions. `/pace-estimate` is the expli
 
 ## Check the tool
 
-Run `agentpace --version`. If that fails, tell the user the install command and stop. Do not install anything without being asked:
+Run `agentpace --version`. If that fails, show the install command below and stop there: installing is the user's call, so do not install anything without being asked. If they would rather not install it, answer from [assets/portable-prompt.md](assets/portable-prompt.md) and label the result a rule of thumb.
 
 ```text
 uv tool install agentpace
 ```
 
-If they do not want to install anything, use [assets/portable-prompt.md](assets/portable-prompt.md) instead.
-
 ## Estimate
 
 1. Assume agents do the implementation unless the user says otherwise. If it is unclear and the answer would change, ask once.
 2. Break the work into tasks an agent would run as separate runs.
-3. Give each task an `id`, a `kind` and a `risk`, plus `depends_on` when it must wait for another task. Set `agent_cap` to the number of agents that will run at once.
+3. Give each task an `id` and a `kind`, plus `depends_on` when it must wait for another task. Set `model` to the model that will run it when you know it, and `agent_cap` to the number of agents that will run at once. Leave `risk` out, except for research (below).
 4. Write the plan to a file and run the estimator.
 
 ```json
@@ -37,9 +35,10 @@ If they do not want to install anything, use [assets/portable-prompt.md](assets/
   "agent_cap": 3,
   "model": "claude-opus-5-5",
   "tasks": [
-    { "id": "schema", "kind": "feature", "risk": "normal" },
-    { "id": "api", "kind": "feature", "risk": "normal", "depends_on": ["schema"] },
-    { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api"] }
+    { "id": "survey", "kind": "other", "risk": "low" },
+    { "id": "schema", "kind": "feature", "depends_on": ["survey"] },
+    { "id": "api", "kind": "feature", "depends_on": ["schema"] },
+    { "id": "review", "kind": "review", "depends_on": ["api"] }
   ]
 }
 ```
@@ -48,7 +47,10 @@ If they do not want to install anything, use [assets/portable-prompt.md](assets/
 agentpace estimate plan.json
 ```
 
-Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`, as the data records them: `feature` is implementation work of any kind, `review` a read-only review, `other` anything else; research is `other` with `risk: low`. Leave `risk` out otherwise: in the rows it is the agent's role, not how hard or how reversible the work is, so `high` buys nothing and the output says when a written risk was not used. Set `model` whenever you know which model will run the task; it is the strongest split in the data. `bugfix`, `refactor` and `migration` have few or no seed runs: an estimate with them leans on broader runs, up to all runs, and says so; pass that on rather than relabel the work.
+- Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`, as the data records them: `feature` is implementation work of any kind, `review` a read-only review, `other` anything else.
+- Risk: leave it out. In the rows it is the agent's role, not how hard or how reversible the work is, so `high` buys nothing, and the output says when a written risk was not used. The one exception is research: `other` with `risk: low`, a recorded cell.
+- Model: set `model` whenever you know which model will run the task; it is the strongest split in the data.
+- `bugfix`, `refactor` and `migration` have few or no seed runs: an estimate with them leans on broader runs, up to all runs, and says so; pass that on rather than relabel the work.
 
 ## Re-answer a human quote
 
@@ -58,14 +60,15 @@ When the conversation already holds a timeline in days, weeks or months, from th
 agentpace estimate plan.json --quoted "3 months"
 ```
 
-The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range. Never convert the quote into agent time, never divide or multiply it by a constant, and never compare it with the range or give a ratio between them: the only agent time is the measured range, and the human part stays on its own line. Never say what the difference between the quote and the range is, and never call it the human part: that would derive the human part from the agent time. Never say what the quote counts, either: nothing has checked it.
+The output then has a `Quoted:` line under the total, marking the quote as calendar time, as quoted and unverified. Relay that line as printed, beside the measured range, and leave the two side by side: the only agent time is the measured range, and the human part stays on its own line. Never convert the quote into agent time, never compare it with the range or give a ratio or difference between them, and never say what the quote counts or call the difference the human part: nothing has checked the quote, and that would derive the human part from the agent time.
 
 If the user wants to see later which number held, offer the same command with `--record` added. Once the work is done, `agentpace score <id> --session <ref>` compares both with what the agents actually took.
 
 ## Report the result
 
 - Lead with the plan total as a range: P50, P80 and P90, on the session clock. Recommend P80 for planning.
-- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs. If they state their review capacity, such as "4 PRs a day", pass it verbatim with `--review-capacity "<figure>"`, relay the `Review capacity:` line as printed, and never turn it into a timeline. Pass the figure itself, not the sentence around it, in at most 80 characters; if it does not fit, leave the flag off and repeat the user's figure as theirs beside the result.
+- Pass on the session-clock line and the human part line as the CLI prints them. The first says that gaps between runs count toward the total up to the idle cap, so short waits on the user sit inside it. Unmeasured, the human part line says no allowance for review, testing, decisions and waiting between agent turns is added. Measured by `agentpace turns`, it quotes the user's own wait per human turn, from their local history. Either way, do not derive a number for it from the agent time, and do not multiply the per-turn wait by a guessed number of turns. If the user gives their own figure, repeat it and label it as theirs.
+- If the user states their review capacity, such as "4 PRs a day", pass it verbatim with `--review-capacity "<figure>"`, relay the `Review capacity:` line as printed, and never turn it into a timeline. Pass the figure itself, not the sentence around it, in at most 80 characters; if it does not fit, leave the flag off and repeat the user's figure as theirs beside the result.
 - Name the critical path and the effective parallelism.
 - Pass every warning on, as printed. One names a cell with no or few recorded runs and says what the range could not use (the kind, the risk level or the model) and where it leaned instead; one says a written risk or size was not used; one says parallelism was assumed.
 - Do not state a single number, even when pressed. If someone needs one figure to plan around, give the P80 and call it the P80.

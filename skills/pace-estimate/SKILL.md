@@ -19,9 +19,10 @@ The plan to estimate: $ARGUMENTS
    ```json
    {
      "agent_cap": 3,
+     "model": "claude-opus-5-5",
      "tasks": [
-       { "id": "api", "kind": "feature", "risk": "normal" },
-       { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api"] }
+       { "id": "api", "kind": "feature" },
+       { "id": "review", "kind": "review", "depends_on": ["api"] }
      ]
    }
    ```
