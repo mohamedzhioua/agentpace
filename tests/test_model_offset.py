@@ -9,6 +9,7 @@ import random
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from experiments.model_offset import __main__ as report
 from experiments.model_offset import offset
@@ -169,6 +170,56 @@ class Check(unittest.TestCase):
             self.assertEqual(again["decision"], stored["decision"])
             self.assertNotEqual(again["data"]["sha256"], stored["data"]["sha256"])
             self.assertEqual(self.run_main(root, out, "--check"), 0)
+
+    def test_the_locked_path_runs_end_to_end(self):
+        # Model B is seen only in review/low in the first week, then given features in the first
+        # locked week, so that fold has affected rows and sessions.
+        made = dataset()
+        made += [
+            row(
+                task_kind="review",
+                risk="low",
+                size="na",
+                model=B,
+                week="2026-W01",
+                batch="b10000000000",
+                offset_s=i * 100,
+                duration_s=100 + i,
+            )
+            for i in range(6)
+        ]
+        made += [
+            row(
+                model=B,
+                week="2026-W04",
+                batch=f"b4{s:010x}",
+                offset_s=i * 100,
+                duration_s=200 + 10 * i + s,
+            )
+            for s in range(3)
+            for i in range(5)
+        ]
+        # Fewer draws keep it fast; this checks the path, not the numbers.
+        with (
+            mock.patch.object(backtest, "CELL_DRAWS", 400),
+            mock.patch.object(backtest, "PLAN_DRAWS", 200),
+            mock.patch.object(backtest, "BOOTSTRAPS", 200),
+        ):
+            found = report.build(made, "ok", "0" * 64, None, last_week="2026-W03")
+        locked = found["locked"]
+        self.assertEqual(locked["status"], "ok")
+        self.assertGreater(locked["affected"]["claude_code_sessions"], 0)
+        self.assertTrue(all(i is not None for i in found["gates"]["G1"]["intervals"]))
+        self.assertIn(found["decision"]["status"], ("open", "closed"))
+        _, page = report.render(found)
+        self.assertIn("### Paired intervals", page)
+
+        # With G0 forced to hold, the rule decides once and closes.
+        gates = json.loads(json.dumps(found["gates"]))
+        gates["G0"]["result"] = "pass"
+        decided = report.decide(gates, "2026-W06", "0" * 64, None)
+        self.assertEqual(decided["status"], "closed")
+        self.assertIn(decided["outcome"], ("win", "lose", "not shown"))
 
 
 if __name__ == "__main__":
