@@ -184,13 +184,14 @@ class RecordCommand(unittest.TestCase):
         code, out, err = self.estimate("--quoted", "3 weeks")
         self.assertEqual(code, 0, err)
         self.assertEqual(err, "")
-        lines = [line for line in out.splitlines() if not line.startswith("Idle cap: ")]
+        lines = out.splitlines()
         self.assertTrue(lines[0].startswith("Plan total on the session clock: P50 "))
         self.assertEqual(
             lines[1], 'Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)'
         )
-        self.assertEqual(lines[2], render.CLOCK_NOTE)
-        self.assertTrue(lines[3].startswith("Human part"))
+        self.assertEqual(lines[2], "Idle cap: not recorded (--data rows).")
+        self.assertEqual(lines[3], render.CLOCK_NOTE)
+        self.assertTrue(lines[4].startswith("Human part"))
         self.assertFalse(paths.forecasts_file().exists())
         self.assertEqual(list(self.root.rglob("forecasts.jsonl")), [])
 
@@ -269,7 +270,7 @@ class ScoreCommand(RecordCommand):
             row(batch=self.batch, week=week, offset_s=offset, duration_s=length)
             for offset, length in spans
         ]
-        schema.write_rows(paths.local_runs(), rows)
+        write_store(paths.local_runs(), rows)
         adapter = get_adapter("claude-code")
         cache = RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, 900)
         for index, (offset, length) in enumerate(spans):

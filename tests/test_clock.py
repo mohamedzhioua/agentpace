@@ -335,14 +335,16 @@ class Ingest(Home):
         )
 
     def test_a_cap_below_one_is_refused_with_nothing_written(self):
+        # A payload the hook accepts, so the cap check is what stops it, not the payload.
+        payload = json.dumps(
+            {"agent_transcript_path": str(self.history / "p" / "s" / "subagents" / "a")}
+        )
         for cap in ("0", "-5"):
             with self.subTest(cap=cap):
                 code, out, err = self.ingest("--idle-cap", cap)
                 self.assertEqual((code, out, err), (2, "", I1))
                 self.assertEqual(self.files(), {})
-                code, out, err = self.run_cli(
-                    "ingest", "--hook", "--idle-cap", cap, stdin=json.dumps({})
-                )
+                code, out, err = self.run_cli("ingest", "--hook", "--idle-cap", cap, stdin=payload)
                 self.assertEqual((code, out + err), (0, ""))
                 self.assertEqual(self.files(), {})
 
@@ -607,6 +609,17 @@ class Share(Home):
                     self.assertEqual(list(self.out.iterdir()), [held])
                     self.assertEqual(held.read_bytes(), b"not even rows\n")
 
+    def test_a_store_of_published_rows_shares_and_gains_no_note(self):
+        # A store from before 0.13.0 that holds only published rows is on the published clock.
+        schema.write_rows(self.store, published_rows())
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                code, _, err = self.share(*flags)
+                self.assertEqual(code, 0, err)
+                self.assertFalse(self.note.exists())
+        self.assertEqual([path.suffix for path in self.out.iterdir()], [".jsonl"])
+        self.assertEqual(len(schema.read_dataset([self.out])), 3)
+
     def test_end_to_end_a_refused_ingest_adds_nothing_to_share(self):
         code, _, err = self.run_cli("ingest", str(self.history))
         self.assertEqual(code, 0, err)
@@ -687,6 +700,11 @@ class Score(Home):
         self.assertEqual(self.score()[1:], (N1, recorded))
         self.assertEqual(recorded["actual_s"], 1100)
         self.assertNotIn("idle", json.dumps(recorded))
+
+    def test_a_store_of_published_rows_gets_no_session_note(self):
+        cap = clock.store_cap(self.store, published_rows())
+        self.assertEqual((cap.state, cap.seconds), (clock.PUBLISHED, 900))
+        self.assertIsNone(clock.session_note(cap, "runs.jsonl"))
 
     def test_an_attested_actual_reads_no_store(self):
         write_store(self.store, self.rows(), idle_cap_s=600)
