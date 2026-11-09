@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.10 - 2026-11-09
+
+### Added
+
+- The Claude Code plugin install route in the README and the skills, after a real install on 2026-11-09 with Claude Code 2.1.319: `/plugin install agentpace --marketplace mohamedzhioua/agentpace` (Claude Code 2.1.275 or later). Both slash-name forms are documented, `/pace-estimate` from `npx skills add` and `/agentpace:pace-estimate` from the plugin, with the advice to install one route, not both. DESIGN 8 records the install.
+
+No published number moved.
+
 ## 0.12.9 - 2026-11-09
 
 ### Added

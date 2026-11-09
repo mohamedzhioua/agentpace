@@ -7,7 +7,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 # Log runs
 
-**Use when** the user runs `/pace-log`, or asks to log, record or track their agent runs, or to relabel one.
+**Use when** the user runs `/pace-log` or `/agentpace:pace-log`, or asks to log, record or track their agent runs, or to relabel one.
 
 **Produces** fresh rows in `~/.agentpace` from one harness's local history, the latest runs listed with their references, corrected labels, and the opt-in hook snippet when asked.
 
