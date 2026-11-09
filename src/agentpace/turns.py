@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from agentpace import estimate as est
-from agentpace import ingest, paths, pseudonym, schema
+from agentpace import ingest, paths, pseudonym, render, schema
 from agentpace.adapters.claude_code import _extended, _parse_time
 
 Turn = dict[str, Any]
@@ -55,21 +55,24 @@ class TurnsReport:
 
     def lines(self) -> list[str]:
         lines = [
-            f"read {self.files} main-session transcripts: {self.gaps} gaps in "
-            f"{self.sessions} sessions"
+            f"read {render.count(self.files, 'main-session transcript')}: "
+            f"{render.count(self.gaps, 'gap')} in {render.count(self.sessions, 'session')}"
         ]
         if self.no_origin:
             lines.append(
-                f"skipped {self.no_origin} sessions with no turnOrigin, so human prompts cannot "
-                "be told apart from other records"
+                f"skipped {render.count(self.no_origin, 'session')} with no turnOrigin, so human "
+                "prompts cannot be told apart from other records"
             )
         if self.too_short:
-            lines.append(f"skipped {self.too_short} sessions with fewer than 2 human prompts")
+            lines.append(
+                f"skipped {render.count(self.too_short, 'session')} with fewer than 2 human prompts"
+            )
         if self.unreadable:
-            lines.append(f"could not read {self.unreadable} files")
+            lines.append(f"could not read {render.count(self.unreadable, 'file')}")
         if self.kept_from_earlier:
             lines.append(
-                f"kept {self.kept_from_earlier} gaps from sessions whose transcripts are gone"
+                f"kept {render.count(self.kept_from_earlier, 'gap')} from sessions whose "
+                "transcripts are gone"
             )
         return lines
 

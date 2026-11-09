@@ -110,7 +110,10 @@ class Summary(unittest.TestCase):
         self.assertEqual(model.rows_excluded, 1)
         line = render.outcomes_text(plan_with(summary))
         self.assertIn("claude-code 0 of 51 (0.0%; 0 failed, 0 unknown)", line)
-        self.assertTrue(line.endswith(" 1 completed rows with no duration are left out too."))
+        self.assertTrue(line.endswith(" 1 completed row with no duration is left out too."))
+        two = dataclasses.replace(summary, completed_without_duration=2)
+        line = render.outcomes_text(plan_with(two))
+        self.assertTrue(line.endswith(" 2 completed rows with no duration are left out too."))
 
     def test_an_outcome_outside_the_enum_names_the_problem_not_the_value(self):
         rows = [row(outcome="CANARY_OUTCOME")]
@@ -156,8 +159,8 @@ class Text(unittest.TestCase):
             lines[method + 1],
             "Not completed, by harness: claude-code 3 of 120 (2.5%; 1 failed, 2 unknown), "
             "codex 1 of 4 (25.0%; 1 failed, 0 unknown). These are recorded harness outcomes, not "
-            "task acceptance, and they are left out of the fit. 1 completed rows with no duration "
-            "are left out too.",
+            "task acceptance, and they are left out of the fit. 1 completed row with no duration "
+            "is left out too.",
         )
         without = dataclasses.replace(plan, outcomes=OutcomeSummary())
         self.assertEqual(

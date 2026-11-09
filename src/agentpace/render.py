@@ -15,6 +15,11 @@ CLOCK_NOTE = (
 )
 
 
+def count(n: int, noun: str, plural: str | None = None) -> str:
+    """A count with its noun in agreement: `1 row`, `2 rows`. `plural` defaults to noun + s."""
+    return f"{n} {noun if n == 1 else (plural or noun + 's')}"
+
+
 def human_text(human: HumanPart) -> str:
     """The human block. It names the quantity and its status, and never offers a number derived
     from agent time. A measured form quotes only the user's own waits, per human turn. No
@@ -25,7 +30,8 @@ def human_text(human: HumanPart) -> str:
         return (
             f"{HUMAN_PART}: {human.status} from {human.source}. Waiting on you per human turn: "
             f"P50 {duration(p50)}, P80 {duration(p80)}, P90 {duration(p90)} "
-            f"({human.gaps} gaps, {human.sessions} sessions); elapsed time, not effort. "
+            f"({count(human.gaps or 0, 'gap')}, {count(human.sessions or 0, 'session')}); "
+            "elapsed time, not effort. "
             "No allowance for it is added to the total above, and up to the idle cap such waits "
             "already sit inside the session clock, so do not add them to it. "
             "Do not derive it from the agent time."
@@ -84,9 +90,10 @@ def outcomes_text(plan: PlanRange) -> str | None:
         "not task acceptance, and they are left out of the fit."
     )
     if summary.completed_without_duration:
+        without = summary.completed_without_duration
         line += (
-            f" {summary.completed_without_duration} completed rows with no duration are left out "
-            "too."
+            f" {count(without, 'completed row')} with no duration "
+            f"{'is' if without == 1 else 'are'} left out too."
         )
     return line
 
@@ -120,12 +127,12 @@ def plan_text(plan: PlanRange, quoted: str | None = None) -> str:
     else:
         lines.append(
             f"Effective parallelism at cap {plan.agent_cap}: {plan.effective_parallelism:.2f} "
-            f"(from {plan.parallelism_sessions} sessions). Throughput set the total in "
+            f"(from {count(plan.parallelism_sessions, 'session')}). Throughput set the total in "
             f"{plan.throughput_bound_share:.0%} of simulations."
         )
     excluded = f", {plan.rows_excluded} not completed so excluded" if plan.rows_excluded else ""
     lines.append(
-        f"Method: {plan.method}. {plan.rows_used} runs{excluded}. "
+        f"Method: {plan.method}. {count(plan.rows_used, 'run')}{excluded}. "
         f"{plan.draws} simulations, seed {plan.seed}."
     )
     outcomes = outcomes_text(plan)

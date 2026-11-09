@@ -134,7 +134,7 @@ class Command(Temp):
         self.assertEqual(
             [(t["gap_s"], t["agent_turn_s"]) for t in stored], [(300, 100), (480, 120)]
         )
-        self.assertIn("2 gaps between agent turns in 1 sessions", out)
+        self.assertIn("2 gaps between agent turns in 1 session.", out)
 
     def test_nothing_but_the_four_fields_is_stored(self):
         self.write_session("CANARY-SESSION", SESSION)
@@ -158,7 +158,7 @@ class Command(Temp):
     def test_a_session_without_turn_origin_is_skipped_and_counted(self):
         self.write_session("old", [human(0, origin=None), assistant(5), human(60, origin=None)])
         _, out, err = self.run_cli("turns", str(self.projects))
-        self.assertIn("skipped 1 sessions with no turnOrigin", err)
+        self.assertIn("skipped 1 session with no turnOrigin", err)
         self.assertEqual(turns.read_turns(paths.turns_file()), [])
         self.assertIn("stays not measured", out)
 
