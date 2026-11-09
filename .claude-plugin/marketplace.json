@@ -1,0 +1,12 @@
+{
+  "name": "agentpace",
+  "owner": { "name": "mohamedzhioua" },
+  "description": "The agentpace plugin: estimates of coding-agent work from measured agent runs.",
+  "plugins": [
+    {
+      "name": "agentpace",
+      "source": "./",
+      "description": "Estimates how long software work will take when coding agents do it, from measured agent runs: P50/P80/P90 ranges with the human part stated apart. Four skills; needs the agentpace Python CLI on PATH."
+    }
+  ]
+}
