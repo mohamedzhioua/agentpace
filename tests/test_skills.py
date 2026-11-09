@@ -244,6 +244,15 @@ class Skills(unittest.TestCase):
         text = (SKILLS / "pace-share" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("nothing new to share", text)
 
+    def test_the_skills_paste_the_cli_lines_in_one_block(self):
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("one fenced code block, tagged `text`", text)
+                self.assertIn("copied character for character", text)
+                self.assertIn("the whole `Warnings:` block, heading included", text)
+                self.assertIn("Nothing inside the block is reworded", text)
+
 
 class Marketplace(unittest.TestCase):
     def setUp(self):

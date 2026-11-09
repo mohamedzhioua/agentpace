@@ -9,7 +9,7 @@ A manual check that an assistant following the skills passes on the CLI's lines 
 3. Run that command yourself, on the same plan, with the same flags and the same `AGENTPACE_HOME`. The seed is fixed, so the same plan and data print the same lines.
 4. Put the CLI's output and the assistant's answer side by side. Each line listed below must appear in the answer character for character, numbers, units and quote marks included. A paraphrase, a rounded number or two lines merged into one fails.
 
-Every prompt that runs the CLI must relay these lines:
+Every prompt that runs the CLI must relay these lines, inside the fenced code block the skill asks for:
 
 - the `Plan total on the session clock:` line;
 - the session-clock line (`The session clock counts agent runs and the gaps between them, ...`);
