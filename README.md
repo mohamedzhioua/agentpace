@@ -239,10 +239,15 @@ Rows are not anonymous in every sense. They link to each other, they show roughl
 Sharing is opt-in, and your rows join a public-domain dataset.
 
 ```bash
-git clone https://github.com/<your-fork>/agentpace && cd agentpace
-uv tool install .           # or pipx install .
+uv tool install agentpace    # or pipx install agentpace
 agentpace ingest
 agentpace share --dry-run    # prints the exact rows and writes nothing
+```
+
+Read the rows. If you are comfortable with them, clone your fork and write the file into it:
+
+```bash
+git clone https://github.com/<your-fork>/agentpace && cd agentpace
 agentpace share --write      # adds or extends one file under data/runs, and still sends nothing
 agentpace validate data/runs # the same checks CI runs
 ```

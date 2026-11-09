@@ -252,7 +252,7 @@
       </div>
       <div>
         <h3>This is one person's workflow, so far</h3>
-        <p id="reading-scope">3,430 runs in 293 sessions from 1 contributor, with heavy automated fan-out. It will not match your setup until more people contribute.</p>
+        <p id="reading-scope">3,430 runs in 293 sessions from 1 contributor, with heavy automated fan-out, so these runs may not resemble your workflow. More contributors would widen what they cover.</p>
       </div>
       <div>
         <h3>How well the forecasts hold up</h3>
@@ -261,11 +261,13 @@
     </section>
 
     <section class="reproduce" aria-labelledby="reproduce-title">
-      <h2 id="reproduce-title">Check it yourself</h2>
+      <h2 id="reproduce-title">Install and check it yourself</h2>
       <pre><code>uv tool install agentpace
+npx skills add mohamedzhioua/agentpace   # the agent skills
 agentpace ingest                    # your own runs, stored locally
 agentpace estimate plan.json        # P50, P80 and P90 for a plan, like the one above
 agentpace share --dry-run           # the exact rows you would contribute</code></pre>
+      <p class="section-note">To contribute your runs, see <a href="https://github.com/mohamedzhioua/agentpace/blob/main/CONTRIBUTING.md">Contributing</a>.</p>
     </section>
   </main>
 

@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.7 - 2026-11-09
+
+### Changed
+
+- Contributors install agentpace from PyPI and preview their rows before any clone; the clone is for writing and validating the file, because `share` leaves out rows already published only in the folder it writes to. README and CONTRIBUTING give the same steps in the same order.
+- The site's Install section covers the CLI and the agent skills, and links Contributing. Its scope sentence no longer implies that more contributors guarantee a match: these runs may not resemble your workflow, and more contributors would widen what they cover.
+
+No published number moved.
+
 ## 0.12.6 - 2026-11-09
 
 ### Changed
