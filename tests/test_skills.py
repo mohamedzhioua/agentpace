@@ -87,6 +87,7 @@ class Repository(unittest.TestCase):
             REPO / "data" / "README.md",
             REPO / "docs" / "cli.md",
             REPO / "docs" / "releasing.md",
+            REPO / "docs" / "skill-smoke.md",
             REPO / "docs" / "verify-adapter.md",
             *sorted((REPO / "src" / "agentpace").rglob("*.py")),
         ]
