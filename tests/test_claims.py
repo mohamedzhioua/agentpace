@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from agentpace import claims, cli, paths, schema
+from agentpace import estimate as est
 from agentpace.adapters import EXPERIMENTAL
 from tests import synthetic
 
@@ -173,7 +174,11 @@ class CellTable(unittest.TestCase):
         )
         unmarked = claims._MARKER.sub("", text)
         durations = set(re.findall(r"\d[\d,]*(?:\.\d)? (?:s|min|h|days)", table))
-        counts = {match.strip("| ") for match in re.findall(r"\| [\d,]+ \|", table)}
+        # The prose names the pooling threshold ("fewer than 30 runs") and the quantile labels
+        # (P50, P80, P90). A cell whose run count equals one of those is not a number leaking
+        # from the table, so a regenerated table that lands on it must not fail here.
+        labels = {str(est.POOL_MIN), *(f"{q * 100:.0f}" for q in est.QUANTILES)}
+        counts = {match.strip("| ") for match in re.findall(r"\| [\d,]+ \|", table)} - labels
         self.assertTrue(durations)
         self.assertTrue(counts)
         for token in durations | counts:
