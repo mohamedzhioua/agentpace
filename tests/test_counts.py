@@ -241,6 +241,17 @@ class Commands(Temp):
                 self.assertEqual(code, 0)
                 self.assertEqual(out, said)
 
+    def test_score_counts_the_damaged_ledger_lines(self):
+        for skipped, said in ((1, "1 damaged line"), (2, "2 damaged lines")):
+            ledger = cli.forecasts.Ledger(skipped=skipped)
+            with (
+                self.subTest(skipped=skipped),
+                mock.patch.object(cli.forecasts, "read", return_value=ledger),
+            ):
+                code, _, err = self.run_cli("score")
+                self.assertEqual(code, 0)
+                self.assertIn(f"skipped {said} in the ledger\n", err)
+
 
 class Share(Temp):
     def setUp(self):

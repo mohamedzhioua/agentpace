@@ -413,7 +413,10 @@ def _local_rows() -> list[schema.Row]:
 def cmd_score(args: argparse.Namespace) -> int:
     ledger = forecasts.read(paths.forecasts_file())
     if ledger.skipped:
-        print(f"skipped {ledger.skipped} damaged lines in the ledger", file=sys.stderr)
+        print(
+            f"skipped {render.count(ledger.skipped, 'damaged line')} in the ledger",
+            file=sys.stderr,
+        )
     if args.id:
         return _score_one(args, ledger)
     if args.session or args.actual:
