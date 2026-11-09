@@ -284,19 +284,23 @@ def _plan_rows(results: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _project_plan_section(plans: dict[str, Any]) -> list[str]:
+def _project_plan_section(plans: dict[str, Any], contributors: int) -> list[str]:
     title = "## Whole sessions, projects held out (oracle-structure)"
     if plans["status"] != "ok":
         return [title, "", f"**{plans['status'].capitalize()}.**", ""]
+    # Two facts about the data, printed only while they hold. A dataset without the selection
+    # harness scores every session, so no harness is named, and rows may pool contributors.
+    scope = "" if plans["harness"] == "all" else f"{plans['harness']} "
+    alone = ", and all of it is one contributor's work" if contributors == 1 else ""
     lines = [
         title,
         "",
         "The same test with a whole project held out instead of later weeks. Each of "
-        f"{plans['sessions']} {plans['harness']} sessions with at least 5 completed runs, across "
+        f"{plans['sessions']} {scope}sessions with at least 5 completed runs, across "
         f"{plans['folds']} projects, is predicted by a model trained on every run outside its "
         "project, from every harness and every week, later weeks included. So it is a "
         "retrospective check of transfer to a codebase the model has not seen, not a forward "
-        "test, and all of it is one contributor's work. Projects are told apart per harness, so "
+        f"test{alone}. Projects are told apart per harness, so "
         "the same folder used from another harness stays in training. A project is held out when "
         f"it has at least one such session and at least {plans['min_train_rows']} completed runs "
         "lie outside it. Each session is one forecast, so there is one table. This test never "
@@ -509,7 +513,7 @@ def markdown(report: dict[str, Any]) -> str:
         )
     lines += _harness_section(stored["harness"], splits["harness"], winner)
     lines += _plan_section(stored["plans"])
-    lines += _project_plan_section(stored["project_plans"])
+    lines += _project_plan_section(stored["project_plans"], data["contributors"])
     lines += _locked_section(stored["locked"], winner, last)
     lines += _loss_section(report["losses"], winner)
     baselines = (

@@ -313,22 +313,23 @@ class ProjectPlans(unittest.TestCase):
         return claims.values(self.rows, found)
 
     def test_values_follow_the_report(self):
-        ours = {"coverage80": 87.3, "coverage90": 95.24}
+        # Not today's values, so a claim that stopped reading the report would fail here.
+        ours = {"coverage80": 72.41, "coverage90": 88.62}
         held_out = {
             "status": "ok",
-            "folds": 11,
-            "sessions": 63,
+            "folds": 7,
+            "sessions": 41,
             "results": {"agentpace": ours},
             "intervals": {
-                "coverage80": [79.37, 95.24],
-                "coverage90": [88.89, 100.0],
-                "rival_minus_ours": {"sum-of-medians": [-7019.0, 27430.0]},
+                "coverage80": [61.2, 83.9],
+                "coverage90": [80.1, 97.0],
+                "rival_minus_ours": {"sum-of-medians": [-345.6, 9876.4]},
             },
         }
         known = self.known(held_out)
         self.assertEqual(
             [known[name] for name in PROJECT_PLAN_CLAIMS],
-            ["63", "11", "87% (CI 79% to 95%)", "95% (CI 89% to 100%)", "-7019 to +27430"],
+            ["41", "7", "72% (CI 61% to 84%)", "89% (CI 80% to 97%)", "-346 to +9876"],
         )
 
     def test_not_available_unless_it_ran(self):
@@ -353,6 +354,8 @@ class ProjectPlans(unittest.TestCase):
             self.assertEqual(self.readme.count(f"<!-- claim:{name} -->"), 1, name)
             self.assertIn(f"<!-- claim:{name} -->", bullet)
         self.assertIn("retrospective", bullet)
+        self.assertIn("<!-- claim:contributors -->", bullet)
+        self.assertNotIn("one contributor", bullet)
         self.assertIn("never chooses the method", bullet)
         self.assertIn("docs/backtest.md#whole-sessions-projects-held-out-oracle-structure", bullet)
         self.assertIn("This is the forward test of plan totals.", self.readme)

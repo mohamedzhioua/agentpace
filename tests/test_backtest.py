@@ -750,6 +750,7 @@ class ProjectPlans(unittest.TestCase):
         self.assertEqual(first["train_rows"], len(self.rows) - 121)
         ours = self.per_fold[order[0]]["agentpace"]
         self.assertEqual(first["within80"], sum(f.actual <= f.p80 for f in ours))
+        self.assertEqual(first["width"], backtest.both_weightings(ours)["row"]["width"])
 
     def test_no_pseudonym_in_the_json_or_the_section(self):
         text = report.to_json(self.full["project_plans"])
@@ -769,6 +770,31 @@ class ProjectPlans(unittest.TestCase):
         for name in ("agentpace", "sum-of-medians"):
             items = [f for n in rest for f in self.per_fold[n][name]]
             self.assertEqual(largest["results"][name], backtest.both_weightings(items)["row"])
+
+    def test_the_projects_add_up_to_the_pooled_result(self):
+        result = self.result
+        found, total = result["by_project"], result["sessions"]
+        self.assertEqual(sum(p["sessions"] for p in found), total)
+        for level in ("50", "80", "90"):
+            within = sum(p[f"within{level}"] for p in found)
+            self.assertAlmostEqual(
+                100 * within / total, result["results"]["agentpace"][f"coverage{level}"]
+            )
+        for key, name in (("pinball", "agentpace"), ("naive_pinball", "sum-of-medians")):
+            pooled = sum(p["sessions"] * p[key] for p in found) / total
+            self.assertGreater(pooled, 0)
+            self.assertAlmostEqual(pooled / result["results"][name]["pinball"], 1.0)
+
+    def test_every_qualifying_session_is_forecast_exactly_once(self):
+        forecast = [f.session for f in self.pooled["agentpace"]]
+        runs: dict[str, int] = {}
+        for r in self.rows:
+            if r["outcome"] == "completed":
+                runs[r["batch"]] = runs.get(r["batch"], 0) + 1
+        expected = {batch for batch, count in runs.items() if count >= estimate.MIN_SESSION_RUNS}
+        self.assertEqual(len(forecast), len(set(forecast)))
+        self.assertEqual(set(forecast), expected)
+        self.assertEqual(self.result["sessions"], len(expected))
 
     def test_every_old_key_equals_a_run_without_it(self):
         absent = {"status": "could not run (patched out)", "label": "oracle-structure"}
@@ -831,6 +857,11 @@ class ProjectPlans(unittest.TestCase):
             "Each of 58 claude-code sessions with at least 5 completed runs, across 4 projects",
             section,
         )
+        self.assertIn(
+            "So it is a retrospective check of transfer to a codebase the model has not seen, "
+            "not a forward test, and all of it is one contributor's work.",
+            section,
+        )
         self.assertIn("This test never chooses the method.", section)
         self.assertIn(
             "An interval wholly above zero means the baseline is worse at the 95% level.", section
@@ -840,6 +871,33 @@ class ProjectPlans(unittest.TestCase):
         )
         self.assertIn("| 1 | 15 | 121 |", section)
         self.assertIn("Without project 1 (15 of 58 test sessions): agentpace", section)
+
+    def test_the_intro_states_only_what_the_data_shows(self):
+        plans = {**self.full["project_plans"], "harness": "all"}
+        intro = report._project_plan_section(plans, 2)[2]
+        self.assertIn("Each of 58 sessions with at least 5 completed runs, across 4", intro)
+        self.assertIn("not a forward test. Projects are told apart per harness", intro)
+        self.assertNotIn("one contributor", intro)
+
+    def test_rows_with_no_project_train_and_are_never_held_out(self):
+        rows = [
+            *_plan_project("aaaaaaaaaaaa", 2, 5),
+            *_plan_project("", 2, 5),
+            *_plan_project("cccccccccccc", 50, 5),
+        ]
+        folds = backtest.project_plan_folds(rows, "claude-code")
+        self.assertEqual([fold.name for fold in folds], ["aaaaaaaaaaaa"])
+        self.assertEqual(sum(1 for r in folds[0].train if not r["project"]), 10)
+
+    def test_only_the_selection_harness_is_scored(self):
+        rows = [
+            *_plan_project("aaaaaaaaaaaa", 2, 5),
+            *_plan_project("aaaaaaaaaaaa", 1, 5, start=50, harness="codex"),
+            *_plan_project("bbbbbbbbbbbb", 2, 5),
+            *_plan_project("cccccccccccc", 50, 5),
+        ]
+        self.assertEqual(_project_plans(rows)["sessions"], 4)
+        self.assertEqual(_project_plans(rows, harness=None)["sessions"], 5)
 
     def test_is_current_also_compares_the_markdown(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -983,6 +1041,17 @@ class Published(unittest.TestCase):
 
         self.assertEqual(validate.validate([paths.seed_dir()]), [])
         self.assertGreater(len(schema.read_dataset([paths.seed_dir()])), 1000)
+
+    def test_no_published_session_spans_two_projects(self):
+        """Both whole-session tests read a batch as one session on one clock, and `ingest`
+        keeps a clock per project and session. A batch in two projects needs a ruling before
+        it is published."""
+        from agentpace import paths
+
+        projects: dict[str, set[str]] = {}
+        for r in schema.read_dataset([paths.seed_dir()]):
+            projects.setdefault(r["batch"], set()).add(r.get("project", ""))
+        self.assertEqual({b: p for b, p in projects.items() if len(p) != 1}, {})
 
 
 if __name__ == "__main__":
