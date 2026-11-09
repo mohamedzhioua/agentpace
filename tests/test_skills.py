@@ -253,6 +253,51 @@ class Skills(unittest.TestCase):
                 self.assertIn("the whole `Warnings:` block, heading included", text)
                 self.assertIn("Nothing inside the block is reworded", text)
 
+    def test_the_block_holds_the_idle_cap_line_in_cli_order(self):
+        quoted = "the `Quoted:` line as printed when there is one"
+        idle_cap = "the `Idle cap:` line as printed when there is one"
+        clock = "the session-clock line and the human part line"
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn(idle_cap, text)
+                self.assertLess(text.index(quoted), text.index(idle_cap))
+                self.assertLess(text.index(idle_cap), text.index(clock))
+
+    def test_the_skills_name_the_total_on_the_session_clock_and_relay_refusals(self):
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("the plan total on the session clock", text)
+                self.assertIn("never as hours of agent time", text)
+                self.assertIn("relay that line as printed and stop", text)
+
+    def test_the_skill_uses_a_plan_file_only_when_it_is_the_plan(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("is not evidence that it describes the request", text)
+        self.assertIn("never overwrite it", text)
+        self.assertNotIn("the only agent time is the measured range", text)
+
+    def test_pace_estimate_asks_when_there_is_no_input(self):
+        text = (SKILLS / "pace-estimate" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("ask which plan or task list to estimate", text)
+
+    def test_pace_log_leaves_the_idle_cap_alone(self):
+        text = (SKILLS / "pace-log" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Leave `--idle-cap` alone", text)
+
+    def test_pace_share_leaves_a_refused_store_to_the_user(self):
+        text = (SKILLS / "pace-share" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("rebuilding the store is the user's call", text)
+
+    def test_the_smoke_check_names_eight_prompts_and_the_idle_cap_line(self):
+        text = (REPO / "docs" / "skill-smoke.md").read_text(encoding="utf-8")
+        section = text.split("## The prompts", 1)[1].split("\n## ", 1)[0]
+        labels = re.findall(r"^- \*\*(\d+b?)\. ", section, re.MULTILINE)
+        self.assertEqual(labels, ["1", "3", "4", "4b", "5", "6", "7", "8"])
+        self.assertIn("the `Idle cap:` line when the CLI printed one", text)
+        self.assertIn("Idle cap:", section)
+
 
 class Marketplace(unittest.TestCase):
     def setUp(self):
