@@ -4,6 +4,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.4 - 2026-11-09
+
+### Fixed
+
+- A rows file that is not UTF-8 is refused as `<file>: file is not UTF-8` with exit 2, instead of the codec's message.
+- `share --write` into a folder it cannot write says so, leaves everything as it was and exits 2, instead of a traceback.
+
+### Changed
+
+- `docs/cli.md` says to run `ingest` by hand when the quiet hook stops producing rows: it prints what the hook could not, such as a store line that is not valid JSON.
+
+No published number moved.
+
 ## 0.12.3 - 2026-11-09
 
 ### Added
