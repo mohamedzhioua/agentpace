@@ -300,5 +300,34 @@ class Marketplace(unittest.TestCase):
                         self.assertNotIn(phrase.lower(), description.lower())
 
 
+class PluginRoute(unittest.TestCase):
+    def test_the_readme_gives_the_one_line_plugin_install(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        command = "/plugin install agentpace --marketplace mohamedzhioua/agentpace"
+        self.assertEqual(readme.count(command), 1)
+        self.assertIn("2.1.275 or later", readme)
+        self.assertIn("Install one route, not both, or each skill loads twice", readme)
+        self.assertNotIn("/plugin marketplace add", readme)
+
+    def test_the_guidance_skill_names_the_plugin_command(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        body = text.split("\n---\n", 1)[1]
+        self.assertIn("`/agentpace:pace-estimate` when installed as a Claude Code plugin", body)
+
+    def test_each_command_skill_answers_to_both_slash_names(self):
+        for name in ("pace-estimate", "pace-log", "pace-share"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                line = next(line for line in text.splitlines() if line.startswith("**Use when**"))
+                self.assertIn(f"`/{name}`", line)
+                self.assertIn(f"`/agentpace:{name}`", line)
+
+    def test_design_records_the_real_install(self):
+        text = (REPO / "docs" / "DESIGN.md").read_text(encoding="utf-8")
+        section = text.split("## 8. Skill and install", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("**Claude Code plugin.**", section)
+        self.assertIn("Claude Code 2.1.319", section)
+
+
 if __name__ == "__main__":
     unittest.main()

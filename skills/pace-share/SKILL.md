@@ -7,7 +7,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI.
 
 # Share runs
 
-**Use when** the user explicitly runs `/pace-share` or asks to contribute their runs. Never on your own.
+**Use when** the user explicitly runs `/pace-share` or `/agentpace:pace-share`, or asks to contribute their runs. Never on your own.
 
 **Produces** a dry-run preview of the exact rows and what they reveal. A file in `data/runs` only after the user says yes. Nothing is ever sent.
 

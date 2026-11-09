@@ -13,7 +13,7 @@ compatibility: Requires Python 3.10+ and the agentpace CLI. No network access is
 
 Answer "how long will this take?" with measured ranges from real agent runs, and state the human part on its own. Do not quote human-team timelines, and never give a single number.
 
-This skill triggers on natural-language questions. `/pace-estimate` is the explicit command for a given plan.
+This skill triggers on natural-language questions. `/pace-estimate` (`/agentpace:pace-estimate` when installed as a Claude Code plugin) is the explicit command for a given plan.
 
 ## Check the tool
 

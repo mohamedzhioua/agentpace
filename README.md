@@ -73,7 +73,15 @@ To estimate your own, write a plan like it and run `agentpace estimate plan.json
 npx skills add mohamedzhioua/agentpace
 ```
 
-Then ask your agent "How long will the billing feature take?": the skill calls the CLI, so install that first ([Install](#install)).
+or, in Claude Code, as a plugin:
+
+```text
+/plugin install agentpace --marketplace mohamedzhioua/agentpace
+```
+
+The plugin line needs Claude Code 2.1.275 or later. Either way, install the CLI first ([Install](#install)). `npx skills add` gives `/pace-estimate`, `/pace-log` and `/pace-share`; the plugin namespaces them as `/agentpace:pace-estimate`, `/agentpace:pace-log` and `/agentpace:pace-share`. The `agentpace` skill triggers by itself in both. Install one route, not both, or each skill loads twice.
+
+Then ask your agent "How long will the billing feature take?": the skill calls the CLI.
 
 ## Why agentpace
 
@@ -101,7 +109,7 @@ uv tool install agentpace
 
 `pipx install agentpace` works too. It needs Python 3.10 or later and has no dependencies. After installing, drop `uvx` from the command above.
 
-For the agent skills, run the `npx` command in [In your agent](#in-your-agent). Without Node, copy the four folders under [skills/](skills/) into your agent's skills folder, for example `~/.claude/skills/` for Claude Code. No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
+For the agent skills, use [In your agent](#in-your-agent): the `npx` command, or the plugin in Claude Code. Without Node, copy the four folders under [skills/](skills/) into your agent's skills folder, for example `~/.claude/skills/` for Claude Code. No skill-capable agent? Paste [the portable prompt](skills/agentpace/assets/portable-prompt.md) into any assistant.
 
 ## Skills
 
