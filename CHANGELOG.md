@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.1 - 2026-11-09
+
+### Fixed
+
+- Count messages agree in number: the CLI's own messages read `1 row`, `1 session` or `1 gap` where they read `1 rows`, through one helper, `render.count`. The published report and the site are generated documents and keep their wording.
+- Corrected the adapter guide's description of `duration_s`, the `completed_without_duration` definition in `docs/cli.md`, and the release runbook's line references, which had gone stale.
+
+### Changed
+
+- `docs/cli.md` says that without `--data`, the seed rows and your local rows are estimated together even when they were ingested under different idle caps, and how to keep one cap.
+- The banned-phrase test also scans `docs/releasing.md` and `docs/verify-adapter.md`.
+
+No published number moved.
+
 ## 0.12.0 - 2026-11-09
 
 ### Changed
