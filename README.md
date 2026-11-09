@@ -63,7 +63,7 @@ To estimate your own, write a plan like it and run `agentpace estimate plan.json
 - **The plan total** is a range, not one number, because agent run times have a long tail and any single number misses most of the time. P50 is a coin flip. P80 is the forecast's 80th percentile, the one to plan on, not a promise: the [backtest](#backtest-how-often-it-is-wrong) shows how often it held.
 - **The session clock** counts agent runs and the gaps between them, each gap up to the idle cap, so a short wait on you sits inside the total and a longer one is clipped at the cap.
 - **The human part** (review, testing, decisions, waiting between agent turns) is not measured, and no allowance for it is added. It stays on its own line, and agentpace never derives it from agent time.
-- **`cell (n)`** is the group of recorded runs a task's range comes from, by kind, risk and model, and how many runs it holds. **`critical`** is the share of simulations in which the task was on the longest chain of dependent tasks.
+- **`cell (n)`** is the group of recorded runs a task falls in, by kind, risk and model, and how many runs it holds. **`critical`** is the share of simulations in which the task was on the longest chain of dependent tasks.
 - **Effective parallelism** is work divided by elapsed time, learned from recorded sessions at the plan's agent cap. It can be below 1, because a session's clock includes the time between runs.
 - **Warnings** are part of the answer. When a task's cell has no or few recorded runs, one says so, what the range could not use (the kind, the risk level or the model) and where it leaned instead.
 
@@ -77,7 +77,7 @@ Then ask your agent "How long will the billing feature take?": the skill calls t
 
 ## Why agentpace
 
-Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace is a standard-library Python CLI, a set of agent skills and an open CC0 dataset that answers from measured agent runs instead, and it publishes how often it is wrong.
+Ask an assistant how long a feature will take and it answers in human-team time, "a few weeks", even when agents will do the work. agentpace answers from measured agent runs instead, as a standard-library Python CLI, a set of agent skills and an open CC0 dataset, and it publishes how often it is wrong.
 
 ![How long agent runs took, by task kind](https://raw.githubusercontent.com/mohamedzhioua/agentpace/main/docs/assets/run-ranges.svg)
 
