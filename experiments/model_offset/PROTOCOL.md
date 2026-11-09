@@ -47,3 +47,10 @@ A held-out row whose challenger `Located` differs from the incumbent's. A sessio
 ## What this changes and what it does not
 
 Nothing in `src/agentpace` changes: `fit`, `_fit_means`, `locate`, `METHODS`, `DEFAULT_METHOD`, `SELECTION_LAST_WEEK`, `SELECTION_HARNESS`, `POOL_MIN`, the pin test and the frozen fixture stay as they are, and `src/` never imports `experiments`. The five existing streams do not move, so no published number moves. No experiment number enters the README, the site, a claim or `docs/backtest.*`. The ratios between models in the rows are never presented as model speed.
+
+## Clarifications
+
+Recorded before any row from 2026-W46 or later existed in `data/runs/` and before any challenger number was computed on a locked week; the text above is unchanged. Each fixes one reading of a sentence that admitted two. Neither alters the definition, the streams' independence, a gate or the decision rule, so neither is `model-offset-v2`.
+
+- **2026-11-09, G1, "a second `Random` with suffix `:affected`":** `random.Random(f"{SEED}:model-offset-v1:affected")`, the suffix in place of `:intervals`, as every stream in `backtest` is one suffix on the seed. Ruled by Fable 5.1 at S5's review.
+- **2026-11-09, decision, "G1's lower end is above zero":** G1 is one statement tested on two populations; it holds when true on both, and the challenger is shown worse when the opposite is shown on either. "lose" when the lower end is above zero on all Claude Code locked forecasts or on the affected sessions' forecasts. "win" and "lose" cannot both hold. Ruled by Fable 5.1 at S5's review.

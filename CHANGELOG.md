@@ -4,6 +4,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.9 - 2026-11-09
+
+### Added
+
+- The `model-offset-v1` experiment (`experiments/model_offset/`) and its generated report, checked by CI with `python -m experiments.model_offset --check`. It implements the challenger registered in 0.12.3, imports the package and changes nothing in it. Today the report says there are no weeks after 2026-W45 yet; the decision waits for the first qualifying data change. No experiment number enters the README, the site, a claim or the backtest report.
+- `PROTOCOL.md` gains a dated "Clarifications" section, recorded before any 2026-W46 row existed and before any challenger number was computed: the affected sessions' interval uses the stream suffix `:affected`, and "lose" holds when the paired interval's lower end is above zero on either population. The registered text above it is unchanged.
+
+No published number moved.
+
 ## 0.12.8 - 2026-11-09
 
 ### Changed

@@ -61,6 +61,8 @@ jobs:
         run: python -m agentpace site --check
       - name: Check README claims
         run: python -m agentpace claims --check
+      - name: Check the model-offset-v1 experiment report
+        run: python -m experiments.model_offset --check
       - name: The built package runs the README example
         # Installs from the checkout, so the example plan must come from the wheel's _bundled
         # folder. An empty home keeps any local data out of the output.
