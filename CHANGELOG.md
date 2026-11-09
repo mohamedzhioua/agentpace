@@ -4,6 +4,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.5 - 2026-11-09
+
+### Added
+
+- `.claude-plugin/marketplace.json`, so the repository can serve as a Claude Code plugin marketplace. It lists one plugin served from the repository root, with no bundled hook. Not yet documented: the install route is advertised after a real install is checked.
+
+No published number moved.
+
 ## 0.12.4 - 2026-11-09
 
 ### Fixed
