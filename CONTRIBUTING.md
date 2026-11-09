@@ -28,7 +28,7 @@ Rows from an experimental adapter (Gemini CLI, OpenCode, Cline) fail "Validate d
 
 ## Label your runs
 
-Metadata cannot tell a feature from a bug fix. Labels can: without them, bug fixes and refactors look like any other implementation run, so the `bugfix` and `refactor` cells stay thin until people label runs. Run `agentpace runs` to find a reference, then `agentpace label <ref> --kind bugfix --risk high`. Do this before `agentpace share`.
+Metadata cannot tell a feature from a bug fix. Labels can: without them, bug fixes and refactors look like any other implementation run, so the `bugfix` and `refactor` cells stay thin until people label runs. Run `agentpace runs` to find a reference, then `agentpace label <ref> --kind bugfix`. Do this before `agentpace share`.
 
 ## Add a harness
 
