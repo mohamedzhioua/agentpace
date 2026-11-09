@@ -87,6 +87,7 @@ class Repository(unittest.TestCase):
             REPO / "data" / "README.md",
             REPO / "docs" / "cli.md",
             REPO / "docs" / "releasing.md",
+            REPO / "docs" / "skill-smoke.md",
             REPO / "docs" / "verify-adapter.md",
             *sorted((REPO / "src" / "agentpace").rglob("*.py")),
         ]
@@ -213,6 +214,44 @@ class Skills(unittest.TestCase):
         text = (SKILLS / "agentpace" / "assets" / "portable-prompt.md").read_text(encoding="utf-8")
         self.assertIn("<!-- claim:cell_table -->", text)
         self.assertIn("P90", text)
+
+    def test_sample_plans_parse_and_leave_risk_out_except_research(self):
+        from agentpace import estimate as est
+
+        for name in ("agentpace", "pace-estimate"):
+            text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+            blocks = re.findall(r"```json\n(.*?)\n\s*```", text, re.DOTALL)
+            self.assertTrue(blocks, name)
+            for block in blocks:
+                with self.subTest(skill=name):
+                    document = json.loads(block)
+                    est.tasks_from_json(document)
+                    for task in document["tasks"]:
+                        if "risk" in task:
+                            self.assertEqual((task["kind"], task["risk"]), ("other", "low"))
+
+    def test_the_skill_no_longer_asks_for_a_risk(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("a `kind` and a `risk`", text)
+
+    def test_the_absent_cli_path_offers_the_portable_prompt(self):
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        section = text.split("## Check the tool", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("portable-prompt.md", section)
+        self.assertIn("rule of thumb", section)
+
+    def test_share_says_what_nothing_new_means(self):
+        text = (SKILLS / "pace-share" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("nothing new to share", text)
+
+    def test_the_skills_paste_the_cli_lines_in_one_block(self):
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("one fenced code block, tagged `text`", text)
+                self.assertIn("copied character for character", text)
+                self.assertIn("the whole `Warnings:` block, heading included", text)
+                self.assertIn("Nothing inside the block is reworded", text)
 
 
 class Marketplace(unittest.TestCase):

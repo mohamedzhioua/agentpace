@@ -19,13 +19,14 @@ The plan to estimate: $ARGUMENTS
    ```json
    {
      "agent_cap": 3,
+     "model": "claude-opus-5-5",
      "tasks": [
-       { "id": "api", "kind": "feature", "risk": "normal" },
-       { "id": "review", "kind": "review", "risk": "low", "depends_on": ["api"] }
+       { "id": "api", "kind": "feature" },
+       { "id": "review", "kind": "review", "depends_on": ["api"] }
      ]
    }
    ```
 
    Kinds: `feature`, `bugfix`, `refactor`, `migration`, `tests`, `docs`, `review`, `other`; `feature` is implementation work of any kind, and research is `other` with `risk: low`. Leave `risk` out otherwise: in the rows it is the agent's role, not how hard the work is, so `high` buys nothing. Set `model` whenever you know it; it is the strongest split in the data.
 3. Run `agentpace estimate <file>`. If the conversation already holds a timeline in days, weeks or months, add `--quoted "<quote>"` in the words it was given. Only if the user stated their own review capacity, such as "4 PRs a day", add `--review-capacity "<figure>"` with their words verbatim: the figure itself, in at most 80 characters; otherwise leave the flag off and repeat their figure as theirs.
-4. Report the total as P50, P80 and P90, then the `Quoted:` line as printed when there is one, then the session-clock line and the human part line exactly as the CLI prints them, and the `Review capacity:` line as printed when there is one, never turned into a timeline, then the critical path, the effective parallelism and every warning as printed. Do not derive a number for the human part from the agent time. Never convert the quote, compare it with the range, say what the difference between them is, or say what the quote counts: it is calendar time, as quoted, and nothing has checked it. Never reduce the result to one number.
+4. Start the answer with one fenced code block, tagged `text`, holding the CLI's own lines copied character for character: the `Plan total on the session clock:` line, the `Quoted:` line as printed when there is one, the session-clock line and the human part line, the `Review capacity:` line as printed when there is one, and the whole `Warnings:` block, heading included, when the output has one. Nothing inside the block is reworded, shortened, merged, rounded or re-ordered; whatever you want to say about a line goes below the block. Then name the critical path and the effective parallelism. Do not derive a number for the human part from the agent time, and never turn the review capacity into a timeline. Never convert the quote, compare it with the range, say what the difference between them is, or say what the quote counts: it is calendar time, as quoted, and nothing has checked it. Never reduce the result to one number.
