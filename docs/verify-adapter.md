@@ -36,7 +36,7 @@ Compare the rows with your notes, session by session:
 
 - **Rows against turns.** Each run as DESIGN section 3 defines it for the harness (for Gemini CLI and Cline an agent turn, for OpenCode one prompt of yours and the replies to it) should be one row, with none missing and none extra.
 - **`outcome`** against what happened: the completed turn should be `completed`, and the interrupted and errored turns should be what DESIGN section 3 says for that harness.
-- **`duration_s`** against your noted start and end. It is agent active time, with every idle gap over the idle cap (900 s by default) clipped to the cap, and for Cline with approval waits dropped. So it can be shorter than the span you noted, but should not be longer than it, give or take how precisely you noted the times.
+- **`duration_s`** against your noted start and end. It is the run's elapsed time with each idle gap counted up to the idle cap (900 s by default), and for Cline with approval waits dropped. So it can be shorter than the span you noted, but should not be longer than it, give or take how precisely you noted the times.
 - **`tool_calls`** against your tally and the tool's own log.
 - **`model`** against the model the harness showed you, after agentpace's normalization to a model family.
 - **`batch`:** one value per session. A sub-agent's own session or file has its own `batch`, as DESIGN section 3 says for each harness.

@@ -85,6 +85,8 @@ class Repository(unittest.TestCase):
             REPO / "README.md",
             REPO / "data" / "README.md",
             REPO / "docs" / "cli.md",
+            REPO / "docs" / "releasing.md",
+            REPO / "docs" / "verify-adapter.md",
             *sorted((REPO / "src" / "agentpace").rglob("*.py")),
         ]
         for path in paths:

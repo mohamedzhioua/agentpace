@@ -240,7 +240,11 @@ class Chronology(unittest.TestCase):
         self.assertEqual(
             self.listed(out), [f"{unknown}:0", f"{unknown}:30", f"{known}:0", f"{known}:100"]
         )
-        self.assertTrue(err.startswith("1 sessions have no local chronology"))
+        self.assertEqual(
+            err,
+            "1 session has no local chronology (no cache entry, or ingested with another idle "
+            "cap); it is listed by week only. Run agentpace ingest to refresh the cache.\n",
+        )
         _, out, err = self.run_cli("runs", "--last", "2")
         self.assertEqual(self.listed(out), [f"{known}:0", f"{known}:100"])
         self.assertEqual(err, "")
@@ -255,7 +259,11 @@ class Chronology(unittest.TestCase):
         self.cache(self.early, 1000.0)
         code, _, err = self.run_cli("label", "last", "--kind", "refactor")
         self.assertEqual(code, 2)
-        self.assertIn("cannot tell which run is last: 1 sessions have no local chronology", err)
+        self.assertEqual(
+            err,
+            "agentpace: cannot tell which run is last: 1 session has no local chronology. "
+            "Run agentpace ingest, or give a reference from agentpace runs\n",
+        )
         self.assertEqual(self.labeled(), {})
 
     def test_mixed_last_picks_the_known_session_when_unknown_ones_are_older(self):

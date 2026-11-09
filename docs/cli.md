@@ -133,7 +133,7 @@ The session clock counts agent runs and the gaps between them, each gap up to th
 Human part (review, testing, decisions, waiting between agent turns): not measured. No allowance for it is added to the total above. State it separately; do not derive it from the agent time.
 ```
 
-The clock note gives the default cap. In rows ingested with a non-default `--idle-cap`, each gap counts up to that cap instead.
+The clock note gives the default cap. In rows ingested with a non-default `--idle-cap`, each gap counts up to that cap instead. Without `--data`, the seed rows, clipped at 900 s, are pooled with your local rows, which were clipped at whatever `--idle-cap` you ingested with; for one consistent cap, pass `--data` with rows ingested under it.
 
 With `--quoted`, one line sits directly under the total. It holds the quote verbatim and is never converted into agent time or compared with the range:
 
@@ -199,7 +199,7 @@ One JSON object. Every duration is in seconds, as a number.
 | `size_used` | boolean | Whether `--use-size` was given. |
 | `rows_used` | integer | Completed runs the estimate learned from. |
 | `rows_excluded` | integer | Runs left out of the fit: those that did not complete (failed or unknown), and completed runs with no duration. |
-| `outcomes` | object | Recorded harness outcomes of every row the estimate loaded, after duplicates are dropped, and never per cell: `rows`, `completed`, `failed`, `unknown`, `completed_without_duration` (completed rows with a duration of 0), and `by_harness`, a list sorted by harness name of objects with `harness`, `rows`, `completed`, `failed` and `unknown`. An outcome is how the run ended in its harness, not task acceptance, and `unknown` is not counted as a failure. The counts are shown, never used to change the range. `rows` is `completed` + `failed` + `unknown`, `rows_used` is `completed` - `completed_without_duration`, and `rows_excluded` is `failed` + `unknown` + `completed_without_duration`. |
+| `outcomes` | object | Recorded harness outcomes of every row the estimate loaded, after duplicates are dropped, and never per cell: `rows`, `completed`, `failed`, `unknown`, `completed_without_duration` (completed rows with no positive duration), and `by_harness`, a list sorted by harness name of objects with `harness`, `rows`, `completed`, `failed` and `unknown`. An outcome is how the run ended in its harness, not task acceptance, and `unknown` is not counted as a failure. The counts are shown, never used to change the range. `rows` is `completed` + `failed` + `unknown`, `rows_used` is `completed` - `completed_without_duration`, and `rows_excluded` is `failed` + `unknown` + `completed_without_duration`. |
 | `draws` | integer | Simulations run. |
 | `seed` | integer | The random seed. |
 | `warnings` | list of strings | Thin or unseen cells, ignored sizes, a written risk the estimate did not use, an assumed parallelism. Pass them on. |

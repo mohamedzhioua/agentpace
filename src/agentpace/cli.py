@@ -127,7 +127,8 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print(EXPERIMENTAL_NOTE.format(name=adapter.name), file=sys.stderr)
     for line in report.lines():
         print(line, file=sys.stderr)
-    print(f"store now holds:  {total} rows", file=sys.stderr)
+    # Two spaces: the value lines up with the ingest report's 18-character label column above it.
+    print(f"store now holds:  {render.count(total, 'row')}", file=sys.stderr)
     return 0
 
 
@@ -155,14 +156,22 @@ def _cached_starts() -> dict[str, float]:
     return starts
 
 
-NO_CHRONOLOGY = (
-    "{count} sessions have no local chronology (no cache entry, or ingested with another idle "
-    "cap); they are listed by week only. Run agentpace ingest to refresh the cache."
-)
-CANNOT_TELL_LAST = (
-    "cannot tell which run is last: {count} sessions have no local chronology. "
-    "Run agentpace ingest, or give a reference from agentpace runs"
-)
+def _no_chronology(count: int) -> str:
+    one = count == 1
+    return (
+        f"{render.count(count, 'session')} {'has' if one else 'have'} no local chronology "
+        "(no cache entry, or ingested with another idle cap); "
+        f"{'it is' if one else 'they are'} listed by week only. "
+        "Run agentpace ingest to refresh the cache."
+    )
+
+
+def _cannot_tell_last(count: int) -> str:
+    return (
+        f"cannot tell which run is last: {render.count(count, 'session')} "
+        f"{'has' if count == 1 else 'have'} no local chronology. "
+        "Run agentpace ingest, or give a reference from agentpace runs"
+    )
 
 
 def cmd_runs(args: argparse.Namespace) -> int:
@@ -186,7 +195,7 @@ def cmd_runs(args: argparse.Namespace) -> int:
         )
     unknown = {row["batch"] for row in listed if row["batch"] not in starts}
     if unknown:
-        print(NO_CHRONOLOGY.format(count=len(unknown)), file=sys.stderr)
+        print(_no_chronology(len(unknown)), file=sys.stderr)
     return 0
 
 
@@ -199,7 +208,7 @@ def _last_ref(rows: Sequence[schema.Row], starts: dict[str, float]) -> str:
     known = {row["batch"] for row in rows if row["batch"] in starts}
     if not known:
         unknown = {row["batch"] for row in rows}
-        raise ValueError(CANNOT_TELL_LAST.format(count=len(unknown)))
+        raise ValueError(_cannot_tell_last(len(unknown)))
     chosen = max(known, key=lambda batch: (starts[batch], batch))
     members = [row for row in rows if row["batch"] == chosen]
     latest_week = max(row["week"] for row in members)
@@ -207,7 +216,7 @@ def _last_ref(rows: Sequence[schema.Row], starts: dict[str, float]) -> str:
         row["batch"] for row in rows if row["batch"] not in starts and row["week"] >= latest_week
     }
     if rivals:
-        raise ValueError(CANNOT_TELL_LAST.format(count=len(rivals)))
+        raise ValueError(_cannot_tell_last(len(rivals)))
     return ingest.run_ref(max(members, key=lambda row: row["offset_s"]))
 
 
@@ -281,9 +290,12 @@ def _experimental_rows_note(rows: Sequence[schema.Row]) -> str | None:
     if not harnesses:
         return None
     names = ", ".join(sorted(set(harnesses)))
+    one = len(harnesses) == 1
     return (
-        f"note: {len(harnesses)} of {len(rows)} rows come from experimental adapters ({names}); "
-        "they take part in this estimate because they are in your local store. "
+        f"note: {len(harnesses)} of {render.count(len(rows), 'row')} "
+        f"{'comes' if one else 'come'} from experimental adapters ({names}); "
+        f"{'it takes' if one else 'they take'} part in this estimate because "
+        f"{'it is' if one else 'they are'} in your local store. "
         "Pass --data to choose the rows."
     )
 
@@ -401,7 +413,10 @@ def _local_rows() -> list[schema.Row]:
 def cmd_score(args: argparse.Namespace) -> int:
     ledger = forecasts.read(paths.forecasts_file())
     if ledger.skipped:
-        print(f"skipped {ledger.skipped} damaged lines in the ledger", file=sys.stderr)
+        print(
+            f"skipped {render.count(ledger.skipped, 'damaged line')} in the ledger",
+            file=sys.stderr,
+        )
     if args.id:
         return _score_one(args, ledger)
     if args.session or args.actual:
@@ -439,8 +454,8 @@ def cmd_turns(args: argparse.Namespace) -> int:
         print("No waits on you were found, so the human part stays not measured.")
         return 0
     print(
-        f"Waiting on you, from your history (local): {summary.gaps} gaps between agent turns "
-        f"in {summary.sessions} sessions."
+        f"Waiting on you, from your history (local): {render.count(summary.gaps, 'gap')} "
+        f"between agent turns in {render.count(summary.sessions, 'session')}."
     )
     print(
         f"Per human turn: P50 {render.duration(summary.p50)}, P80 {render.duration(summary.p80)}, "
@@ -495,11 +510,16 @@ def cmd_share(args: argparse.Namespace) -> int:
     print(share.NOTICE, file=sys.stderr)
     if dropped:
         print(
-            f"{sum(dropped.values())} rows from {len(dropped)} dropped sessions left out.",
+            f"{render.count(sum(dropped.values()), 'row')} from "
+            f"{render.count(len(dropped), 'dropped session')} left out.",
             file=sys.stderr,
         )
     if skipped:
-        print(f"{skipped} rows are already published and left out.", file=sys.stderr)
+        print(
+            f"{render.count(skipped, 'row')} {'is' if skipped == 1 else 'are'} already published "
+            "and left out.",
+            file=sys.stderr,
+        )
     if not chosen:
         print("nothing new to share.", file=sys.stderr)
         return 0
@@ -514,22 +534,26 @@ def cmd_share(args: argparse.Namespace) -> int:
         target = (
             f"--write would create {path}."
             if held is None
-            else f"--write would add them to {path}, which holds {held} rows."
+            else f"--write would add {'it' if len(chosen) == 1 else 'them'} to {path}, "
+            f"which holds {render.count(held, 'row')}."
         )
         print(
-            f"dry run: {len(chosen)} rows shown above, nothing written. {target}",
+            f"dry run: {render.count(len(chosen), 'row')} shown above, nothing written. {target}",
             file=sys.stderr,
         )
         return 0
     added, existing = share.write_contribution(path, chosen)
     if existing:
         print(
-            f"added {added} rows to {path}, which already held {existing}. "
+            f"added {render.count(added, 'row')} to {path}, which already held {existing}. "
             "Nothing has been sent. To submit:",
             file=sys.stderr,
         )
     else:
-        print(f"wrote {added} rows to {path}. Nothing has been sent. To submit:", file=sys.stderr)
+        print(
+            f"wrote {render.count(added, 'row')} to {path}. Nothing has been sent. To submit:",
+            file=sys.stderr,
+        )
     for command in share.git_commands(path):
         print(f"  {command}", file=sys.stderr)
     return 0
@@ -543,7 +567,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     for finding in findings:
         print(finding)
     if findings:
-        print(f"{len(findings)} problems", file=sys.stderr)
+        print(render.count(len(findings), "problem"), file=sys.stderr)
         return 1
     print("all rows valid")
     return 0
@@ -593,7 +617,7 @@ def cmd_claims(args: argparse.Namespace) -> int:
     if args.check and stale:
         print(f"out of date: {', '.join(stale)}. Run `agentpace claims`.", file=sys.stderr)
         return 1
-    print("claims match the data" if args.check else f"updated {len(stale)} files")
+    print("claims match the data" if args.check else f"updated {render.count(len(stale), 'file')}")
     return 0
 
 

@@ -148,7 +148,7 @@ class Selection(unittest.TestCase):
         self.assertEqual(dropped, {"a" * 12: 2, "c" * 12: 1})
 
     def test_a_dropped_session_with_no_local_row_is_refused(self):
-        with self.assertRaisesRegex(ValueError, "names 1 sessions with no local run"):
+        with self.assertRaisesRegex(ValueError, "names 1 session with no local run"):
             share.select([row()], drop_sessions=["a" * 12, "f" * 12])
 
     def test_invalid_rows_are_refused(self):
@@ -219,7 +219,7 @@ class ShareCommand(Temp):
         self.assertEqual(list(self.out.glob("*.jsonl")), [path])
         self.assertTrue(path.read_bytes().startswith(first))
         self.assertEqual(len(schema.read_rows(path)), 3)
-        self.assertIn(f"added 1 rows to {path}, which already held 2. Nothing has been sent.", err)
+        self.assertIn(f"added 1 row to {path}, which already held 2. Nothing has been sent.", err)
         self.assertEqual(validate.validate([self.out]), [])
 
     def test_an_existing_file_keeps_its_bytes_even_without_a_final_newline(self):
@@ -261,7 +261,7 @@ class ShareCommand(Temp):
         before = path.read_bytes()
         self.add_local_run(offset_s=50)
         _, printed, err = self.run_cli()
-        self.assertIn(f"--write would add them to {path}, which holds 2 rows.", err)
+        self.assertIn(f"--write would add it to {path}, which holds 2 rows.", err)
         self.assertEqual(printed, schema.canonical(row(offset_s=50)) + "\n")
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(list(self.out.iterdir()), [path])
@@ -296,7 +296,7 @@ class ShareCommand(Temp):
     def test_a_dropped_session_is_absent_and_counted_in_both_modes(self):
         self.add_local_run(batch="d" * 12, offset_s=7)
         self.add_local_run(batch="d" * 12, offset_s=8)
-        counted = "2 rows from 1 dropped sessions left out."
+        counted = "2 rows from 1 dropped session left out."
         _, printed, err = self.run_cli("--drop-session", "d" * 12)
         self.assertIn(counted, err)
         self.assertNotIn("d" * 12, printed)
@@ -331,14 +331,14 @@ class ShareCommand(Temp):
                 code, out, err = self.run_cli(*flags, "--drop-session", "f" * 12 + ":3")
                 self.assertEqual(code, 2)
                 self.assertEqual(out, "")
-                refused = f"--drop-session names 1 sessions with no local run ({'f' * 12})"
+                refused = f"--drop-session names 1 session with no local run ({'f' * 12})"
                 self.assertIn(refused, err)
                 self.assertFalse(self.out.exists())
 
     def test_no_dropped_count_without_drop_session(self):
         for flags in ((), ("--write",)):
             with self.subTest(flags=flags):
-                self.assertNotIn("dropped sessions", self.run_cli(*flags)[2])
+                self.assertNotIn("dropped session", self.run_cli(*flags)[2])
 
     def test_dry_run_and_write_conflict(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

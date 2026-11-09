@@ -10,7 +10,7 @@ import os
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from agentpace import schema
+from agentpace import render, schema
 from agentpace.adapters import EXPERIMENTAL
 from agentpace.schema import Row
 
@@ -60,7 +60,7 @@ def select(
     unmatched = sorted(batch for batch, count in dropped.items() if not count)
     if unmatched:
         raise ValueError(
-            f"--drop-session names {len(unmatched)} sessions with no local run "
+            f"--drop-session names {render.count(len(unmatched), 'session')} with no local run "
             f"({', '.join(unmatched)}); nothing was written. See `agentpace runs`"
         )
     return sorted(chosen, key=schema.dedupe_key), skipped, dropped
@@ -113,10 +113,13 @@ def experimental_note(rows: Iterable[Row]) -> str | None:
     if not harnesses:
         return None
     names = ", ".join(sorted(set(harnesses)))
+    one = len(harnesses) == 1
+    them = "it" if one else "them"
     return (
-        f"{len(harnesses)} rows come from experimental adapters ({names}). validate rejects them"
-        " until the adapter is verified, so a pull request with them stays red until a maintainer"
-        " reconciles them by hand; see docs/verify-adapter.md."
+        f"{render.count(len(harnesses), 'row')} {'comes' if one else 'come'} from experimental "
+        f"adapters ({names}). validate rejects {them} until the adapter is verified, so a pull "
+        f"request with {them} stays red until a maintainer reconciles {them} by hand; see "
+        "docs/verify-adapter.md."
     )
 
 
