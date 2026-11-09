@@ -4,6 +4,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.12.8 - 2026-11-09
+
+### Changed
+
+- The README's first screen is one plain sentence, the command, the output and a new "Reading the output" list that says what the plan total, the session clock, the human part, `cell (n)`, `critical`, effective parallelism and the warnings mean. The example output itself is unchanged.
+- The README installs each thing once: the agent skills in "In your agent", the CLI in "Install", which points back for the skills.
+- The three experimental adapters (Gemini CLI, OpenCode, Cline) share one row in "Does it fit your setup?".
+- The one-contributor sentence links "Contribute your runs" and issue #2.
+
+No published number moved.
+
 ## 0.12.7 - 2026-11-09
 
 ### Changed
