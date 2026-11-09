@@ -1,0 +1,57 @@
+{
+  "protocol": {
+    "name": "model-offset-v1",
+    "registered_at": "ed9f597",
+    "sha256": "514e3e766974167139c809cf5c92112b5d2e8106595cf097cfcb230fd4e74fff"
+  },
+  "selection_last_week": "2026-W45",
+  "incumbent": "shrunk",
+  "seed": 20261107,
+  "data": {
+    "rows": 3430,
+    "latest_week": "2026-W45",
+    "sha256": "5db655b60824bb72d27d1032ac2c2952985fe1523635866fceb69ce8ca798a0a"
+  },
+  "selection_folds": 4,
+  "backtest_locked_status": "not enough data (no weeks after 2026-W45 yet)",
+  "locked": {
+    "status": "no weeks after 2026-W45 yet",
+    "folds": [],
+    "affected": {
+      "rows": 0,
+      "sessions": 0,
+      "claude_code_rows": 0,
+      "claude_code_sessions": 0,
+      "cells": []
+    }
+  },
+  "gates": {
+    "G0": {
+      "result": "fail",
+      "backtest_locked_status": "not enough data (no weeks after 2026-W45 yet)",
+      "affected_claude_code_sessions": 0,
+      "affected_claude_code_rows": 0
+    },
+    "G1": {
+      "result": "not evaluable",
+      "intervals": [
+        null,
+        null
+      ]
+    },
+    "G2": {
+      "result": "not evaluable"
+    },
+    "G3": {
+      "result": "not evaluable"
+    },
+    "G4": {
+      "result": "not evaluable",
+      "codex_rows": 0
+    }
+  },
+  "decision": {
+    "status": "open",
+    "line": "awaiting the first qualifying data change"
+  }
+}
