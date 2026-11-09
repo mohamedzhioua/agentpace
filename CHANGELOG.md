@@ -4,7 +4,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
-## 0.12.11 - 2026-11-09
+## 0.12.11 - 2026-11-10
 
 ### Added
 
@@ -14,6 +14,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 - `backtest --check` now also fails when `docs/backtest.md` is missing or is not what the numbers render.
 - **Numbers that moved:** `loss_count` 20 to 21. The new test's MAPE row, where a sum of medians beats agentpace (80.29 against 249.67), joins the generated "Where agentpace loses" list.
+- The README, the report and DESIGN 6 call the time-split whole-session test the forward test of plan totals, no longer the only direct one.
 
 No other published number moved.
 
