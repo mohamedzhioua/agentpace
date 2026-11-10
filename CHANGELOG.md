@@ -4,6 +4,21 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## Unreleased
 
+## 0.13.1 - 2026-11-10
+
+### Changed
+
+- The estimating skills (`agentpace`, `/pace-estimate`) name the range, below the CLI's lines, as the plan total or the P80 on the session clock, never as hours of agent time, active time or effort, and never say it covers agent time or agent work only: the session clock also counts the gaps between runs up to the idle cap.
+- They write the plan to a new file and run the estimator on that file, and use an existing plan file only when the user names it or the conversation has made it the plan. A `plan.json` that happens to be in the folder is neither estimated as the answer nor overwritten, and `/pace-estimate` with no input asks which plan to estimate. The example commands read `agentpace estimate <file>`.
+- They relay the `Idle cap:` line as printed when the CLI prints one, and relay a refusal, one line starting `agentpace:`, as printed and stop.
+- `/pace-log` leaves `--idle-cap` alone unless asked, and `/pace-share` stops at any refusal. Neither renames, deletes or edits anything in `~/.agentpace` unless asked.
+
+### Added
+
+- `docs/skill-smoke.md` names eight prompts, up from four, and its record gains rows for the review capacity, the absent CLI, plan selection, the cap line and a refused share, run on 2026-11-10 with Claude Code 2.1.321 and the 0.13.0 CLI. The first run of prompt 1 failed: below the block the answer said the P80 "covers agent time only". The wording was amended once at the review, the rule for what is said below the block now applies to every prompt that runs the CLI, and the seven prompts that load a changed skill were run again. Six passed. The seventh, the absent CLI where nothing can be installed, answered from the portable prompt and called its result "a rough estimate, not a measured one" without the words "rule of thumb". It was recorded as a fail and read as a pass at the review, because the answer says the result is rough and is not the CLI's range; the document now states that reading, and the first reading stays in the row. The failed row of prompt 1 stays in the record.
+
+No published number moved.
+
 ## 0.13.0 - 2026-11-10
 
 ### Fixed
