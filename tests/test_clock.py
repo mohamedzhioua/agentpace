@@ -241,6 +241,23 @@ class Note(Home):
         self.assertEqual(code, 0, err)
         self.assertEqual(self.note.read_bytes(), before)
 
+    def test_the_seed_is_read_only_for_rows_with_no_note(self):
+        published = mock.Mock(return_value=set())
+        cap = clock.store_cap(self.store, published=published)
+        self.assertEqual(cap, clock.StoreCap(clock.EMPTY, None))
+        write_store(self.store, [row()], idle_cap_s=600)
+        cap = clock.store_cap(self.store, published=published)
+        self.assertEqual(cap, clock.StoreCap(clock.RECORDED, 600))
+        published.assert_not_called()
+        self.note.unlink()
+        cap = clock.store_cap(self.store, published=published)
+        self.assertEqual(cap, clock.StoreCap(clock.NOT_RECORDED, None))
+        published.assert_called_once_with()
+        published.return_value = {schema.dedupe_key(row())}
+        cap = clock.store_cap(self.store, published=published)
+        self.assertEqual(cap, clock.StoreCap(clock.PUBLISHED, 900))
+        self.assertEqual(published.call_count, 2)
+
 
 class Ingest(Home):
     def cache_file(self):
@@ -429,6 +446,43 @@ class Hook(Home):
         self.assertEqual(self.hook(), (0, ""))
         self.assertEqual(self.note.read_bytes(), note_bytes(900))
         self.assertEqual(len(schema.read_rows(self.store)), 2)
+
+
+class MixedStore(Home):
+    """A store from before 0.13.0 that mixes published rows with others is not recorded."""
+
+    def setUp(self):
+        super().setUp()
+        # A published row at each end, so neither the first nor the last row can vouch for the
+        # one between them.
+        first, last = published_rows(2)
+        schema.write_rows(self.store, [first, row(week="2026-W45"), last])
+
+    def test_it_counts_as_not_recorded(self):
+        self.assertEqual(clock.store_cap(self.store), clock.StoreCap(clock.NOT_RECORDED, None))
+
+    def test_share_refuses_it_in_both_modes(self):
+        out = self.root / "runs"
+        for flags in ((), ("--write",)):
+            with self.subTest(flags=flags):
+                code, shown, err = self.run_cli("share", "--out-dir", str(out), *flags)
+                self.assertEqual((code, shown, err), (2, "", S2))
+                self.assertFalse(out.exists())
+        self.assertFalse(self.note.exists())
+
+    def test_a_default_ingest_appends_and_writes_no_note(self):
+        code, out, err = self.ingest()
+        self.assertEqual((code, out), (0, ""), err)
+        self.assertEqual(len(schema.read_rows(self.store)), 5)
+        self.assertFalse(self.note.exists())
+        self.assertEqual(err.splitlines()[-1], I6)
+
+    def test_estimate_calls_it_not_recorded(self):
+        plan = self.root / "plan.json"
+        plan.write_text(json.dumps(PLAN), encoding="utf-8")
+        code, out, err = self.run_cli("estimate", str(plan), "--draws", "200")
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(out.splitlines()[1], LINES["not recorded"])
 
 
 class Estimate(Home):
