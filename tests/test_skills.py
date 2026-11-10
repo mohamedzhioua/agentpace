@@ -321,6 +321,11 @@ class Skills(unittest.TestCase):
         self.assertIn("not published rows", items["8"])
         self.assertIn("agentpace: runs.jsonl has no recorded idle cap", items["8"])
         self.assertIn("no `--write`", items["8"])
+        self.assertIn("the P80 alone is enough", text)
+        self.assertIn(
+            "it says that the result is rough and that it is not the CLI's range",
+            items["4b"],
+        )
 
     def test_the_skills_never_say_the_total_covers_agent_time_only(self):
         for name in ("agentpace", "pace-estimate"):
