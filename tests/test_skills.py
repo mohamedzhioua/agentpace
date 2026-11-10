@@ -322,6 +322,30 @@ class Skills(unittest.TestCase):
         self.assertIn("agentpace: runs.jsonl has no recorded idle cap", items["8"])
         self.assertIn("no `--write`", items["8"])
 
+    def test_the_skills_never_say_the_total_covers_agent_time_only(self):
+        for name in ("agentpace", "pace-estimate"):
+            with self.subTest(skill=name):
+                text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn(
+                    "is, or covers, agent time or agent work only, "
+                    "not even to set it against the human part",
+                    text,
+                )
+                self.assertIn('own words, "the agent time", stay inside the block', text)
+        text = (SKILLS / "agentpace" / "SKILL.md").read_text(encoding="utf-8")
+        report = text.split("## Report the result", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("agent runs and the gaps between them, each gap up to the idle cap", report)
+        self.assertIn("do not derive a number for it from the total", report)
+        self.assertNotIn("from the agent time", report)
+        estimate = (SKILLS / "pace-estimate" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Do not derive a number for the human part from the total", estimate)
+        self.assertNotIn("from the agent time", estimate)
+        smoke = (REPO / "docs" / "skill-smoke.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "or say it covers, agent time, agent work, active time, working time or effort",
+            smoke,
+        )
+
 
 class Marketplace(unittest.TestCase):
     def setUp(self):
