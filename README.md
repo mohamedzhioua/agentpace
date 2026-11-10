@@ -61,7 +61,7 @@ To estimate your own, write a plan like it and run `agentpace estimate plan.json
 ### Reading the output
 
 - **The plan total** is a range, not one number, because agent run times have a long tail and any single number misses most of the time. P50 is a coin flip. P80 is the forecast's 80th percentile, the one to plan on, not a promise: the [backtest](#backtest-how-often-it-is-wrong) shows how often it held.
-- **The session clock** counts agent runs and the gaps between them, each gap up to the idle cap, so a short wait on you sits inside the total and a longer one is clipped at the cap.
+- **The session clock** counts agent runs and the gaps between them, each gap up to the idle cap, so a short wait on you sits inside the total and a longer one is clipped at the cap. When your own rows or `--data` take part, an `Idle cap:` line under the total names the cap they were clipped at and says when they do not share one.
 - **The human part** (review, testing, decisions, waiting between agent turns) is not measured, and no allowance for it is added. It stays on its own line, and agentpace never derives it from agent time.
 - **`cell (n)`** is the group of recorded runs a task falls in, by kind, risk and model, and how many runs it holds. **`critical`** is the share of simulations in which the task was on the longest chain of dependent tasks.
 - **Effective parallelism** is work divided by elapsed time, learned from recorded sessions at the plan's agent cap. It can be below 1, because a session's clock includes the time between runs.

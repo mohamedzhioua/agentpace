@@ -14,7 +14,7 @@ from agentpace import cli, forecasts, paths, pseudonym, render, schema
 from agentpace.adapters import get_adapter
 from agentpace.adapters.base import RawRun
 from agentpace.cache import RunCache
-from tests.synthetic import dataset, row
+from tests.synthetic import dataset, row, write_store
 from tests.test_skills import BANNED_PHRASES
 
 REPO = Path(__file__).resolve().parent.parent
@@ -189,8 +189,9 @@ class RecordCommand(unittest.TestCase):
         self.assertEqual(
             lines[1], 'Quoted: "3 weeks" (calendar time, as quoted; unverified, not converted)'
         )
-        self.assertEqual(lines[2], render.CLOCK_NOTE)
-        self.assertTrue(lines[3].startswith("Human part"))
+        self.assertEqual(lines[2], "Idle cap: not recorded (--data rows).")
+        self.assertEqual(lines[3], render.CLOCK_NOTE)
+        self.assertTrue(lines[4].startswith("Human part"))
         self.assertFalse(paths.forecasts_file().exists())
         self.assertEqual(list(self.root.rglob("forecasts.jsonl")), [])
 
@@ -219,7 +220,7 @@ class RecordCommand(unittest.TestCase):
         )
 
     def test_share_is_unchanged_by_a_ledger(self):
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         out_dir = str(self.root / "runs")
         _, before, _ = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.estimate("--record", "--quoted", "3 weeks")
@@ -269,7 +270,7 @@ class ScoreCommand(RecordCommand):
             row(batch=self.batch, week=week, offset_s=offset, duration_s=length)
             for offset, length in spans
         ]
-        schema.write_rows(paths.local_runs(), rows)
+        write_store(paths.local_runs(), rows)
         adapter = get_adapter("claude-code")
         cache = RunCache(paths.cache_file(adapter.name), adapter.name, adapter.version, 900)
         for index, (offset, length) in enumerate(spans):

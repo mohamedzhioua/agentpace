@@ -188,7 +188,7 @@ for each draw:
 - **Codex plans (0.6.0).** Each Codex exec session is one turn, so Codex rows add nothing to `b`, which needs sessions of at least 5 runs, or to `P_eff`, where every Codex row has a peak of 1. A plan of Codex tasks uses the session effect and throughput learned from Claude Code sessions.
 - **Contention.** No slowdown term is applied, because F3 shows the available estimate is confounded. A term can be added only if it wins in Phase 4.
 
-**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and with no allowance added to the total, and JSON carries it as `human`. Since 0.9.2 the output also says that the session clock counts the gaps between runs up to the idle cap, so a wait shorter than the cap sits inside the plan total (ruling for 0.10). No multiplier derives it from agent time. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
+**Output.** Per-task and total P50/P80/P90, the most frequent critical path with each task's criticality share, `P_eff` with its session count, the cell actually used for each task, and all warnings. Since 0.2.1, every result also carries the human part (review, testing, decisions, waiting between agent turns) on its own line, as "not measured" and with no allowance added to the total, and JSON carries it as `human`. Since 0.9.2 the output also says that the session clock counts the gaps between runs up to the idle cap, so a wait shorter than the cap sits inside the plan total (ruling for 0.10). No multiplier derives it from agent time. Since 0.13.0, when rows other than the bundled seed take part, an `Idle cap:` line under the total names the cap each source was clipped at. Results are byte-identical for a given dataset, seed, interpreter and platform. Across platforms the claim is equal after rounding.
 
 ## 6. Backtest protocol
 
@@ -220,7 +220,7 @@ for each draw:
 
 *Projects held out.* The same test also runs with one project held out at a time: every session of the selection harness with at least 5 completed runs, in every project that has one and leaves `MIN_TRAIN_ROWS` completed runs outside it, predicted by a model fitted on all rows outside that project, later weeks included, with no row of a held-out session in training. It is retrospective, reported under its own heading with each project by rank and the pooled result without the largest, draws only a named interval stream of its own, and never chooses the method. The time-split test remains the forward test.
 
-**Idle-cap sensitivity.** The 900 s cap is `ingest --idle-cap`. Published rows cannot be re-clipped without the raw transcripts, so this check runs locally with `ingest --idle-cap` and `backtest --data`, and is not a README claim. The results are in section 11.
+**Idle-cap sensitivity.** The 900 s cap is `ingest --idle-cap`. Published rows cannot be re-clipped without the raw transcripts, so this check runs locally with `ingest --idle-cap` and `backtest --data`, and is not a README claim. The results are in section 11. Each cap needs its own `--out` file: a rows file keeps one cap (section 7).
 
 **Baselines**
 
@@ -246,6 +246,7 @@ for each draw:
 **`share`**
 
 - Defaults to `--dry-run` and prints the exact rows, byte for byte, as they would be written.
+- Runs only on a store whose idle cap is known to be 900 s: recorded by `ingest` in `runs.jsonl.clock.json`, or a store holding only published rows. The record is local and never shared.
 - `--write` adds or extends one file, `data/runs/<contributor>-<from>-<to>.jsonl`, and prints the commands to check and submit it, `agentpace validate` first. Rows already anywhere in the folder are left out. When the name exists, its old bytes are kept exactly and the new rows go after them, so a second share of the same span never removes a published row; a file holding another contributor's rows is refused. Rows from experimental adapters stay in the share, and `share` warns on stderr that `validate` rejects them until the adapter is verified.
 - No network code at all in v1 (D5). A test parses every module under `src/` and fails on any import of `socket`, `urllib`, `http` or `subprocess`. A `gh` submit path is a v2 item with its own grant.
 - `share` is a local file writer, so the DONE WHEN line is met as a ceiling: zero network calls anywhere.

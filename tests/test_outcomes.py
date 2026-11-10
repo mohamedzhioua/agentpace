@@ -252,7 +252,7 @@ class Command(unittest.TestCase):
             shown["rows_excluded"],
             summary.failed + summary.unknown + summary.completed_without_duration,
         )
-        self.assertEqual(list(shown)[-1], "outcomes")
+        self.assertEqual([key for key in shown if key != "idle_cap"][-1], "outcomes")
 
     def test_duplicate_sources_count_each_run_once(self):
         once, _ = self.estimate("--json")

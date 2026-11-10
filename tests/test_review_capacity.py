@@ -14,7 +14,7 @@ from unittest import mock
 
 from agentpace import cli, paths, render, schema
 from agentpace.estimate import HumanPart
-from tests.synthetic import dataset, row
+from tests.synthetic import dataset, row, write_store
 from tests.test_skills import FRONTMATTER_SHA256
 from tests.test_turns import SESSION
 
@@ -221,7 +221,7 @@ class Ledger(Temp):
 
 class Share(Temp):
     def test_share_dry_run_is_unaffected_by_a_ledger_holding_a_figure(self):
-        schema.write_rows(paths.local_runs(), [row(), row(offset_s=5)])
+        write_store(paths.local_runs(), [row(), row(offset_s=5)])
         out_dir = str(self.root / "out")
         _, before, before_err = self.run_cli("share", "--out-dir", out_dir, "--dry-run")
         self.estimate("--review-capacity", "4 PRs a day", "--record")
